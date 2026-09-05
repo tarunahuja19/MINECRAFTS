@@ -15,7 +15,7 @@ async function migrate() {
     host: process.env.PGHOST || 'localhost',
     port: parseInt(process.env.PGPORT || '5432', 10),
     user: process.env.PGUSER || 'postgres',
-    password: process.env.PGPASSWORD || 'T@run098',
+    password: process.env.PGPASSWORD || 'labpass123',
     database: 'postgres'
   });
 
@@ -43,7 +43,7 @@ async function migrate() {
     host: process.env.PGHOST || 'localhost',
     port: parseInt(process.env.PGPORT || '5432', 10),
     user: process.env.PGUSER || 'postgres',
-    password: process.env.PGPASSWORD || 'T@run098',
+    password: process.env.PGPASSWORD || 'labpass123',
     database: targetDb
   });
 

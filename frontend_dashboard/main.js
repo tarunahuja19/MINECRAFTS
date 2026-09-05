@@ -1,5 +1,34 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
+
+// KNOWN ISSUE - 3D terrain renders flat (handed off, not fixed here).
+//
+// The 3D window shows correct satellite imagery but no elevation relief.
+// What was verified working, so nobody re-checks it:
+//   - DEM tiles decode to real elevations (81-193 m over the tile).
+//   - The tile proxy serves them byte-identical to upstream as image/png.
+//   - The DEM source loads: sourceCache present, tiles reach state with .dem set.
+//   - maplibre-gl.js is the unmodified upstream 4.7.1 build, terrain code intact.
+//   - The GPU is genuinely fine: app.getGPUInfo() reports
+//     "ANGLE Metal Renderer: Apple M4", gpu_compositing and webgl both enabled.
+//
+// The actual symptom: map.setTerrain() returns without throwing and
+// map.getTerrain() echoes the config back, but map.style.terrain and
+// map.painter.terrain both stay ABSENT - MapLibre never builds the mesh, with
+// no error emitted. queryTerrainElevation() then returns constant nonsense
+// (e.g. -471.6 m everywhere), which is the signature of terrain not attached.
+//
+// Note: in the renderer, gl.getParameter(gl.RENDERER) reads "WebKit" and
+// getExtension('OES_element_index_uint') reads MISSING. That is Chromium's
+// privacy masking of WebGL, NOT software rendering - do not chase it.
+//
+// The switches below force the hardware path. They did NOT fix the issue and
+// are kept only because they are harmless; the real cause is still open.
+// Diagnostics helper: realTerrain3D.getMap() exposes the live MapLibre map.
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-accelerated-2d-canvas');
+app.commandLine.appendSwitch('disable-software-rasterizer');
 const fs = require('fs');
 const MqttClient = require('./main/mqtt-client');
 const OfflineCache = require('./main/offline-cache');

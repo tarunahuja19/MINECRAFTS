@@ -29,3 +29,6 @@ archive_legacy/similation-data-making/.venv-train/
 # ---- Embedded legacy git repos (kept on disk, not vendored) ----
 archive_legacy/sih-usersite/
 archive_legacy/similation-data-making/
+
+# Electron runtime log written by scripts/start_all.sh
+.electron.log

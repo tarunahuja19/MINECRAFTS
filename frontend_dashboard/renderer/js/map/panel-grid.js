@@ -16,6 +16,8 @@ var panelGrid = (function () {
   var cellPolygons = {};
   var selectedCellId = null;
   var cellsData = {};
+  // Last non-empty node set seen, so a no-argument refresh cannot blank the grid.
+  var lastNodes = [];
   var bannerEl = null;
 
   var GRID_CONFIG = {
@@ -192,12 +194,22 @@ var panelGrid = (function () {
   // Both build and refresh read nodes from the same place: the live records
   // carrying x/y. fixtureProvider returns null in live mode, hence the guard.
   function currentNodes(passed) {
-    if (Array.isArray(passed)) return passed;
+    if (Array.isArray(passed) && passed.length) {
+      lastNodes = passed;
+      return passed;
+    }
+    // A no-argument refresh (e.g. replay-started) must NOT wipe the grid. In
+    // live mode fixtureProvider.getNodes() is null, so falling straight to it
+    // repainted all 64 sectors grey and lost the distribution. Reuse the last
+    // known-good set instead, and only then consult the fixtures.
     if (typeof fixtureProvider !== 'undefined' && typeof fixtureProvider.getNodes === 'function') {
       var n = fixtureProvider.getNodes();
-      if (Array.isArray(n)) return n;
+      if (Array.isArray(n) && n.length) {
+        lastNodes = n;
+        return n;
+      }
     }
-    return [];
+    return lastNodes;
   }
 
   function init(mapInstance) {

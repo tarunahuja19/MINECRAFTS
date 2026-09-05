@@ -4,38 +4,15 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db/db');
 
-const fs = require('fs');
-const path = require('path');
-
-const FIXTURES_NODES_PATH = path.join(__dirname, '..', '..', 'r4-dashboard', 'fixtures', 'nodes.json');
-let fixtureMeta = null;
-
-function getNodeMetadata(nodeId) {
-  if (!fixtureMeta) {
-    try {
-      if (fs.existsSync(FIXTURES_NODES_PATH)) {
-        const raw = JSON.parse(fs.readFileSync(FIXTURES_NODES_PATH, 'utf8'));
-        fixtureMeta = {};
-        for (const n of raw) {
-          fixtureMeta[n.node_id] = n;
-        }
-      }
-    } catch (e) {
-      fixtureMeta = {};
-    }
-  }
-  return fixtureMeta[nodeId] || null;
-}
-
 function enrichNode(row) {
   // lat/lon are written by the simulation (sandbox.geo) alongside x/y and are the
-  // single source of truth for where a node sits on the map. Older rows that
-  // predate the geo alignment work have NULL lat/lon; those fall back to the
-  // fixture metadata so the legacy mock dashboard keeps rendering.
-  const meta = (row.lat == null || row.lon == null) ? getNodeMetadata(row.node_id) : null;
-  const lat = (row.lat != null) ? row.lat : (meta ? meta.lat : null);
-  const lon = (row.lon != null) ? row.lon : (meta ? meta.lng : null);
-  const ring = (meta && meta.ring) ? meta.ring : (row.node_type === 'gateway' ? 'outer' : (row.node_type === 'anchor' ? 'middle' : 'inner'));
+  // single source of truth for where a node sits on the map. There is no fixture
+  // fallback: the old one read the Jharia nodes.json, ~1000 km from the modelled
+  // site, so a NULL here must surface as null rather than as a plausible-looking
+  // wrong location.
+  const lat = (row.lat != null) ? row.lat : null;
+  const lon = (row.lon != null) ? row.lon : null;
+  const ring = row.node_type === 'gateway' ? 'outer' : (row.node_type === 'anchor' ? 'middle' : 'inner');
 
   return {
     ...row,

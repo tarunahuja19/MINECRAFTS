@@ -88,6 +88,15 @@ var terrain3DWindow = (function () {
           '<button class="terrain-tool-btn active" id="btn-cam-tilt65">65° ISO</button>' +
           '<button class="terrain-tool-btn" id="btn-cam-tilt0">TOP 2D</button>' +
           '<button class="terrain-tool-btn" id="btn-cam-tilt78">78° STEEP</button>' +
+          '<span style="width:1px; height:16px; background:#2A3B4A; margin:0 4px;"></span>' +
+          // Vertical exaggeration. The terrarium DEM stops at z15 (~4.5 m/px,
+          // interpolated from ~30 m SRTM), so a sector's ~34 m of relief is
+          // real but reads flat at true scale. These trade fidelity for
+          // legibility without touching the underlying elevation data.
+          '<span style="font-size:9.5px; color:#94A3B8; font-weight:bold;">VERT EXAG:</span>' +
+          '<button class="terrain-tool-btn" id="btn-exag-1">1x</button>' +
+          '<button class="terrain-tool-btn active" id="btn-exag-3">3x</button>' +
+          '<button class="terrain-tool-btn" id="btn-exag-5">5x</button>' +
         '</div>' +
 
         '<div style="display:flex; align-items:center; gap:6px; margin-left:auto;">' +
@@ -200,6 +209,24 @@ var terrain3DWindow = (function () {
     btnTilt78.addEventListener('click', function () {
       setActiveTiltBtn(this);
       realTerrain3D.setCameraPreset('steep');
+    });
+
+    // Vertical exaggeration controls
+    var exagBtns = {
+      1: windowEl.querySelector('#btn-exag-1'),
+      3: windowEl.querySelector('#btn-exag-3'),
+      5: windowEl.querySelector('#btn-exag-5')
+    };
+    Object.keys(exagBtns).forEach(function (factor) {
+      var btn = exagBtns[factor];
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        Object.keys(exagBtns).forEach(function (f) {
+          if (exagBtns[f]) exagBtns[f].classList.remove('active');
+        });
+        this.classList.add('active');
+        realTerrain3D.setExaggeration(parseFloat(factor));
+      });
     });
 
     function setActiveTiltBtn(activeBtn) {

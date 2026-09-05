@@ -5,11 +5,38 @@ const path = require('path');
 const { Pool } = require('pg');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
+// ---------------------------------------------------------------------------
+// LEGACY SEEDER - DISABLED BY DEFAULT.
+//
+// This script predates the geo-alignment work. It is destructive and wrong:
+//   * It TRUNCATEs readings AND nodes, wiping the live simulation run and the
+//     geo-aligned nodes (their lat/lon and real z elevations) along with it.
+//   * It repopulates from the old 60-node Jharia fixture (23.74N, 86.42E),
+//     which is ~1000 km from the modelled site (Adriyala, Telangana 18.6435N,
+//     79.5750E - see simulation/sandbox/geo.py).
+//   * Its FIXTURES_DIR points at ../../r4-dashboard/fixtures, which no longer
+//     exists, so it cannot run to completion anyway.
+//
+// The real data path is: run the simulation (npm run sim), which writes
+// geo-aligned nodes and readings straight to PostgreSQL via sandbox/db.py.
+//
+// If you genuinely need the legacy Jharia demo data, set:
+//     ALLOW_LEGACY_JHARIA_SEED=1 npm --prefix backend run seed
+// ---------------------------------------------------------------------------
+if (process.env.ALLOW_LEGACY_JHARIA_SEED !== '1') {
+  console.error('[seed] REFUSING TO RUN: this legacy seeder TRUNCATEs nodes and readings');
+  console.error('[seed] and repopulates them from the obsolete Jharia fixture, destroying');
+  console.error('[seed] the geo-aligned nodes and the current simulation run.');
+  console.error('[seed] Use "npm run sim" to populate the database instead.');
+  console.error('[seed] To override anyway: ALLOW_LEGACY_JHARIA_SEED=1 node backend/scripts/seed.js');
+  process.exit(1);
+}
+
 const pool = new Pool({
   host: process.env.PGHOST || 'localhost',
   port: parseInt(process.env.PGPORT || '5432', 10),
   user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'T@run098',
+  password: process.env.PGPASSWORD || 'labpass123',
   database: process.env.PGDATABASE || 'mine_subsidence',
 });
 

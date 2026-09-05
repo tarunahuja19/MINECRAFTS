@@ -8,7 +8,7 @@ const config = {
   host: process.env.PGHOST || 'localhost',
   port: parseInt(process.env.PGPORT || '5432', 10),
   user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'T@run098',
+  password: process.env.PGPASSWORD || 'labpass123',
   database: process.env.PGDATABASE || 'mine_subsidence',
   max: 20,
   idleTimeoutMillis: 30000,

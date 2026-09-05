@@ -5,8 +5,8 @@
     "panel_id": "PNL-A-NORTH",
     "level": 2,
     "centroid": {
-      "lat": 23.7455,
-      "lng": 86.419
+      "lat": 18.6444971,
+      "lng": 79.5710495
     },
     "affected_nodes": [
       "N07",
@@ -32,8 +32,8 @@
     "panel_id": "PNL-A-EAST",
     "level": 3,
     "centroid": {
-      "lat": 23.7455,
-      "lng": 86.419
+      "lat": 18.6444971,
+      "lng": 79.5710495
     },
     "affected_nodes": [
       "N06",
@@ -65,8 +65,8 @@
     "panel_id": "PNL-A-DEFENSE",
     "level": 3,
     "centroid": {
-      "lat": 23.7466,
-      "lng": 86.4171
+      "lat": 18.645594,
+      "lng": 79.5692121
     },
     "affected_nodes": [
       "N48",

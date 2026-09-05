@@ -32,7 +32,13 @@ var realTerrain3D = (function () {
   var currentSector = null;
   var markerInstances = [];
   var sectorBadgeMarker = null;
-  var currentExaggeration = 2.0;
+  // The terrarium DEM tops out at z15 (~4.5 m/pixel, interpolated from ~30 m
+  // SRTM over India), so it carries the site's regional shape but cannot
+  // resolve individual benches or the highwall. A sector spans only ~34 m of
+  // relief across ~600 m, which reads as dead flat at 1:1. 3.0 lifts that into
+  // legible landform without turning the pit into a caricature; the VERT EXAG
+  // buttons let an operator drop to 1.0 for true scale or push to 5.0.
+  var currentExaggeration = 3.0;
   var isTerrainActive = true;
   var areSensorsActive = true;
 
@@ -51,8 +57,11 @@ var realTerrain3D = (function () {
     if (!container || typeof maplibregl === 'undefined') return false;
 
     currentSector = sectorData;
-    var centerLng = sectorData ? sectorData.center[1] : 86.4195;
-    var centerLat = sectorData ? sectorData.center[0] : 23.7440;
+    // Fallback centre is the Adriyala panel origin, matching geo.py/mapView.
+    // This still read the old Jharia coordinates, ~1000 km from the modelled
+    // site, which would open the 3D window over the wrong ground.
+    var centerLng = sectorData ? sectorData.center[1] : 79.5725;
+    var centerLat = sectorData ? sectorData.center[0] : 18.6435;
 
     if (map) {
       map.remove();
@@ -134,7 +143,12 @@ var realTerrain3D = (function () {
       if (!map.isStyleLoaded()) return;
       setupDone = true;
 
-      map.resize();
+      try {
+        map.resize();
+      } catch (e) {
+        // Cosmetic only - must never abort terrain/marker setup below.
+        console.warn('[REAL_TERRAIN_3D] setup resize skipped:', e.message);
+      }
 
       // Attaching terrain needs the DEM source to hold real data, and the DEM
       // legitimately 404s above its z15 coverage, so this retries on source
@@ -169,7 +183,11 @@ var realTerrain3D = (function () {
     currentSector = sectorData;
     if (!map) return;
 
-    map.resize();
+    // Route through onResize rather than calling map.resize() directly: this
+    // fires while the new sector's style is still loading, and an unguarded
+    // resize re-enters MapLibre's render loop and throws "Attempting to run(),
+    // but is already running". onResize defers to 'idle' and retries.
+    onResize();
 
     var centerLng = sectorData.center[1];
     var centerLat = sectorData.center[0];
@@ -182,9 +200,36 @@ var realTerrain3D = (function () {
       duration: 800
     });
 
-    addSectorBadge(sectorData);
-    addSectorOverlay(sectorData);
-    addSensorMarkers(sectorData);
+    // Selecting another sector while the style is still loading threw
+    // "Style is not done loading" (and, repeated, drove MapLibre into
+    // "Attempting to run(), but is already running"). Defer to the style's own
+    // load event instead of assuming it is ready.
+    applySectorWhenStyleReady(sectorData);
+  }
+
+  // Runs the three layer/marker calls once the style can accept them, whether
+  // that is now or after the next 'styledata'.
+  function applySectorWhenStyleReady(sectorData) {
+    if (!map) return;
+
+    function apply() {
+      if (!map) return;
+      addSectorBadge(sectorData);
+      addSectorOverlay(sectorData);
+      addSensorMarkers(sectorData);
+    }
+
+    if (map.isStyleLoaded()) {
+      apply();
+      return;
+    }
+
+    function onStyleData() {
+      if (!map || !map.isStyleLoaded()) return;
+      map.off('styledata', onStyleData);
+      apply();
+    }
+    map.on('styledata', onStyleData);
   }
 
   function addSectorBadge(sector) {
@@ -194,8 +239,8 @@ var realTerrain3D = (function () {
     }
     if (!map || !sector) return;
 
-    var cLng = sector.center ? sector.center[1] : (sector.lngRange ? (sector.lngRange[0] + sector.lngRange[1]) / 2 : 86.4195);
-    var cLat = sector.center ? sector.center[0] : (sector.latRange ? (sector.latRange[0] + sector.latRange[1]) / 2 : 23.7440);
+    var cLng = sector.center ? sector.center[1] : (sector.lngRange ? (sector.lngRange[0] + sector.lngRange[1]) / 2 : 79.5725);
+    var cLat = sector.center ? sector.center[0] : (sector.latRange ? (sector.latRange[0] + sector.latRange[1]) / 2 : 18.6435);
 
     var el = document.createElement('div');
     el.className = 'real-3d-sector-badge-pin';
@@ -330,11 +375,23 @@ var realTerrain3D = (function () {
           '<div style="width:2px; height:12px; background:' + color + ';"></div>' +
         '</div>';
 
+      // Pin height comes from the node's own `z` - the real DEM elevation
+      // written by the simulation (sandbox.dem.elevation_at), not a guess and
+      // not the terrain the GPU happens to have loaded. MapLibre already snaps
+      // a marker to whatever DEM tile is resident, which is fine for the panel
+      // but wrong for the Tier-3 gateway ~1.1 km out: its tile may not be
+      // loaded at all, and it sits outside the 600 m window entirely. Passing
+      // the stored altitude makes the pin agree with the physics frame either
+      // way. Older MapLibre builds ignore the third element and fall back to
+      // surface-snapping, so this degrades quietly rather than throwing.
+      var hasZ = (typeof n.z === 'number' && isFinite(n.z));
+      var lngLat = hasZ ? [n.lng, n.lat, n.z] : [n.lng, n.lat];
+
       var marker = new maplibregl.Marker({
         element: el,
         anchor: 'bottom'
       })
-      .setLngLat([n.lng, n.lat])
+      .setLngLat(lngLat)
       .addTo(map);
 
       // Popup
@@ -345,7 +402,8 @@ var realTerrain3D = (function () {
           '<div style="font-family:\'Courier New\',monospace; font-size:10px; padding:4px;">' +
             '<b style="color:' + color + ';">NODE ' + nodeId + ' (' + n.state.toUpperCase() + ')</b><br>' +
             'Strain: ' + strain + '<br>' +
-            'Ring: ' + (n.ring || 'core') +
+            'Ring: ' + (n.ring || 'core') + '<br>' +
+            'Elev: ' + (hasZ ? n.z.toFixed(1) + ' m AMSL' : 'n/a') +
           '</div>'
         );
       marker.setPopup(popup);
@@ -387,12 +445,19 @@ var realTerrain3D = (function () {
   }
 
   function setExaggeration(val) {
-    currentExaggeration = parseFloat(val) || 2.0;
-    if (map && isTerrainActive) {
+    currentExaggeration = parseFloat(val) || 3.0;
+    if (!map || !isTerrainActive) return;
+    // A click can land before the DEM source exists (terrain attaches
+    // asynchronously via applyTerrainWhenReady). setTerrain would throw and
+    // take the button handler down with it, so fall back to the retry path -
+    // the new exaggeration is already stored and gets picked up on attach.
+    try {
       map.setTerrain({
         source: 'terrain-dem',
         exaggeration: currentExaggeration
       });
+    } catch (e) {
+      applyTerrainWhenReady();
     }
   }
 
@@ -410,8 +475,33 @@ var realTerrain3D = (function () {
     }
   }
 
+  var pendingResize = false;
+
   function onResize() {
-    if (map) map.resize();
+    // openSector fires this four times per click (immediately, in rAF, then at
+    // 80ms and 250ms) to settle the canvas against the window animation.
+    // Calling resize() while the style is still loading re-enters MapLibre's
+    // render loop and throws "Attempting to run(), but is already running", so
+    // skip those early calls - a later one always lands once the style is up.
+    if (!map) return;
+    if (!map.isStyleLoaded()) {
+      // Don't just drop it: the last timer can land before the style is up, and
+      // a skipped resize would leave the canvas mis-sized. Retry once ready.
+      if (!pendingResize) {
+        pendingResize = true;
+        map.once('idle', function () {
+          pendingResize = false;
+          onResize();
+        });
+      }
+      return;
+    }
+    try {
+      map.resize();
+    } catch (e) {
+      // A resize is cosmetic; never let it break sector selection.
+      console.warn('[REAL_TERRAIN_3D] resize skipped:', e.message);
+    }
   }
 
   function destroy() {
@@ -433,6 +523,11 @@ var realTerrain3D = (function () {
     setExaggeration: setExaggeration,
     setCameraPreset: setCameraPreset,
     onResize: onResize,
-    destroy: destroy
+    destroy: destroy,
+    // Diagnostics only. Exposes the live MapLibre instance so terrain state
+    // (attached? what exaggeration? what elevation under a point?) can be
+    // inspected from the console or a headless check, instead of being
+    // inferred from screenshots. Never used by application code.
+    getMap: function () { return map; }
   };
 })();

@@ -62,7 +62,7 @@
         <span class="standalone-status-dot"></span>
         <span>R4 MINE SUBSIDENCE — 3D TERRAIN WORKSTATION</span>
         <span class="standalone-tag" id="standalone-sector-tag">SECTOR E5</span>
-        <span style="color:#78909C; font-size:10px; margin-left:14px;" id="standalone-coords">Lat: 23.7440°N, Lng: 86.4195°E</span>
+        <span style="color:#78909C; font-size:10px; margin-left:14px;" id="standalone-coords">Lat: 18.6435°N, Lng: 79.5725°E</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:10px; color:#78909C;">GOOGLE EARTH:</span>
@@ -83,6 +83,14 @@
         <button class="terrain-tool-btn active" id="std-btn-iso">65° ISO</button>
         <button class="terrain-tool-btn" id="std-btn-top">TOP 2D</button>
         <button class="terrain-tool-btn" id="std-btn-steep">78° STEEP</button>
+        <span style="width:1px; height:16px; background:#2A3B4A; margin:0 4px;"></span>
+        <!-- Vertical exaggeration. The z15 DEM resolves ~4.5 m/pixel, so a
+             sector's ~34 m of relief is real but visually flat at true scale;
+             these let the operator trade fidelity for legibility. -->
+        <span style="font-size:9.5px; color:#94A3B8; font-weight:bold;">VERT EXAG:</span>
+        <button class="terrain-tool-btn" id="std-btn-exag-1">1x</button>
+        <button class="terrain-tool-btn active" id="std-btn-exag-3">3x</button>
+        <button class="terrain-tool-btn" id="std-btn-exag-5">5x</button>
       </div>
     </div>
 
@@ -200,6 +208,22 @@
       btnSteep.addEventListener('click', function () {
         setActiveTilt(this);
         realTerrain3D.setCameraPreset('steep');
+      });
+
+      // Vertical exaggeration presets
+      var exagBtns = {
+        1: document.getElementById('std-btn-exag-1'),
+        3: document.getElementById('std-btn-exag-3'),
+        5: document.getElementById('std-btn-exag-5')
+      };
+      Object.keys(exagBtns).forEach(function (factor) {
+        exagBtns[factor].addEventListener('click', function () {
+          Object.keys(exagBtns).forEach(function (f) {
+            exagBtns[f].classList.remove('active');
+          });
+          this.classList.add('active');
+          realTerrain3D.setExaggeration(parseFloat(factor));
+        });
       });
 
       function setActiveTilt(activeBtn) {
