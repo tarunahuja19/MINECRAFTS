@@ -10,7 +10,7 @@ const WebSocket = require('ws');
 const { testConnection, query } = require('./db/db');
 const nodesRouter = require('./routes/nodes');
 const readingsRouter = require('./routes/readings');
-const alarmsRouter = require('./routes/alarms');
+const { router: alarmsRouter, setBroadcaster: setAlarmBroadcaster } = require('./routes/alarms');
 const { router: simulationRouter, setBroadcaster } = require('./routes/simulation');
 
 const app = express();
@@ -35,6 +35,7 @@ function broadcast(data) {
 }
 
 setBroadcaster(broadcast);
+setAlarmBroadcaster(broadcast);
 
 wss.on('connection', (ws, req) => {
   clients.add(ws);

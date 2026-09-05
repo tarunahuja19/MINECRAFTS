@@ -87,3 +87,37 @@ CREATE TABLE IF NOT EXISTS simulation_packets (
 
 CREATE INDEX IF NOT EXISTS idx_sim_packets_session ON simulation_packets (session_id);
 
+-- 4. alarms — raised alarm history
+-- One row per alarm the simulation raises. The dashboard's "past alarms" panel
+-- and GET /api/alarms read this table; the fixture file is only the offline
+-- fallback for when no simulation has ever run against this database.
+--
+-- alarm_id is the primary key rather than a serial: the simulation derives it
+-- from the zone and the state it entered (ALM-<zone>-<state>), so re-raising
+-- the same transition is an idempotent upsert, not a duplicate row.
+CREATE TABLE IF NOT EXISTS alarms (
+    alarm_id VARCHAR(64) PRIMARY KEY,
+    t_utc TIMESTAMPTZ NOT NULL,
+    panel_id VARCHAR(64) NOT NULL,
+    -- 1 = tension, 2 = critical warning, 3 = failed. Mirrors _STATE_TO_LEVEL
+    -- in simulation/sandbox/mqtt_bridge.py.
+    level SMALLINT NOT NULL CHECK (level BETWEEN 1 AND 3),
+    zone_id VARCHAR(64),
+    state VARCHAR(32),
+    -- Display centroid, already projected by the simulation via sandbox.geo,
+    -- so no map surface has to convert metres to degrees itself.
+    lat DOUBLE PRECISION,
+    lon DOUBLE PRECISION,
+    -- Nodes the alarm covers. A Postgres array rather than a join table: the
+    -- list is read whole, never queried by member.
+    affected_nodes TEXT[] NOT NULL DEFAULT '{}',
+    max_strain_ue DOUBLE PRECISION,
+    trough_fit_r2 DOUBLE PRECISION,
+    blast_correlated BOOLEAN NOT NULL DEFAULT FALSE,
+    explanation TEXT,
+    confidence_zone VARCHAR(32),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_alarms_t_utc ON alarms (t_utc DESC);
+CREATE INDEX IF NOT EXISTS idx_alarms_panel ON alarms (panel_id, t_utc DESC);

@@ -7,6 +7,7 @@ const http = require('http');
 
 const R2_BASE = process.env.R2_API_URL || 'http://localhost:8080';
 const FIXTURE_PATH = path.join(__dirname, '..', 'fixtures', 'telemetry-90d.json');
+const ALARM_FIXTURE_PATH = path.join(__dirname, '..', 'fixtures', 'alarms.json');
 
 let fixtureCache = null;
 
@@ -16,10 +17,27 @@ function register() {
 }
 
 function handleHistoryQuery(_event, query) {
+  // The renderer asks this one channel for two different histories. Alarms live
+  // at /api/alarms, not /api/telemetry — asking the telemetry endpoint for them
+  // returned reading rows the alarm panel could not render, so it fell through
+  // to the fixture even when the backend was up.
+  if (query && query.type === 'alarms') {
+    return r2Fetch('/api/alarms').catch(function () {
+      return alarmFixtureFallback();
+    });
+  }
   return r2Fetch('/api/telemetry?' + buildQueryString(query))
     .catch(function () {
       return fixtureFallback(query);
     });
+}
+
+function alarmFixtureFallback() {
+  try {
+    return JSON.parse(fs.readFileSync(ALARM_FIXTURE_PATH, 'utf8'));
+  } catch (e) {
+    return [];
+  }
 }
 
 function handleExportCSV(event, nodeId) {
