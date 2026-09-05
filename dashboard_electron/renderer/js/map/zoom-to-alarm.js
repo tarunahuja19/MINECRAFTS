@@ -7,7 +7,9 @@ var zoomToAlarm = (function () {
     });
 
     bus.on('alarm', function (alarm) {
-      if (alarm.level >= 3) {
+      // Level 2 = CRITICAL (limit exceeded), Level 3 = FAILED (collapse).
+      // Both warrant pulling the operator's eye to the location.
+      if (alarm.level >= 2) {
         var mapTab = document.querySelector('.tab-btn[data-tab="map"]');
         var isMapActive = mapTab && mapTab.classList.contains('active');
         zoomTo(alarm, isMapActive);

@@ -15,8 +15,21 @@ var liveProvider = (function () {
   var WS_URL = 'ws://' + (window.location.hostname || 'localhost') + ':8080/ws';
   var API_BASE = 'http://' + (window.location.hostname || 'localhost') + ':8080';
 
+  var started = false;
+
   function start() {
     active = true;
+
+    // mode-switch calls start() twice (once on init, once when it settles on
+    // LIVE mode). Registering the window.r4 IPC handlers a second time makes
+    // every telemetry / alarm frame fire its bus event twice - which is what
+    // put "Applying simulation packet" in the log twice per id and doubled
+    // every downstream render and alarm. Wire the handlers exactly once.
+    if (started) {
+      connectWebSocket();
+      return;
+    }
+    started = true;
 
     // 1. If running under Electron IPC bridge, register window.r4 handlers
     if (window.r4) {
@@ -116,7 +129,10 @@ var liveProvider = (function () {
     } else if (msg.type === 'telemetry') {
       handleTelemetry(msg);
     } else if (msg.type === 'alarm') {
-      bus.emit('alarm', msg);
+      // The backend wraps the alarm: { type:'alarm', alarm:{...} }. Emitting
+      // the wrapper left alarm_id undefined, so the history panel's dedup
+      // never matched and every frame counted as a new alarm.
+      bus.emit('alarm', msg.alarm || msg);
     } else if (msg.type === 'node-status-change') {
       bus.emit('node-status-change', msg);
     }
@@ -140,6 +156,14 @@ var liveProvider = (function () {
   function applySimulationPacket(packet) {
     console.log('[live-provider] Applying simulation packet #' + packet.packet_id, packet);
     bus.emit('simulation-packet', packet);
+
+    // `start_sim_time` / `end_sim_time` are sim-second OFFSETS from session
+    // start, not Unix epochs - feeding them to `new Date(x * 1000)` renders
+    // 1970-01-01. The sim now stamps `emitted_wall_s` (real epoch seconds at
+    // finalize); fall back to now for older packets.
+    var packetEpochS = Math.floor(
+      packet.emitted_wall_s || (Date.now() / 1000)
+    );
 
     // 1. Process node telemetry aggregates
     if (Array.isArray(packet.nodes)) {
@@ -168,7 +192,7 @@ var liveProvider = (function () {
           _node_id: formattedId,
           raw_id: nid,
           tier: n.tier || '1A',
-          t_epoch_s: Math.floor(packet.end_sim_time || Date.now() / 1000),
+          t_epoch_s: packetEpochS,
           strain_ustrain: Math.round(strain),
           tilt_x_mdeg: Math.round(tiltX / 17.4533),
           tilt_y_mdeg: Math.round(tiltY / 17.4533),
@@ -184,20 +208,12 @@ var liveProvider = (function () {
       });
     }
 
-    // 2. Process events and alarms
-    if (Array.isArray(packet.events)) {
-      packet.events.forEach(function (ev) {
-        bus.emit('alarm', {
-          alarm_id: 'SIM-ALM-' + (ev.zone_id || 'BOWL') + '-' + packet.packet_id,
-          t_start_s: packet.start_sim_time,
-          level: (ev.to === 'FAILED' || ev.to === 'CRITICAL') ? 2 : 1,
-          severity: (ev.to === 'FAILED' || ev.to === 'CRITICAL') ? 'LEVEL 2 CRITICAL' : 'LEVEL 1 WARNING',
-          zone: ev.zone_id || 'G8',
-          message: ev.msg || 'Simulation subsidence event detected',
-          r2: 0.94
-        });
-      });
-    }
+    // 2. Zone-transition alarms are NOT raised from here. The simulation
+    // already publishes them on the MQTT `mine/<panel>/alarm` topic (with a
+    // proper centroid, and an alarm_id keyed on zone + state so a zone holds
+    // one alarm), and the backend persists them. Re-deriving them from
+    // packet.events here produced a second alarm with a different id for the
+    // same event - the "same alarm multiple times" the operator saw.
 
     // 3. Process terrain delta for bowl / trough overlay
     if (packet.terrain) {
@@ -206,6 +222,15 @@ var liveProvider = (function () {
   }
 
   function handleTelemetry(data) {
+    // MQTT telemetry frames carry `t_utc` (the *simulated* wall clock, which
+    // races ahead of real time) but no `t_epoch_s` - the field the charts and
+    // the "LAST SEEN" readout key off. For a live monitor the honest value is
+    // real arrival time, so stamp that; `t_utc` stays on the frame for anyone
+    // who wants the in-world clock.
+    if (data && data.t_epoch_s == null) {
+      data.t_epoch_s = Math.floor(Date.now() / 1000);
+    }
+
     var nodeId = data._node_id || data.node_id;
     if (nodeId) {
       trackNode(nodeId, data);

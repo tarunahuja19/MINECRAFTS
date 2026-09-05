@@ -349,6 +349,11 @@ var nodeMarkers = (function () {
 
   function updateState(nodeId, state) {
     if (!markers[nodeId]) return;
+    // No-op when the state has not actually changed. The live provider
+    // re-asserts every node's status on every 60-s packet; without this guard
+    // each packet redraws all 31 marker icons and re-runs the alarm hooks,
+    // which is what made settled nodes appear to "go red again and again".
+    if (nodeData[nodeId] && nodeData[nodeId].state === state) return;
     if (nodeData[nodeId]) nodeData[nodeId].state = state;
     // Role is a property of the node, not of its health, so it survives every
     // state change - a gateway must never redraw as a scout circle.
