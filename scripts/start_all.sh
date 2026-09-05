@@ -2,19 +2,28 @@
 # ==============================================================================
 # SIH26 Mine Subsidence Monitoring System - Unified Startup
 #
-#   ./scripts/start_all.sh          # start everything
-#   ./scripts/start_all.sh --speed 60   # extra args go to the simulation runner
-#   ./scripts/start_all.sh --no-sim     # services + UI only, leave the DB alone
-#   ./scripts/start_all.sh --no-ui      # headless (no Electron window)
+#   npm start                       # start the whole stack
+#   ./scripts/start_all.sh --no-ui        # no Electron window
+#   ./scripts/start_all.sh --no-chrome    # don't open the 3D sandbox in Chrome
+#   ./scripts/start_all.sh --no-sim       # services + UIs only, no simulation
 #
 # Starts, in order:
-#   1. Backend API + WebSocket broadcaster   http://localhost:8080
-#   2. Frontend dashboard web server         http://127.0.0.1:8085
-#   3. Electron desktop dashboard (the operator UI)
-#   4. Python physics simulation -> PostgreSQL (foreground; Ctrl+C stops all)
+#   1. Backend API + WebSocket broadcaster    http://localhost:8080
+#   2. Dashboard web server (tile proxy)      http://127.0.0.1:8085
+#   3. Sandbox simulation server (physics)    http://localhost:8000   <- THE SIM
+#   4. Sandbox 3D frontend (Vite dev server)  http://localhost:5173
+#   5. Electron desktop dashboard (operator UI)
+#   6. Chrome tab on the 3D sandbox
 #
-# Every prerequisite is checked before anything starts, so a failure tells you
-# what to fix instead of leaving half the stack running.
+# Data path:
+#   sandbox/server.py  --(readings + packets)-->  PostgreSQL (mine_subsidence)
+#   PostgreSQL  -->  backend :8080  -->  ws://:8080/ws  -->  Electron dashboard
+#   sandbox/server.py  --(state deltas)-->  ws://:8000/ws  -->  3D sandbox UI
+#
+# The 3D sandbox (terrain, collapse, vibration, mining advance) IS the
+# simulation. It replaces the old headless runner.py.
+#
+# Every prerequisite is checked before anything starts.
 # ==============================================================================
 
 set -uo pipefail
@@ -23,16 +32,17 @@ cd "$ROOT_DIR"
 
 RUN_SIM=1
 RUN_UI=1
-SIM_ARGS=()
+RUN_CHROME=1
 for arg in "$@"; do
   case "$arg" in
-    --no-sim) RUN_SIM=0 ;;
-    --no-ui)  RUN_UI=0 ;;
-    *)        SIM_ARGS+=("$arg") ;;
+    --no-sim)    RUN_SIM=0 ;;
+    --no-ui)     RUN_UI=0 ;;
+    --no-chrome) RUN_CHROME=0 ;;
+    *)           echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
 
-BACKEND_PID=""; FRONTEND_PID=""; ELECTRON_PID=""
+BACKEND_PID=""; FRONTEND_PID=""; SIM_PID=""; VITE_PID=""; ELECTRON_PID=""
 
 say()  { printf '\033[36m%s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32mOK\033[0m   %s\n' "$*"; }
@@ -48,7 +58,7 @@ cleanup() {
   trap - SIGINT SIGTERM EXIT
   echo ""
   say "[LAUNCHER] Shutting down services..."
-  for pid in "$ELECTRON_PID" "$FRONTEND_PID" "$BACKEND_PID"; do
+  for pid in "$ELECTRON_PID" "$VITE_PID" "$SIM_PID" "$FRONTEND_PID" "$BACKEND_PID"; do
     [ -n "$pid" ] && kill "$pid" 2>/dev/null
   done
   wait 2>/dev/null
@@ -57,7 +67,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM EXIT
 
 # ---------------------------------------------------------------- preflight --
-say "[0/4] Preflight checks"
+say "[0] Preflight checks"
 
 command -v node >/dev/null || die "node not found on PATH"
 ok "node $(node --version)"
@@ -85,8 +95,6 @@ if command -v psql >/dev/null; then
     die "cannot query database '$PGDATABASE' - run: npm --prefix backend run migrate"
   fi
   ok "database '$PGDATABASE' reachable ($NODE_COUNT nodes)"
-  # Guard against the stale-coordinate class of bug: nodes must sit at the
-  # modelled Adriyala site (18.64 N), not the retired Jharia fixture (23.74 N).
   OFFSITE=$(PGPASSWORD="${PGPASSWORD:-}" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
               -tAc "select count(*) from nodes where lat is null or lat not between 18.5 and 18.8;" 2>/dev/null)
   [ "${OFFSITE:-0}" = "0" ] \
@@ -104,9 +112,12 @@ if [ "$RUN_UI" = 1 ]; then
 fi
 
 if [ "$RUN_SIM" = 1 ]; then
-  [ -x simulation/.venv/bin/python ] \
-    || die "simulation venv missing - create it, e.g.: python3 -m venv simulation/.venv && simulation/.venv/bin/pip install -e simulation"
+  [ -x simulation/.venv/bin/uvicorn ] \
+    || die "simulation venv missing/incomplete - create it, e.g.: python3 -m venv simulation/.venv && simulation/.venv/bin/pip install -e simulation"
   ok "simulation venv present"
+  [ -x simulation/frontend/node_modules/.bin/vite ] \
+    || die "sandbox frontend deps missing - run: npm --prefix simulation/frontend install"
+  ok "sandbox frontend dependencies present"
 fi
 
 TILE_COUNT=$(find frontend_dashboard/tiles -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
@@ -115,13 +126,13 @@ TILE_COUNT=$(find frontend_dashboard/tiles -name '*.png' 2>/dev/null | wc -l | t
   || warn "tile cache empty - run 'npm run tiles:prefetch' while online"
 
 # Free the ports we are about to bind.
-for port in 8080 8085; do
+for port in 8080 8085 8000 5173; do
   pids=$(lsof -t -i:"$port" 2>/dev/null)
   [ -n "$pids" ] && { kill -9 $pids 2>/dev/null; warn "killed stale process on port $port"; }
 done
 
 # ------------------------------------------------------------------ backend --
-say "[1/4] Backend API + WebSocket (port 8080)"
+say "[1] Backend API + WebSocket (port 8080)"
 (cd backend && node server.js) &
 BACKEND_PID=$!
 
@@ -135,7 +146,7 @@ curl -sf http://localhost:8080/api/health >/dev/null 2>&1 \
   || die "backend did not become healthy within 15s"
 
 # ----------------------------------------------------------------- frontend --
-say "[2/4] Dashboard web server (port 8085)"
+say "[2] Dashboard web server (port 8085)"
 (cd frontend_dashboard && node serve.js) &
 FRONTEND_PID=$!
 
@@ -146,20 +157,46 @@ for i in $(seq 1 20); do
 done
 ok "dashboard at http://127.0.0.1:8085/"
 
+# ---------------------------------------------------------------- simulation --
+if [ "$RUN_SIM" = 1 ]; then
+  say "[3] Sandbox simulation server (port 8000)"
+  (cd simulation && .venv/bin/uvicorn sandbox.server:app --host 0.0.0.0 --port 8000 --log-level warning) &
+  SIM_PID=$!
+
+  for i in $(seq 1 40); do
+    curl -sf http://localhost:8000/health >/dev/null 2>&1 && break
+    kill -0 "$SIM_PID" 2>/dev/null || die "simulation server exited during startup (see log above)"
+    sleep 0.5
+  done
+  curl -sf http://localhost:8000/health >/dev/null 2>&1 \
+    && ok "simulation server healthy - http://localhost:8000/health" \
+    || die "simulation server did not become healthy within 20s"
+
+  say "[4] Sandbox 3D frontend (Vite dev server, port 5173)"
+  (cd simulation/frontend && node_modules/.bin/vite --host --port 5173 --strictPort) &
+  VITE_PID=$!
+
+  for i in $(seq 1 40); do
+    curl -sf http://localhost:5173/ >/dev/null 2>&1 && break
+    kill -0 "$VITE_PID" 2>/dev/null || die "Vite dev server exited during startup"
+    sleep 0.5
+  done
+  ok "3D sandbox UI at http://localhost:5173/"
+else
+  say "[3] Sandbox simulation server - skipped (--no-sim)"
+  say "[4] Sandbox 3D frontend - skipped (--no-sim)"
+fi
+
 # ------------------------------------------------------------------ the UI ---
 if [ "$RUN_UI" = 1 ]; then
-  say "[3/4] Electron dashboard"
-  # ELECTRON_RUN_AS_NODE is exported by some editors/terminals (VS Code sets it
-  # for its own helper processes). If it leaks into our environment Electron
-  # boots as plain Node - `app` and `ipcMain` are undefined and main.js dies
-  # with "Cannot read properties of undefined (reading 'handle')". Unset it.
+  say "[5] Electron dashboard"
+  # ELECTRON_RUN_AS_NODE leaks from some editors/terminals; unset it or Electron
+  # boots as plain Node and main.js dies on undefined `app`/`ipcMain`.
   ELECTRON_LOG="$ROOT_DIR/.electron.log"
   (cd frontend_dashboard && env -u ELECTRON_RUN_AS_NODE \
       ./node_modules/.bin/electron . >"$ELECTRON_LOG" 2>&1) &
   ELECTRON_PID=$!
 
-  # Don't claim success until it has survived startup - a crash on boot is
-  # otherwise invisible because the process is backgrounded.
   sleep 3
   if kill -0 "$ELECTRON_PID" 2>/dev/null; then
     ok "operator UI launched"
@@ -169,23 +206,29 @@ if [ "$RUN_UI" = 1 ]; then
     ELECTRON_PID=""
   fi
 else
-  say "[3/4] Electron dashboard - skipped (headless)"
+  say "[5] Electron dashboard - skipped (--no-ui)"
 fi
 
-# -------------------------------------------------------------- simulation ---
-if [ "$RUN_SIM" = 0 ]; then
-  say "[4/4] Simulation - skipped (--no-sim)"
-  echo "-----------------------------------------------------------------"
-  say "Services running. Press Ctrl+C to stop."
-  wait "$BACKEND_PID" "$FRONTEND_PID"
-  exit 0
+# ------------------------------------------------------------- Chrome tab ---
+if [ "$RUN_CHROME" = 1 ] && [ "$RUN_SIM" = 1 ]; then
+  say "[6] Opening the 3D sandbox in Chrome"
+  open -a "Google Chrome" "http://localhost:5173/" 2>/dev/null \
+    && ok "Chrome tab opened on the 3D sandbox" \
+    || warn "could not open Chrome - browse to http://localhost:5173/ manually"
+else
+  say "[6] Chrome tab - skipped"
 fi
 
-say "[4/4] Physics simulation -> PostgreSQL"
-echo "      Press Ctrl+C at any time to stop everything."
 echo "-----------------------------------------------------------------"
-# bash 3.2 (the macOS default) treats "${arr[@]}" on an *empty* array as an
-# unbound variable under `set -u`, so a plain `npm start` with no extra args
-# aborted here and the EXIT trap tore the whole stack down. The ${a[@]+...}
-# guard expands to nothing when the array is empty and to the args otherwise.
-simulation/.venv/bin/python simulation/sandbox/runner.py ${SIM_ARGS[@]+"${SIM_ARGS[@]}"}
+say "Stack is up. Press Ctrl+C to stop everything."
+echo "  Simulation (3D sandbox):  http://localhost:5173/"
+echo "  Operator dashboard:       Electron window  +  http://127.0.0.1:8085/"
+echo "  Backend API:              http://localhost:8080"
+echo "-----------------------------------------------------------------"
+
+# Block on the long-lived services. If any exits, tear the rest down.
+if [ "$RUN_SIM" = 1 ]; then
+  wait "$SIM_PID"
+else
+  wait "$BACKEND_PID" "$FRONTEND_PID"
+fi

@@ -8,8 +8,8 @@
     "backend": "cd backend && node server.js",
     "frontend": "cd frontend_dashboard && node serve.js",
     "tiles:prefetch": "node scripts/prefetch_tiles.js",
-    "sim": "simulation/.venv/bin/python simulation/sandbox/runner.py --speed 10",
-    "sim:fast": "simulation/.venv/bin/python simulation/sandbox/runner.py --speed 60",
+    "sim": "cd simulation && .venv/bin/uvicorn sandbox.server:app --host 0.0.0.0 --port 8000",
+    "sim:ui": "cd simulation/frontend && node_modules/.bin/vite --host --port 5173 --strictPort",
     "test:pipeline": "node backend/test/test_integration.js"
   },
   "keywords": [
