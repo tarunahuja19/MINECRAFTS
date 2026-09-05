@@ -1,0 +1,31 @@
+# ---- Dependencies (regenerable from lockfiles) ----
+node_modules/
+.venv/
+.venv-train/
+__pycache__/
+*.pyc
+
+# ---- Nested repo: simulation/ keeps its own git history and branches ----
+# Tracked independently; do not vendor it into the root repo.
+simulation/
+
+# ---- Secrets ----
+.env
+*.env
+!.env.example
+
+# ---- Generated simulation artefacts ----
+out/
+scratch/
+.pytest_cache/
+
+# ---- Large generated ML dataset (regenerable; ~3 GB) ----
+archive_legacy/similation-data-making/dataset/
+archive_legacy/similation-data-making/.venv-train/
+
+# ---- OS noise ----
+.DS_Store
+
+# ---- Embedded legacy git repos (kept on disk, not vendored) ----
+archive_legacy/sih-usersite/
+archive_legacy/similation-data-making/

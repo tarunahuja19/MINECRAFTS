@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://*.google.com https://s3.amazonaws.com https://*.amazonaws.com; frame-src 'self' https://*.google.com https://*.google.co.in; connect-src 'self' ws://localhost:* http://localhost:* https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://s3.amazonaws.com https://*.amazonaws.com blob:;">
+  <title>R4 Mine Subsidence Dashboard</title>
+  <script>
+    window.addEventListener('error', function (e) {
+      console.error('[UNCAUGHT_ERR]', e.message, e.filename, e.lineno);
+    });
+  </script>
+  <link rel="stylesheet" href="lib/leaflet/leaflet.css">
+  <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
+  <link rel="stylesheet" href="css/hmi.css">
+  <link rel="stylesheet" href="css/terrain-3d.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ALARM BANNER — top of viewport, hidden until C5 received -->
+    <div id="alarm-banner"></div>
+
+    <!-- TAB BAR — 32px, §4.10 -->
+    <div id="tab-bar">
+      <button class="tab-btn active" data-tab="map">MAP</button>
+      <button class="tab-btn" data-tab="nodes">NODES</button>
+      <button class="tab-btn" data-tab="alarms">ALARMS<span class="tab-badge" id="alarm-badge">0</span></button>
+      <button class="tab-btn" data-tab="history">HISTORY</button>
+      <button class="tab-btn" data-tab="system">SYSTEM</button>
+    </div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div id="main-content">
+
+      <!-- MAP TAB (default) -->
+      <div id="tab-map" class="tab-view active" style="display:flex; flex:1; height:100%;">
+        <div style="display:flex; flex:1; overflow:hidden; position:relative;">
+          <!-- Left panel: 350px — Replay Controller (top) & Alarm History (bottom) -->
+          <div id="left-panel">
+            <!-- Top: 90-Day Replay Controller -->
+            <div class="panel panel-transparent" id="map-replay-panel">
+              <div class="panel-header">
+                <span>90-DAY REPLAY CONTROLLER</span>
+              </div>
+              <div class="panel-body" id="map-replay-controller-container"></div>
+            </div>
+
+            <!-- Bottom: Alarm History -->
+            <div class="panel" id="map-alarm-panel">
+              <div class="panel-header" style="justify-content: space-between;">
+                <span>ALARM HISTORY</span>
+                <span class="panel-badge" id="map-alarm-history-badge">0</span>
+              </div>
+              <div class="panel-body" id="map-alarm-history-container" style="flex:1; overflow-y:auto; padding:0;"></div>
+            </div>
+          </div>
+
+          <!-- Map container: flex-fill (mid portion) -->
+          <div id="map-container" style="position:relative;">
+            <div class="empty-state" id="map-placeholder">MAP LOADING...</div>
+
+            <!-- Top-Right Basemap Switcher -->
+            <div id="map-hud-controls" class="map-hud-controls">
+              <div class="map-btn-group">
+                <button class="hud-btn active" id="btn-basemap-sat" title="High-Resolution Aerial Orthophoto">AERIAL</button>
+                <button class="hud-btn" id="btn-basemap-dark" title="Dark SCADA Mine Vector">TACTICAL</button>
+              </div>
+            </div>
+
+            <div id="map-hud-legend" class="map-hud-legend">
+              <span class="hud-item"><span class="hud-dot" style="background:#00CC44;border:1px solid rgba(0,0,0,0.5);"></span>ACTIVE</span>
+              <span class="hud-item"><span class="hud-dot" style="background:#FFA500;border:1px solid rgba(0,0,0,0.5);"></span>WARNING</span>
+              <span class="hud-item"><span class="hud-dot" style="background:#FF2222;border:1px solid rgba(0,0,0,0.5);"></span>CRITICAL</span>
+              <span class="hud-item"><span class="hud-dot" style="background:#FF4400;border:1px solid rgba(0,0,0,0.5);"></span>LAST-GASP</span>
+              <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #FFD700;"></span>DEFENSE RING</span>
+              <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #5A8FA8;"></span>PANEL A</span>
+              <span class="hud-item"><span class="hud-line" style="border-top:1px dashed #3A687E;"></span>SECTORS (8x8)</span>
+            </div>
+          </div>
+
+          <!-- Right panel: 320px -->
+          <div id="right-panel">
+            <div class="empty-state" id="panel-empty">SELECT A NODE</div>
+
+            <!-- Sub-tabs when an alarm node is active showing both views -->
+            <div id="panel-view-switcher" style="display:none; padding:4px 6px; background:#121E24; border-bottom:1px solid #1E2D34; gap:4px; flex-shrink:0;">
+              <button class="btn active" id="btn-view-both" style="flex:1; padding:3px 4px; font-size:9.5px; font-weight:bold;">SPLIT (BOTH)</button>
+              <button class="btn" id="btn-view-alarm" style="flex:1; padding:3px 4px; font-size:9.5px;">ALARM DETAIL</button>
+              <button class="btn" id="btn-view-node" style="flex:1; padding:3px 4px; font-size:9.5px;">NODE SENSORS</button>
+            </div>
+
+            <div id="panel-alarm-detail" style="display:none; border-bottom: 2px solid var(--border-bevel-dark);"></div>
+            <div id="panel-node-detail" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NODES TAB -->
+      <div id="tab-nodes" class="tab-view" style="display:none; height:100%;">
+        <div class="tab-content active" style="height:100%; display:flex; flex-direction:column; padding:8px; box-sizing:border-box; overflow:hidden;">
+          <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+            <div class="panel-header">NODE OVERVIEW & STATUS DIRECTORY</div>
+            <div class="panel-body" id="node-table-container" style="flex:1; overflow-y:auto; padding:0;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALARMS TAB -->
+      <div id="tab-alarms" class="tab-view" style="display:none;">
+        <div class="tab-content active">
+          <div class="panel">
+            <div class="panel-header">ALARM HISTORY</div>
+            <div class="panel-body" id="alarm-history-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY TAB -->
+      <div id="tab-history" class="tab-view" style="display:none; height:100%;">
+        <div class="history-grid">
+
+          <!-- LEFT COLUMN: REPLAY & TIMELINE -->
+          <div class="history-col">
+            <div class="panel" style="flex:0 0 auto;">
+              <div class="panel-header">90-DAY REPLAY CONTROLLER</div>
+              <div class="panel-body" id="replay-controller-container"></div>
+            </div>
+
+            <div class="panel" style="flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+              <div class="panel-header">NODE KILL & ALARM TIMELINE</div>
+              <div class="panel-body" id="kill-viewer-container" style="flex:1; min-height:180px;"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: PAST ALARMS & FP SUMMARY -->
+          <div class="history-col">
+            <div class="panel" style="flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+              <div class="panel-header">PAST ALARM BROWSER</div>
+              <div class="panel-body" id="past-alarms-container" style="flex:1; overflow-y:auto; padding:0;"></div>
+            </div>
+
+            <div class="panel" style="flex:0 0 auto;">
+              <div class="panel-header">FALSE-POSITIVE SWEEP ANALYSIS</div>
+              <div class="panel-body" id="fp-summary-container"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SYSTEM TAB -->
+      <div id="tab-system" class="tab-view" style="display:none; height:100%;">
+        <div class="system-grid">
+
+          <!-- LEFT COLUMN: GATEWAY & NODE COMMUNICATIONS -->
+          <div class="system-col">
+            <div class="panel" style="flex:0 0 auto;">
+              <div class="panel-header">MQTT CONNECTION LOG</div>
+              <div class="panel-body" id="mqtt-log-container" style="max-height:120px; overflow-y:auto;"></div>
+            </div>
+
+            <div class="panel" style="flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+              <div class="panel-header">NODE HEALTH & RF TELEMETRY</div>
+              <div class="panel-body" id="node-health-table-container" style="flex:1; overflow-y:auto; padding:0;"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: ALERT TIERS & DISPATCH -->
+          <div class="system-col">
+            <div class="panel" style="flex:0 0 auto;">
+              <div class="panel-header">ALERT TIER CONFIGURATION</div>
+              <div class="panel-body" id="tier-config-container"></div>
+            </div>
+
+            <div class="panel" style="flex:0 0 auto;">
+              <div class="panel-header">SMS CONTACTS (TIER 2)</div>
+              <div class="panel-body" id="sms-contacts-container"></div>
+            </div>
+
+            <div class="panel" style="flex:1 1 auto; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+              <div class="panel-header">TRANSMISSION DISPATCH LOG</div>
+              <div class="panel-body" id="dispatch-log-container" style="flex:1; overflow-y:auto; padding:0;"></div>
+            </div>
+
+            <div class="panel" style="flex:0 0 auto;">
+              <div class="panel-header">DGMS BLAST LOG FILTER TEST</div>
+              <div class="panel-body" id="blast-test-container"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- STATUS BAR — 24px, §4.10 -->
+    <div id="status-bar">
+      <div class="status-item">
+        <span class="led led-dead" id="mqtt-led"></span>
+        <span class="status-label">MQTT:</span>
+        <span class="status-value disconnected" id="mqtt-status">DISCONNECTED</span>
+      </div>
+      <div class="status-item">
+        <span class="led led-dead" id="gateway-led"></span>
+        <span class="status-label">GATEWAY:</span>
+        <span class="status-value" id="gateway-status">OFFLINE</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">OFFLINE QUEUE:</span>
+        <span class="status-value" id="queue-count">0 ROWS</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">LAST SYNC:</span>
+        <span class="status-value" id="last-sync">--:--:--</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">NODES:</span>
+        <span class="status-value" id="node-count">0/0 ACTIVE</span>
+      </div>
+      <div class="status-item" id="mode-indicator" style="margin-left:auto;">
+        <span class="status-value warning">FIXTURE MODE</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Leaflet -->
+  <script src="lib/leaflet/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="lib/chartjs/chart.umd.min.js"></script>
+
+  <!-- MapLibre GL Real 3D Terrain Engine -->
+  <script src="lib/maplibre/maplibre-gl.js"></script>
+
+  <!-- Data layer -->
+  <script src="js/data/event-bus.js"></script>
+  <script src="js/data/fixture-provider.js"></script>
+  <script src="js/data/live-provider.js"></script>
+  <script src="js/data/mode-switch.js"></script>
+
+  <!-- Map layer -->
+  <script src="js/map/map-view.js"></script>
+  <script src="js/map/node-markers.js"></script>
+  <script src="js/map/layers.js"></script>
+  <script src="js/map/panel-grid.js"></script>
+  <script src="js/map/real-terrain-3d.js"></script>
+  <script src="js/map/terrain-3d-window.js"></script>
+  <script src="js/map/trough-overlay.js"></script>
+  <script src="js/map/confidence-badge.js"></script>
+  <script src="js/map/lastgasp-marker.js"></script>
+  <script src="js/map/ring-fallback.js"></script>
+  <script src="js/map/zoom-to-alarm.js"></script>
+
+  <!-- Charts -->
+  <script src="js/charts/strain-chart.js"></script>
+  <script src="js/charts/tilt-chart.js"></script>
+  <script src="js/charts/knothe-chart.js"></script>
+
+  <!-- Alarm modules -->
+  <script src="js/alarm/alarm-banner.js"></script>
+  <script src="js/alarm/alarm-detail.js"></script>
+  <script src="js/alarm/dispatch-status.js"></script>
+  <script src="js/alarm/operator-actions.js"></script>
+  <script src="js/alarm/alarm-history.js"></script>
+
+  <!-- Panels -->
+  <script src="js/panels/node-detail.js"></script>
+  <script src="js/panels/node-sensors.js"></script>
+
+  <!-- Health modules -->
+  <script src="js/health/status-bar.js"></script>
+  <script src="js/health/sync-indicator.js"></script>
+  <script src="js/health/node-table.js"></script>
+  <script src="js/health/mqtt-log.js"></script>
+
+  <!-- Alert config modules -->
+  <script src="js/alerts/tier-config.js"></script>
+  <script src="js/alerts/sms-contacts.js"></script>
+  <script src="js/alerts/dispatch-log.js"></script>
+  <script src="js/alerts/blast-test.js"></script>
+
+  <!-- History modules -->
+  <script src="js/history/replay-controller.js"></script>
+  <script src="js/history/past-alarms.js"></script>
+  <script src="js/history/node-kill-viewer.js"></script>
+  <script src="js/history/fp-summary.js"></script>
+
+  <!-- Report -->
+  <script src="js/report/export-report.js"></script>
+
+  <!-- App init -->
+  <script src="js/app.js"></script>
+</body>
+</html>

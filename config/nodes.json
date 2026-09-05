@@ -1,0 +1,78 @@
+{
+  "scenario": "slow_sag_40d",
+  "panel": {
+    "x1": 100.0,
+    "y1": 100.0,
+    "x2": 700.0,
+    "y2": 300.0,
+    "depth_m": 150.0,
+    "thickness_m": 3.0,
+    "tan_beta": 2.0,
+    "a": 0.65,
+    "c": 0.10,
+    "B": 30.0
+  },
+  "grid": {
+    "x_min": 25.0,
+    "x_max": 775.0,
+    "y_min": 25.0,
+    "y_max": 375.0,
+    "nx": 64,
+    "ny": 64
+  },
+  "gateway": {
+    "id": 200,
+    "xy": [860.0, 200.0]
+  },
+  "anchors": [
+    {
+      "id": 31,
+      "xy": [860.0, 60.0],
+      "ext_to": [860.0, 70.0],
+      "seed": 411902,
+      "crack_threshold_ue": 6800,
+      "role": "anchor"
+    },
+    {
+      "id": 32,
+      "xy": [860.0, 340.0],
+      "ext_to": [860.0, 350.0],
+      "seed": 411903,
+      "crack_threshold_ue": 6800,
+      "role": "anchor"
+    }
+  ],
+  "nodes": [
+    { "id": 1, "xy": [75.0, 45.0], "ext_to": [75.0, 55.0], "seed": 91001, "crack_threshold_ue": 6200, "role": "field" },
+    { "id": 2, "xy": [175.0, 45.0], "ext_to": [175.0, 55.0], "seed": 91002, "crack_threshold_ue": 6300, "role": "field" },
+    { "id": 3, "xy": [275.0, 45.0], "ext_to": [275.0, 55.0], "seed": 91003, "crack_threshold_ue": 6150, "role": "field" },
+    { "id": 4, "xy": [375.0, 45.0], "ext_to": [375.0, 55.0], "seed": 91004, "crack_threshold_ue": 6400, "role": "field" },
+    { "id": 5, "xy": [475.0, 45.0], "ext_to": [475.0, 55.0], "seed": 91005, "crack_threshold_ue": 6250, "role": "field" },
+    { "id": 6, "xy": [575.0, 45.0], "ext_to": [575.0, 55.0], "seed": 91006, "crack_threshold_ue": 6350, "role": "field" },
+    { "id": 7, "xy": [725.0, 45.0], "ext_to": [725.0, 55.0], "seed": 91007, "crack_threshold_ue": 6100, "role": "field" },
+
+    { "id": 8, "xy": [75.0, 135.0], "ext_to": [75.0, 145.0], "seed": 91008, "crack_threshold_ue": 6200, "role": "field" },
+    { "id": 9, "xy": [175.0, 135.0], "ext_to": [175.0, 145.0], "seed": 91009, "crack_threshold_ue": 6300, "role": "field" },
+    { "id": 10, "xy": [275.0, 135.0], "ext_to": [275.0, 145.0], "seed": 91010, "crack_threshold_ue": 6150, "role": "field" },
+    { "id": 11, "xy": [375.0, 135.0], "ext_to": [375.0, 145.0], "seed": 91011, "crack_threshold_ue": 6400, "role": "field" },
+    { "id": 12, "xy": [475.0, 135.0], "ext_to": [475.0, 145.0], "seed": 91012, "crack_threshold_ue": 6250, "role": "field" },
+    { "id": 13, "xy": [575.0, 135.0], "ext_to": [575.0, 145.0], "seed": 91013, "crack_threshold_ue": 6350, "role": "field" },
+    { "id": 14, "xy": [725.0, 135.0], "ext_to": [725.0, 145.0], "seed": 91014, "crack_threshold_ue": 6100, "role": "field" },
+
+    { "id": 15, "xy": [75.0, 265.0], "ext_to": [75.0, 275.0], "seed": 91015, "crack_threshold_ue": 6200, "role": "field" },
+    { "id": 16, "xy": [175.0, 265.0], "ext_to": [175.0, 275.0], "seed": 91016, "crack_threshold_ue": 6300, "role": "field" },
+    { "id": 17, "xy": [275.0, 265.0], "ext_to": [275.0, 275.0], "seed": 91017, "crack_threshold_ue": 6150, "role": "field" },
+    { "id": 18, "xy": [375.0, 265.0], "ext_to": [375.0, 275.0], "seed": 91018, "crack_threshold_ue": 6400, "role": "field" },
+    { "id": 19, "xy": [475.0, 265.0], "ext_to": [475.0, 275.0], "seed": 91019, "crack_threshold_ue": 6250, "role": "field" },
+    { "id": 20, "xy": [575.0, 265.0], "ext_to": [575.0, 275.0], "seed": 91020, "crack_threshold_ue": 6350, "role": "field" },
+    { "id": 21, "xy": [725.0, 265.0], "ext_to": [725.0, 275.0], "seed": 91021, "crack_threshold_ue": 6100, "role": "field" },
+
+    { "id": 22, "xy": [75.0, 355.0], "ext_to": [75.0, 365.0], "seed": 91022, "crack_threshold_ue": 6200, "role": "field" },
+    { "id": 23, "xy": [175.0, 355.0], "ext_to": [175.0, 365.0], "seed": 91023, "crack_threshold_ue": 6300, "role": "field" },
+    { "id": 24, "xy": [275.0, 355.0], "ext_to": [275.0, 365.0], "seed": 91024, "crack_threshold_ue": 6150, "role": "field" },
+    { "id": 25, "xy": [375.0, 355.0], "ext_to": [375.0, 365.0], "seed": 91025, "crack_threshold_ue": 6400, "role": "field" },
+    { "id": 26, "xy": [475.0, 355.0], "ext_to": [475.0, 365.0], "seed": 91026, "crack_threshold_ue": 6250, "role": "field" },
+    { "id": 27, "xy": [575.0, 355.0], "ext_to": [575.0, 365.0], "seed": 91027, "crack_threshold_ue": 6350, "role": "field" },
+    { "id": 28, "xy": [725.0, 355.0], "ext_to": [725.0, 365.0], "seed": 91028, "crack_threshold_ue": 6100, "role": "field" }
+  ]
+}

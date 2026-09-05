@@ -1,0 +1,24 @@
+{
+  "name": "sih26-mine-subsidence-system",
+  "version": "1.0.0",
+  "description": "R4 Mine Subsidence Monitoring & Early Warning System (SIH 2026)",
+  "scripts": {
+    "start": "bash scripts/start_all.sh",
+    "start:all": "bash scripts/start_all.sh",
+    "backend": "cd backend && node server.js",
+    "frontend": "cd frontend_dashboard && node serve.js",
+    "sim": "simulation/.venv/bin/python simulation/sandbox/runner.py --speed 10",
+    "sim:fast": "simulation/.venv/bin/python simulation/sandbox/runner.py --speed 60",
+    "test:pipeline": "node backend/test/test_integration.js"
+  },
+  "keywords": [
+    "mine-subsidence",
+    "geomechanics",
+    "knothe",
+    "sensors",
+    "iot",
+    "early-warning"
+  ],
+  "author": "SIH Team",
+  "license": "ISC"
+}

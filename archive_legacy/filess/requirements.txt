@@ -1,0 +1,12 @@
+python>=3.10
+numpy>=1.26
+scipy>=1.11
+torch>=2.2
+pyvista>=0.44
+vtk>=9.3
+trame>=3.5
+trame-vtk>=2.8
+trame-vuetify>=2.6
+imageio[ffmpeg]>=2.34
+pytest>=8.0
+jsonschema>=4.20

@@ -1,0 +1,1497 @@
+@import url('fonts.css');
+
+/* ============================================================
+   R4 HMI Design System
+   Reference: r4-dashboard-spec.md §4
+   ============================================================ */
+
+:root {
+  /* Panel and chrome backgrounds */
+  --bg-chrome:      #2B2B2B;
+  --bg-panel:       #1E2830;
+  --bg-map:         #111C22;
+  --bg-inset:       #162028;
+
+  /* Borders and separators */
+  --border-bevel-light: #4A5C68;
+  --border-bevel-dark:  #0E1618;
+  --border-rule:        #2E3E4A;
+
+  /* Status / LED colors */
+  --status-active:   #00CC44;
+  --status-warning:  #FFA500;
+  --status-critical: #FF2222;
+  --status-dead:     #5A6A72;
+  --status-lastgasp: #FF4400;
+
+  /* Alarm level accent */
+  --alarm-level1:  #FFB300;
+  --alarm-level2:  #FF6600;
+  --alarm-level3:  #FF0000;
+
+  /* Confidence zone fills */
+  --zone-high:    rgba(0, 200, 60, 0.08);
+  --zone-low:     rgba(255, 165, 0, 0.18);
+  --zone-brittle: rgba(255, 30, 30, 0.22);
+
+  /* Typography colors */
+  --text-primary:   #D4D8DC;
+  --text-secondary: #7A9BAA;
+  --text-alarm:     #FFFFFF;
+  --text-mono:      #A8D8A8;
+
+  /* Chart specific */
+  --chart-strain:     #00BFFF;
+  --chart-tilt-x:     #FF8C00;
+  --chart-tilt-y:     #FFD700;
+  --chart-threshold:  #FF2222;
+  --chart-projection: #AAAAAA;
+  --chart-bg:         #0E1618;
+  --chart-grid:       #1E3040;
+
+  /* Panel header */
+  --bg-panel-header: #243040;
+
+  /* Button base */
+  --btn-bg:       #2E4A5A;
+  --btn-bg-press: #223040;
+  --btn-danger:   #5A1010;
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   APP SHELL LAYOUT — §4.10
+   ============================================================ */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* --- Tab bar: 32px --- */
+#tab-bar {
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+  min-height: 32px;
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  user-select: none;
+}
+
+.tab-btn {
+  position: relative;
+  padding: 0 20px;
+  background: var(--bg-chrome);
+  border: none;
+  border-right: 1px solid var(--border-bevel-dark);
+  color: var(--text-secondary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  outline: none;
+  border-radius: 0;
+  transition: none;
+}
+
+.tab-btn:hover {
+  border-color: var(--border-bevel-light);
+}
+
+.tab-btn.active {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--bg-panel);
+}
+
+.tab-btn:active {
+  box-shadow: inset 1px 1px 2px #0a0a0a;
+}
+
+.tab-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: var(--status-critical);
+  color: var(--text-alarm);
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 2px;
+  display: none;
+}
+
+.tab-badge.visible {
+  display: block;
+}
+
+/* --- Main content area --- */
+#main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* --- Left panel: 350px (Replay Controller top & Alarm History bottom) --- */
+#left-panel {
+  width: 350px;
+  min-width: 330px;
+  max-width: 380px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-bevel-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+/* --- Replay Controller Panel (Matches Software SCADA Theme) --- */
+.panel-transparent {
+  background: rgba(30, 40, 48, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top:    1px solid var(--border-bevel-light);
+  border-left:   1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right:  1px solid var(--border-bevel-dark);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.panel-transparent .panel-header {
+  background: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border-rule);
+  color: var(--text-secondary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+}
+
+.panel-transparent .panel-body {
+  padding: 8px;
+  background: transparent;
+}
+
+.panel-transparent .replay-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.panel-transparent .replay-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-transparent .replay-label {
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.panel-transparent .replay-input {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-bevel-dark);
+  color: var(--text-primary);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  padding: 3px 6px;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-transparent .replay-input:focus {
+  border-color: var(--border-bevel-light);
+}
+
+.panel-transparent .replay-btn {
+  min-width: 52px;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+.panel-transparent .replay-btn#replay-play,
+.panel-transparent .replay-btn.replay-btn-play {
+  background: #1C3328;
+  border-top: 1px solid #325844;
+  border-left: 1px solid #325844;
+  border-bottom: 1px solid #0E1A14;
+  border-right: 1px solid #0E1A14;
+  color: #00CC44;
+}
+
+.panel-transparent .replay-btn#replay-play:hover:not(:disabled),
+.panel-transparent .replay-btn.replay-btn-play:hover:not(:disabled) {
+  background: #244234;
+}
+
+.panel-transparent .replay-btn#replay-stop,
+.panel-transparent .replay-btn.replay-btn-stop {
+  background: #331C1C;
+  border-top: 1px solid #583232;
+  border-left: 1px solid #583232;
+  border-bottom: 1px solid #1A0E0E;
+  border-right: 1px solid #1A0E0E;
+  color: #FF5555;
+}
+
+.panel-transparent .replay-btn#replay-stop:hover:not(:disabled),
+.panel-transparent .replay-btn.replay-btn-stop:hover:not(:disabled) {
+  background: #422424;
+}
+
+.panel-transparent .replay-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.panel-transparent .replay-speed-btn {
+  min-width: 36px;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 3px 6px;
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  border-top: 1px solid var(--border-bevel-light);
+  border-left: 1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right: 1px solid var(--border-bevel-dark);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.panel-transparent .replay-speed-btn.active {
+  background: #243D4E;
+  color: #FFFFFF;
+  border-color: #4A6E88;
+}
+
+.panel-transparent .replay-progress-track {
+  flex: 1;
+  height: 9px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-bevel-dark);
+}
+
+.panel-transparent .replay-progress-bar {
+  height: 100%;
+  background: #2E6888;
+  transition: width 0.1s linear;
+}
+
+.panel-transparent .replay-counter {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  min-width: 80px;
+  text-align: right;
+}
+
+.panel-transparent .replay-status {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: var(--status-warning);
+  letter-spacing: 0.5px;
+}
+
+/* --- Alarm History Panel in Left Sidebar (SCADA Theme) --- */
+#map-alarm-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(30, 40, 48, 0.85);
+  backdrop-filter: blur(8px);
+  border-top:    1px solid var(--border-bevel-light);
+  border-left:   1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right:  1px solid var(--border-bevel-dark);
+  overflow: hidden;
+}
+
+#map-alarm-panel .panel-header {
+  background: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border-rule);
+  color: var(--text-secondary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  height: 24px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+}
+
+.panel-badge {
+  background: var(--status-critical);
+  color: var(--text-alarm);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 0 5px;
+  border-radius: 2px;
+  line-height: 14px;
+}
+
+/* --- Map container: flex-fill (Mid portion) --- */
+#map-container {
+  flex: 1;
+  position: relative;
+  background: var(--bg-map);
+  min-height: 0;
+  border-left: 1px solid #14222A;
+  border-right: 1px solid #14222A;
+}
+
+#map-container .leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Right panel: 390px (Sensors Details Column) --- */
+#right-panel {
+  width: 390px;
+  min-width: 390px;
+  max-width: 390px;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-bevel-dark);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* --- Tab view wrappers (direct children of #main-content) --- */
+.tab-view {
+  flex: 1;
+  display: none;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+/* --- Tab content areas (non-map tabs) --- */
+.tab-content {
+  flex: 1;
+  display: none;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  padding: 8px;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* --- Status bar: 24px --- */
+#status-bar {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 8px;
+  gap: 16px;
+  background: var(--bg-chrome);
+  border-top: 1px solid var(--border-bevel-light);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.status-label {
+  color: var(--text-secondary);
+}
+
+.status-value {
+  color: var(--text-mono);
+}
+
+.status-value.connected {
+  color: var(--status-active);
+}
+
+.status-value.disconnected {
+  color: var(--status-critical);
+  animation: blink 1s step-end infinite;
+}
+
+.status-value.warning {
+  color: var(--status-warning);
+}
+
+/* ============================================================
+   ALARM BANNER — full-width, top of viewport
+   ============================================================ */
+#alarm-banner {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 16px;
+  background: var(--status-critical);
+  color: var(--text-alarm);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+#alarm-banner.visible {
+  display: flex;
+}
+
+/* ============================================================
+   BEVELED PANEL — §4.4
+   ============================================================ */
+.panel {
+  border-top:    1px solid var(--border-bevel-light);
+  border-left:   1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right:  1px solid var(--border-bevel-dark);
+  background: var(--bg-panel);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border-rule);
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.panel-body {
+  padding: 8px;
+}
+
+.panel-inset {
+  background: var(--bg-inset);
+  border-top:    1px solid var(--border-bevel-dark);
+  border-left:   1px solid var(--border-bevel-dark);
+  border-bottom: 1px solid var(--border-bevel-light);
+  border-right:  1px solid var(--border-bevel-light);
+  padding: 6px;
+}
+
+/* ============================================================
+   LED INDICATORS — §4.6
+   ============================================================ */
+.led {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.led-active   { background: var(--status-active); }
+.led-warning  { background: var(--status-warning); }
+.led-critical { background: var(--status-critical); animation: blink 1s step-end infinite; }
+.led-dead     { background: var(--status-dead); }
+.led-lastgasp { background: var(--status-lastgasp); animation: blink 0.5s step-end infinite; }
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ============================================================
+   BUTTONS — §4.5
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: var(--btn-bg);
+  border-top:    1px solid var(--border-bevel-light);
+  border-left:   1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right:  1px solid var(--border-bevel-dark);
+  border-radius: 2px;
+  color: var(--text-primary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.btn:active {
+  box-shadow: inset 1px 1px 3px #0a1015;
+  background: var(--btn-bg-press);
+}
+
+.btn-danger {
+  background: var(--btn-danger);
+  border-color: var(--status-critical);
+  color: var(--text-alarm);
+}
+
+.btn-danger:active {
+  background: #3a0808;
+}
+
+/* ============================================================
+   DATA TABLE — SCADA style
+   ============================================================ */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-panel-header);
+  color: var(--text-secondary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-rule);
+}
+
+.data-table td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--border-rule);
+  color: var(--text-mono);
+}
+
+.data-table tr:nth-child(odd) td {
+  background: var(--bg-panel);
+}
+
+.data-table tr:nth-child(even) td {
+  background: var(--bg-inset);
+}
+
+.data-table .sortable {
+  cursor: pointer;
+}
+
+/* ============================================================
+   MONOSPACE DATA READOUT
+   ============================================================ */
+.mono {
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--text-mono);
+}
+
+.readout {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  color: var(--text-mono);
+}
+
+.readout-label {
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+/* ============================================================
+   LEVEL BADGE
+   ============================================================ */
+.level-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-radius: 2px;
+  color: var(--text-alarm);
+}
+
+.level-badge.level-1 { background: var(--alarm-level1); }
+.level-badge.level-2 { background: var(--alarm-level2); }
+.level-badge.level-3 { background: var(--alarm-level3); }
+
+/* ============================================================
+   STATE BADGE (node state inline label)
+   ============================================================ */
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 2px;
+  border: 1px solid;
+}
+
+.state-badge.active   { color: var(--status-active);  border-color: var(--status-active); }
+.state-badge.warning  { color: var(--status-warning); border-color: var(--status-warning); }
+.state-badge.critical { color: var(--status-critical); border-color: var(--status-critical); }
+.state-badge.dead     { color: var(--status-dead);    border-color: var(--status-dead); }
+.state-badge.lastgasp { color: var(--status-lastgasp); border-color: var(--status-lastgasp); }
+
+/* ============================================================
+   EXPLANATION BOX (alarm §3.3 ALARM-03)
+   ============================================================ */
+.explanation-box {
+  border: 1px solid var(--border-rule);
+  background: var(--bg-inset);
+  padding: 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: var(--text-mono);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.explanation-box .box-label {
+  display: block;
+  margin-bottom: 4px;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   DISPATCH STATUS TABLE (ALARM-05)
+   ============================================================ */
+.dispatch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: var(--text-mono);
+  border-bottom: 1px solid var(--border-rule);
+}
+
+.dispatch-row .tier-label {
+  min-width: 60px;
+  font-weight: bold;
+}
+
+.dispatch-row .tier-method {
+  min-width: 120px;
+  color: var(--text-secondary);
+}
+
+.dispatch-row .tier-status {
+  font-weight: bold;
+}
+
+.dispatch-row .tier-status.fired   { color: var(--status-active); }
+.dispatch-row .tier-status.pending { color: var(--status-warning); }
+.dispatch-row .tier-status.failed  { color: var(--status-critical); }
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-inset);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-bevel-light);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ============================================================
+   SECTION SEPARATOR
+   ============================================================ */
+.section-sep {
+  height: 1px;
+  background: var(--border-rule);
+  margin: 6px 0;
+}
+
+/* ============================================================
+   EMPTY STATE (right panel, no selection)
+   ============================================================ */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ============================================================
+   SENSOR BAR (vibration / battery)
+   ============================================================ */
+.sensor-bar {
+  display: flex;
+  height: 10px;
+  gap: 1px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-bevel-dark);
+}
+
+.sensor-bar-seg {
+  flex: 1;
+  background: var(--border-rule);
+}
+
+.sensor-bar-seg.filled.green  { background: var(--status-active); }
+.sensor-bar-seg.filled.amber  { background: var(--status-warning); }
+.sensor-bar-seg.filled.red    { background: var(--status-critical); }
+
+/* ============================================================
+   PAGINATION
+   ============================================================ */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.pagination .btn {
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+/* ============================================================
+   CONFIRMATION ROW (in-panel, not modal — §4.9)
+   ============================================================ */
+.confirm-row {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--status-warning);
+  font-size: 11px;
+  color: var(--status-warning);
+}
+
+.confirm-row.visible {
+  display: flex;
+}
+
+/* ============================================================
+   FLAG INDICATOR ROW (NODE-08)
+   ============================================================ */
+.flag-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.flag-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.flag-rect {
+  width: 16px;
+  height: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.flag-rect.clear   { background: #1C2B30; border: 1px solid #2F424A; }
+.flag-rect.flagged { background: var(--status-critical); border: 1px solid #FF2200; }
+
+/* MAP-02 Node tooltip */
+.node-tooltip {
+  background: rgba(11, 19, 24, 0.95) !important;
+  border: 1px solid #2B424C !important;
+  border-radius: 3px !important;
+  color: #C8D6DB !important;
+  font-family: 'Courier New', monospace !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  padding: 5px 8px !important;
+  white-space: pre !important;
+}
+
+.node-tooltip::before {
+  border-top-color: #2B424C !important;
+}
+
+.node-marker,
+.node-marker-circle,
+.node-marker-led,
+.node-marker-sphere {
+  border: none;
+  background: transparent;
+}
+
+/* Old-School Industrial HMI LED Node Markers (§4.6) - Non-glowing vintage SCADA */
+.node-led {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.7);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  box-sizing: border-box;
+}
+
+.node-led:hover {
+  transform: scale(1.35);
+  z-index: 1000 !important;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Dark Leaflet Controls */
+.leaflet-bar {
+  border: 1px solid #22343D !important;
+  border-radius: 3px !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background-color: #121E24 !important;
+  color: #8BA0A8 !important;
+  border-bottom: 1px solid #1E2D34 !important;
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  transition: all 0.15s ease !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: #1B2C35 !important;
+  color: #00E676 !important;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+/* Map HUD Controls (Top Right) */
+.map-hud-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.map-btn-group {
+  display: flex;
+  background: rgba(10, 18, 24, 0.92);
+  border: 1px solid #1E333C;
+  border-radius: 3px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.hud-btn {
+  background: #14222A;
+  border: 1px solid #233842;
+  border-radius: 2px;
+  color: #8EA1A8;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.hud-btn:hover {
+  background: #1C303B;
+  color: #C5D6DC;
+  border-color: #385564;
+}
+
+.hud-btn.active {
+  background: #00E676;
+  color: #061A12;
+  border-color: #00E676;
+}
+
+/* Leaflet Scale Bar Styling */
+.leaflet-control-scale-line {
+  background: rgba(10, 18, 24, 0.88) !important;
+  border: 1px solid #283F4C !important;
+  border-top: none !important;
+  color: #9AB0B8 !important;
+  font-family: 'Courier New', monospace !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  padding: 2px 6px !important;
+}
+
+/* Map HUD Legend */
+.map-hud-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(10, 18, 24, 0.92);
+  border: 1px solid #1E333C;
+  border-radius: 3px;
+  padding: 5px 12px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  color: #8CA0A8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hud-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hud-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.hud-line {
+  width: 14px;
+  display: inline-block;
+}
+
+/* ============================================================
+   CONFIDENCE ZONE BADGE (MAP overlay — ALARM-04)
+   ============================================================ */
+.confidence-zone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  border: 1px solid;
+  border-radius: 3px;
+  white-space: nowrap;
+  background: #0B1316;
+}
+
+.confidence-zone-badge.badge-high {
+  background: #09151A;
+  color: #00E676;
+  border-color: #00E676;
+}
+
+.confidence-zone-badge.badge-medium {
+  background: #17150A;
+  color: #FFB300;
+  border-color: #FFB300;
+}
+
+.confidence-zone-badge.badge-low {
+  background: #190D10;
+  color: #FF4D6D;
+  border-color: #FF4D6D;
+}
+
+/* =============================================================
+   PHASE 3C — SYSTEM HEALTH & ALERT CONFIG
+   ============================================================ */
+
+/* Tier Configuration Row */
+.tier-config-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #2A3A3F;
+  font-family: Tahoma, Geneva, sans-serif;
+  font-size: 12px;
+  color: #B0BEC0;
+}
+
+.tier-config-row:last-child {
+  border-bottom: none;
+}
+
+.tier-config-num {
+  font-weight: bold;
+  color: #D0D8DA;
+  min-width: 50px;
+}
+
+.tier-config-label {
+  min-width: 100px;
+  color: #D0D8DA;
+}
+
+.tier-config-detail {
+  color: #8A9A9E;
+  margin-left: auto;
+}
+
+/* MQTT Log Entry */
+.mqtt-log-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: #8A9A9E;
+  border-bottom: 1px solid #1E2E33;
+}
+
+.mqtt-log-entry:last-child {
+  border-bottom: none;
+}
+
+.mqtt-log-sep {
+  color: #5A6A72;
+}
+
+/* Blast Test Button */
+.btn-blast-test {
+  background: #3A2A00;
+  color: #FFA500;
+  border: 1px solid #FFA500;
+  padding: 8px 16px;
+  font-family: Tahoma, Geneva, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+
+.btn-blast-test:hover {
+  background: #4A3A00;
+}
+
+.btn-blast-test:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.blast-test-result {
+  margin-left: 12px;
+  font-size: 12px;
+}
+
+/* Node Health Table sort header */
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.data-table th.sortable:hover {
+  color: #00CC44;
+}
+
+.sort-asc::after {
+  content: ' \25B2';
+}
+
+.sort-desc::after {
+  content: ' \25BC';
+}
+
+/* ============================================================
+   SYSTEM TAB 2-COLUMN SCADA LAYOUT
+   ============================================================ */
+.system-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+  .system-grid {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    height: auto;
+  }
+}
+
+.system-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Phase 3D: History & Replay ─────────────────────── */
+
+.history-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.history-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.replay-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.replay-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.replay-label {
+  font-family: Tahoma, sans-serif;
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.replay-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-bevel-dark);
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 3px 6px;
+  outline: none;
+}
+
+.replay-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.replay-btn {
+  min-width: 52px;
+  font-size: 10px;
+  padding: 3px 8px;
+}
+
+.replay-speed-btn {
+  min-width: 36px;
+  font-size: 10px;
+  padding: 3px 6px;
+}
+
+.replay-speed-btn.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.replay-progress-track {
+  flex: 1;
+  height: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-bevel-dark);
+}
+
+.replay-progress-bar {
+  height: 100%;
+  background: var(--accent-blue);
+  transition: width 0.1s linear;
+}
+
+.replay-counter {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  min-width: 80px;
+  text-align: right;
+}
+
+.replay-status {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--status-warning);
+  letter-spacing: 1px;
+}
+
+.fp-summary-table tr.fp-row-good td {
+  color: var(--status-active);
+}
+
+.fp-summary-table tr.fp-row-bad td {
+  color: var(--status-critical);
+}
+
+.fp-verdict {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-bevel-dark);
+  background: var(--bg-input);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.fp-good {
+  color: var(--status-active);
+}
+
+.fp-warn {
+  color: var(--status-warning);
+}
+
+/* ==========================================================================
+   Panel A 4x4 Sector Grid Styles (Interactive & 3D Ready)
+   ========================================================================== */
+.grid-cell-watermark {
+  font-family: 'Courier New', monospace;
+  font-size: 8.5px;
+  font-weight: bold;
+  color: rgba(135, 178, 196, 0.75);
+  background: rgba(10, 18, 24, 0.65);
+  padding: 1px 5px;
+  border-radius: 2px;
+  border: 1px solid rgba(43, 66, 76, 0.6);
+  pointer-events: none;
+  letter-spacing: 0.08em;
+  user-select: none;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.grid-cell-watermark.active {
+  color: #00E5FF;
+  border-color: #00E5FF;
+  background: rgba(10, 26, 36, 0.9);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
+}
+
+.grid-sector-tooltip {
+  background: rgba(11, 20, 26, 0.95) !important;
+  border: 1px solid #38BDF8 !important;
+  border-radius: 3px !important;
+  color: #E2E8F0 !important;
+  padding: 6px 10px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7) !important;
+}
+
+.grid-sector-tooltip .grid-tooltip-title {
+  font-family: 'Courier New', monospace;
+  font-size: 10.5px;
+  font-weight: bold;
+  color: #38BDF8;
+  letter-spacing: 0.08em;
+  margin-bottom: 3px;
+}
+
+.grid-sector-tooltip .grid-tooltip-info {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: #94A3B8;
+  margin-bottom: 4px;
+}
+
+.grid-sector-tooltip .grid-tooltip-hint {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  font-weight: bold;
+  color: #00E5FF;
+  letter-spacing: 0.05em;
+}
+
+.grid-hud-banner {
+  display: none;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 4px 12px;
+  background: rgba(10, 22, 30, 0.92);
+  border: 1px solid #00E5FF;
+  border-radius: 3px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 229, 255, 0.25);
+  align-items: center;
+  gap: 10px;
+  font-family: 'Courier New', monospace;
+  animation: gridFadeIn 0.25s ease-out;
+}
+
+@keyframes gridFadeIn {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.grid-hud-badge {
+  font-size: 10px;
+  font-weight: bold;
+  color: #00E5FF;
+  background: rgba(0, 229, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.grid-hud-text {
+  font-size: 10px;
+  color: #C8D6DB;
+  white-space: nowrap;
+}
+
+.grid-hud-btn {
+  background: #164E63;
+  color: #00E5FF;
+  border: 1px solid #00E5FF;
+  border-radius: 2px;
+  font-family: 'Courier New', monospace;
+  font-size: 9.5px;
+  font-weight: bold;
+  padding: 2px 8px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.grid-hud-btn:hover {
+  background: #00E5FF;
+  color: #0A161E;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.grid-hud-close {
+  color: #64748B;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.grid-hud-close:hover {
+  color: #FFF;
+}
+

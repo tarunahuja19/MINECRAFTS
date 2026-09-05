@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Terrain Workstation — Sector Elevation & Satellite View</title>
+  <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/hmi.css">
+  <link rel="stylesheet" href="css/terrain-3d.css">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #070D12;
+      overflow: hidden;
+      font-family: 'Courier New', monospace;
+    }
+    .standalone-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .standalone-header {
+      height: 38px;
+      background: #0F1F2A;
+      border-bottom: 1.5px solid #00E5FF;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      color: #FFF;
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 0.08em;
+    }
+    .standalone-status-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #00E5FF;
+      box-shadow: 0 0 10px #00E5FF;
+      margin-right: 8px;
+    }
+    .standalone-tag {
+      background: #00E5FF;
+      color: #0A161E;
+      padding: 2px 8px;
+      border-radius: 2px;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="standalone-container">
+    <div class="standalone-header">
+      <div style="display:flex; align-items:center;">
+        <span class="standalone-status-dot"></span>
+        <span>R4 MINE SUBSIDENCE — 3D TERRAIN WORKSTATION</span>
+        <span class="standalone-tag" id="standalone-sector-tag">SECTOR E5</span>
+        <span style="color:#78909C; font-size:10px; margin-left:14px;" id="standalone-coords">Lat: 23.7440°N, Lng: 86.4195°E</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:10px; color:#78909C;">GOOGLE EARTH:</span>
+        <button class="terrain-redirect-btn" id="std-btn-launch-earth" title="Open Sector in Google Earth 3D (60° Tilt)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="terrain-win-toolbar" style="padding:6px 14px;">
+      <div style="display:flex; gap:6px; align-items:center;" id="std-real3d-controls">
+        <span style="font-size:9.5px; color:#94A3B8; font-weight:bold;">3D TILT:</span>
+        <button class="terrain-tool-btn active" id="std-btn-iso">65° ISO</button>
+        <button class="terrain-tool-btn" id="std-btn-top">TOP 2D</button>
+        <button class="terrain-tool-btn" id="std-btn-steep">78° STEEP</button>
+      </div>
+    </div>
+
+    <!-- Main 3D Viewport -->
+    <div class="terrain-win-body" style="flex:1;">
+      <div class="terrain-canvas-container" id="std-canvas-container">
+        <div id="std-terrain-map" style="width:100%; height:100%;"></div>
+
+        <div class="terrain-hud-stats" style="top:14px; left:14px;">
+          <div class="terrain-hud-line">SECTOR: <span class="terrain-hud-val" id="std-stat-sector">E5</span></div>
+          <div class="terrain-hud-line">DEM ELEVATION: <span class="terrain-hud-val">194m - 228m MSL</span></div>
+          <div class="terrain-hud-line">ENGINE: <span class="terrain-hud-val">Real Satellite 3D DEM</span></div>
+          <div class="terrain-hud-line">SURFACE SENSORS: <span class="terrain-hud-val" id="std-stat-sensors">0 Detected</span></div>
+        </div>
+
+        <div class="terrain-hud-legend-box" style="bottom:14px; left:14px;">
+          <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00E5FF;"></span>SECTOR BOUNDS</div>
+          <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00CC44;"></span>ACTIVE</div>
+          <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FFA500;"></span>WARNING</div>
+          <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FF2222;"></span>CRITICAL</div>
+        </div>
+      </div>
+
+      <!-- Right Sensor Sidebar -->
+      <div class="terrain-nodes-sidebar" id="std-nodes-sidebar" style="width:230px;">
+        <div class="terrain-sidebar-header">SECTOR SENSORS (8x8)</div>
+        <div id="std-node-cards-list" style="flex:1; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="lib/maplibre/maplibre-gl.js"></script>
+  <script src="js/map/real-terrain-3d.js"></script>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var sectorId = params.get('sector') || 'E5';
+      var sectorData = null;
+
+      // Fetch fixtures
+      Promise.all([
+        fetch('../fixtures/panel_outline.geojson').then(r => r.json()),
+        fetch('../fixtures/nodes.json').then(r => r.json())
+      ]).then(([panelGeo, nodesData]) => {
+        window.fixtureProvider = { getNodes: () => nodesData };
+
+        var feature = panelGeo.features.find(f => f.properties.grid_id === sectorId) || panelGeo.features[1];
+        var coords = feature.geometry.coordinates[0];
+
+        var minLng = Math.min(...coords.map(c => c[0]));
+        var maxLng = Math.max(...coords.map(c => c[0]));
+        var minLat = Math.min(...coords.map(c => c[1]));
+        var maxLat = Math.max(...coords.map(c => c[1]));
+
+        var cellNodes = nodesData.filter(n => n.lat >= minLat && n.lat < maxLat && n.lng >= minLng && n.lng < maxLng).map(n => n.node_id);
+
+        sectorData = {
+          id: sectorId,
+          row: sectorId[0],
+          col: parseInt(sectorId.slice(1)),
+          bounds: [[minLat, minLng], [maxLat, maxLng]],
+          center: [(minLat + maxLat) / 2, (minLng + maxLng) / 2],
+          latRange: [minLat, maxLat],
+          lngRange: [minLng, maxLng],
+          nodes: cellNodes,
+          nodeCount: cellNodes.length
+        };
+
+        document.getElementById('standalone-sector-tag').textContent = 'SECTOR ' + sectorId;
+        document.getElementById('std-stat-sector').textContent = sectorId;
+        document.getElementById('std-stat-sensors').textContent = cellNodes.length + ' Detected';
+        document.getElementById('standalone-coords').textContent = 'Lat: ' + minLat.toFixed(4) + '°-' + maxLat.toFixed(4) + '°N | Lng: ' + minLng.toFixed(4) + '°-' + maxLng.toFixed(4) + '°E';
+
+        realTerrain3D.init('std-terrain-map', sectorData);
+
+        // Populate sensor cards
+        var listContainer = document.getElementById('std-node-cards-list');
+        listContainer.innerHTML = '';
+        if (cellNodes.length === 0) {
+          listContainer.innerHTML = '<div style="padding:16px 10px; color:#64748B; text-align:center;">No surface sensor nodes in this peripheral block.</div>';
+        } else {
+          cellNodes.forEach(nodeId => {
+            var n = nodesData.find(item => item.node_id === nodeId);
+            if (!n) return;
+            var card = document.createElement('div');
+            card.className = 'terrain-node-card';
+            var col = (n.state === 'critical') ? '#FF2222' : (n.state === 'warning' ? '#FFA500' : '#00CC44');
+            card.innerHTML = 
+              '<div class="terrain-node-card-title"><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + col + ';margin-right:5px;"></span>' + n.node_id + '</span><span style="color:' + col + ';">' + n.state.toUpperCase() + '</span></div>' +
+              '<div class="terrain-node-card-sub">Ring: ' + (n.ring || 'core') + ' | Strain: ' + (n.state === 'critical' ? '890' : '142') + ' µε</div>';
+            listContainer.appendChild(card);
+          });
+        }
+
+        window.addEventListener('resize', () => {
+          realTerrain3D.onResize();
+        });
+      });
+
+      // Tilt presets
+      var btnIso = document.getElementById('std-btn-iso');
+      var btnTop = document.getElementById('std-btn-top');
+      var btnSteep = document.getElementById('std-btn-steep');
+
+      btnIso.addEventListener('click', function () {
+        setActiveTilt(this);
+        realTerrain3D.setCameraPreset('iso');
+      });
+      btnTop.addEventListener('click', function () {
+        setActiveTilt(this);
+        realTerrain3D.setCameraPreset('top');
+      });
+      btnSteep.addEventListener('click', function () {
+        setActiveTilt(this);
+        realTerrain3D.setCameraPreset('steep');
+      });
+
+      function setActiveTilt(activeBtn) {
+        [btnIso, btnTop, btnSteep].forEach(b => b.classList.remove('active'));
+        activeBtn.classList.add('active');
+      }
+
+      // External Google Earth Launcher
+      document.getElementById('std-btn-launch-earth').addEventListener('click', function () {
+        if (!sectorData) return;
+        var cLat = sectorData.center[0];
+        var cLng = sectorData.center[1];
+        window.open('https://earth.google.com/web/@' + cLat + ',' + cLng + ',230a,400d,35y,45h,60t,0r', '_blank');
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+'use strict';
+
+/**
+ * Terrain 3D Window Controller
+ * Manages the floating 3D workstation window featuring Real 3D Satellite Terrain (MapLibre 3D DEM),
+ * persistent sensor markers, 3D tilt presets, and a Google Earth 3D redirect icon button.
+ */
+var terrain3DWindow = (function () {
+  var windowEl = null;
+  var currentSector = null;
+  var isMinimized = false;
+  var isMaximized = false;
+  var realTerrainInitialized = false;
+
+  // Dragging state
+  var isDragging = false;
+  var dragOffsetX = 0;
+  var dragOffsetY = 0;
+
+  function init() {
+    createWindowDOM();
+    setupEventHandlers();
+
+    // Listen to sector selection events from panel-grid
+    if (typeof bus !== 'undefined') {
+      bus.on('grid-selected', function (sectorData) {
+        openSector(sectorData);
+      });
+      bus.on('3d-view-requested', function (sectorData) {
+        openSector(sectorData);
+      });
+    }
+
+    console.log('[TERRAIN_3D_WINDOW] Initialized Real 3D Satellite Terrain Workstation');
+  }
+
+  function createWindowDOM() {
+    var parent = document.getElementById('tab-map') || document.body;
+    if (document.getElementById('terrain-3d-window')) return;
+
+    windowEl = document.createElement('div');
+    windowEl.id = 'terrain-3d-window';
+    windowEl.className = 'terrain-3d-window';
+
+    windowEl.innerHTML = 
+      '<!-- Window Header Bar -->' +
+      '<div class="terrain-win-header" id="terrain-win-header">' +
+        '<div class="terrain-win-title">' +
+          '<span class="terrain-win-status-dot"></span>' +
+          '<span>3D TERRAIN WORKSTATION</span>' +
+          '<span class="terrain-sector-tag" id="terrain-win-sector-tag">SECTOR --</span>' +
+          '<span class="terrain-coords-text" id="terrain-win-coords">Lat: --, Lng: --</span>' +
+        '</div>' +
+        '<div class="terrain-win-actions">' +
+          '<button class="terrain-win-btn" id="btn-win-minimize" title="Minimize to dock">_</button>' +
+          '<button class="terrain-win-btn" id="btn-win-maximize" title="Maximize / Restore">□</button>' +
+          '<button class="terrain-win-btn" id="btn-win-popout" title="Pop Out to Standalone Window">↗</button>' +
+          '<button class="terrain-win-btn close-btn" id="btn-win-close" title="Close Window">×</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<!-- Toolbar -->' +
+      '<div class="terrain-win-toolbar">' +
+        '<div class="terrain-controls-group" id="terrain-real3d-controls">' +
+          '<span style="font-size:9.5px; color:#94A3B8; font-weight:bold;">3D TILT:</span>' +
+          '<button class="terrain-tool-btn active" id="btn-cam-tilt65">65° ISO</button>' +
+          '<button class="terrain-tool-btn" id="btn-cam-tilt0">TOP 2D</button>' +
+          '<button class="terrain-tool-btn" id="btn-cam-tilt78">78° STEEP</button>' +
+        '</div>' +
+
+        '<div style="display:flex; align-items:center; gap:6px; margin-left:auto;">' +
+          '<span style="font-size:9.5px; color:#78909C;">GOOGLE EARTH:</span>' +
+          '<button class="terrain-redirect-btn" id="btn-launch-google-earth" title="Open Sector in Google Earth 3D (60° Tilt)">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;">' +
+              '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>' +
+              '<polyline points="15 3 21 3 21 9"></polyline>' +
+              '<line x1="10" y1="14" x2="21" y2="3"></line>' +
+            '</svg>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<!-- Body -->' +
+      '<div class="terrain-win-body">' +
+        '<!-- Real MapLibre 3D Satellite Terrain Map Container -->' +
+        '<div class="terrain-canvas-container" id="real-terrain-container">' +
+          '<div id="real-terrain-3d-map" style="width:100%; height:100%;"></div>' +
+
+          '<!-- HUD Overlays -->' +
+          '<div class="terrain-hud-stats">' +
+            '<div class="terrain-hud-line">SECTOR: <span class="terrain-hud-val" id="hud-stat-sector">--</span></div>' +
+            '<div class="terrain-hud-line">DEM ELEVATION: <span class="terrain-hud-val">194m - 228m MSL</span></div>' +
+            '<div class="terrain-hud-line">ENGINE: <span class="terrain-hud-val">Real Satellite 3D DEM</span></div>' +
+            '<div class="terrain-hud-line">SENSORS: <span class="terrain-hud-val" id="hud-stat-sensor-count">0 Detected</span></div>' +
+          '</div>' +
+
+          '<div class="terrain-hud-legend-box">' +
+            '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00E5FF;"></span>SECTOR BOUNDS</div>' +
+            '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00CC44;"></span>ACTIVE</div>' +
+            '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FFA500;"></span>WARNING</div>' +
+            '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FF2222;"></span>CRITICAL</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Right Node List Sidebar -->' +
+        '<div class="terrain-nodes-sidebar" id="terrain-nodes-sidebar">' +
+          '<div class="terrain-sidebar-header">SECTOR SENSORS (8x8)</div>' +
+          '<div id="terrain-node-list-container" style="flex:1; overflow-y:auto;"></div>' +
+        '</div>' +
+      '</div>';
+
+    parent.appendChild(windowEl);
+  }
+
+  function setupEventHandlers() {
+    var header = windowEl.querySelector('#terrain-win-header');
+    var btnClose = windowEl.querySelector('#btn-win-close');
+    var btnMin = windowEl.querySelector('#btn-win-minimize');
+    var btnMax = windowEl.querySelector('#btn-win-maximize');
+    var btnPop = windowEl.querySelector('#btn-win-popout');
+
+    // Dragging
+    header.addEventListener('mousedown', function (e) {
+      if (e.target.closest('.terrain-win-btn')) return;
+      if (isMaximized) return;
+      isDragging = true;
+      var rect = windowEl.getBoundingClientRect();
+      dragOffsetX = e.clientX - rect.left;
+      dragOffsetY = e.clientY - rect.top;
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    function onMouseMove(e) {
+      if (!isDragging) return;
+      var parentRect = windowEl.parentElement.getBoundingClientRect();
+      var newLeft = e.clientX - parentRect.left - dragOffsetX;
+      var newTop = e.clientY - parentRect.top - dragOffsetY;
+
+      newLeft = Math.max(10, Math.min(newLeft, parentRect.width - windowEl.offsetWidth - 10));
+      newTop = Math.max(10, Math.min(newTop, parentRect.height - windowEl.offsetHeight - 10));
+
+      windowEl.style.left = newLeft + 'px';
+      windowEl.style.top = newTop + 'px';
+    }
+
+    function onMouseUp() {
+      isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    // Window actions
+    btnClose.addEventListener('click', function () { close(); });
+    btnMin.addEventListener('click', function () { toggleMinimize(); });
+    btnMax.addEventListener('click', function () { toggleMaximize(); });
+    btnPop.addEventListener('click', function () { popOutWindow(); });
+
+    // Google Earth 3D Redirect Launcher
+    var btnEarth = windowEl.querySelector('#btn-launch-google-earth');
+    if (btnEarth) {
+      btnEarth.addEventListener('click', function () { launchGoogleEarth(); });
+    }
+
+    // 3D Tilt Controls
+    var btnTilt65 = windowEl.querySelector('#btn-cam-tilt65');
+    var btnTilt0 = windowEl.querySelector('#btn-cam-tilt0');
+    var btnTilt78 = windowEl.querySelector('#btn-cam-tilt78');
+
+    btnTilt65.addEventListener('click', function () {
+      setActiveTiltBtn(this);
+      realTerrain3D.setCameraPreset('iso');
+    });
+    btnTilt0.addEventListener('click', function () {
+      setActiveTiltBtn(this);
+      realTerrain3D.setCameraPreset('top');
+    });
+    btnTilt78.addEventListener('click', function () {
+      setActiveTiltBtn(this);
+      realTerrain3D.setCameraPreset('steep');
+    });
+
+    function setActiveTiltBtn(activeBtn) {
+      [btnTilt65, btnTilt0, btnTilt78].forEach(function (b) { b.classList.remove('active'); });
+      activeBtn.classList.add('active');
+    }
+  }
+
+  function openSector(sectorData) {
+    if (!sectorData) return;
+    currentSector = sectorData;
+
+    // Show window
+    windowEl.style.display = 'flex';
+    if (isMinimized) toggleMinimize();
+
+    // Update Header
+    var tag = windowEl.querySelector('#terrain-win-sector-tag');
+    var coords = windowEl.querySelector('#terrain-win-coords');
+    tag.textContent = 'SECTOR ' + sectorData.id;
+
+    var latStr = sectorData.latRange[0].toFixed(4) + '° - ' + sectorData.latRange[1].toFixed(4) + '°N';
+    var lngStr = sectorData.lngRange[0].toFixed(4) + '° - ' + sectorData.lngRange[1].toFixed(4) + '°E';
+    coords.textContent = latStr + ' | ' + lngStr;
+
+    // Update HUD stats
+    var hudSector = windowEl.querySelector('#hud-stat-sector');
+    var hudCount = windowEl.querySelector('#hud-stat-sensor-count');
+
+    if (hudSector) hudSector.textContent = sectorData.id;
+    if (hudCount) hudCount.textContent = (sectorData.nodeCount || 0) + ' Sensors Detected';
+
+    // Update Node Sidebar list
+    populateNodeSidebar(sectorData);
+
+    // Initialize or load into Real 3D Satellite Terrain Map
+    if (!realTerrainInitialized) {
+      realTerrainInitialized = realTerrain3D.init('real-terrain-3d-map', sectorData);
+    } else {
+      realTerrain3D.loadSector(sectorData);
+    }
+
+    realTerrain3D.onResize();
+    requestAnimationFrame(function () {
+      realTerrain3D.onResize();
+      setTimeout(function () { realTerrain3D.onResize(); }, 80);
+      setTimeout(function () { realTerrain3D.onResize(); }, 250);
+    });
+  }
+
+  function launchGoogleEarth() {
+    if (!currentSector) return;
+    var cLat = currentSector.center[0];
+    var cLng = currentSector.center[1];
+
+    // Opens Google Earth Web with 60° tilt, distance 400m, looking at the exact sector
+    var earthUrl = 'https://earth.google.com/web/@' + cLat + ',' + cLng + ',230a,400d,35y,45h,60t,0r';
+    window.open(earthUrl, '_blank');
+  }
+
+  function populateNodeSidebar(sector) {
+    var container = windowEl.querySelector('#terrain-node-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!sector.nodes || sector.nodes.length === 0) {
+      container.innerHTML = '<div style="padding:16px 8px; color:#64748B; text-align:center;">No sensor nodes in this peripheral block.</div>';
+      return;
+    }
+
+    var allNodes = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getNodes)
+      ? fixtureProvider.getNodes() : [];
+    var nodeMap = {};
+    for (var i = 0; i < allNodes.length; i++) nodeMap[allNodes[i].node_id] = allNodes[i];
+
+    sector.nodes.forEach(function (nodeId) {
+      var n = nodeMap[nodeId];
+      if (!n) return;
+
+      var card = document.createElement('div');
+      card.className = 'terrain-node-card';
+
+      var color = '#00CC44';
+      if (n.state === 'warning') color = '#FFA500';
+      if (n.state === 'critical') color = '#FF2222';
+      if (n.state === 'lastgasp') color = '#FF4400';
+      if (n.state === 'dead') color = '#78909C';
+
+      var t = n.lastTelemetry;
+      var strainStr = t ? t.strain_ustrain + ' µε' : (n.state === 'critical' ? '890 µε' : '142 µε');
+      var tiltStr = t ? t.tilt_x_mdeg + ' mdeg' : '-32 mdeg';
+
+      card.innerHTML = 
+        '<div class="terrain-node-card-title">' +
+          '<span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + color + ';margin-right:5px;"></span>' + n.node_id + '</span>' +
+          '<span style="color:' + color + ';font-size:8.5px;font-weight:bold;">' + n.state.toUpperCase() + '</span>' +
+        '</div>' +
+        '<div class="terrain-node-card-sub">Ring: ' + (n.ring || 'core') + ' | Strain: ' + strainStr + '</div>' +
+        '<div class="terrain-node-card-sub">Tilt: ' + tiltStr + '</div>';
+
+      card.addEventListener('click', function () {
+        if (typeof bus !== 'undefined') {
+          bus.emit('node-selected', nodeId);
+        }
+      });
+
+      container.appendChild(card);
+    });
+  }
+
+  function toggleMinimize() {
+    isMinimized = !isMinimized;
+    windowEl.classList.toggle('minimized', isMinimized);
+    var btnMin = windowEl.querySelector('#btn-win-minimize');
+    if (btnMin) btnMin.textContent = isMinimized ? '□' : '_';
+    if (!isMinimized) {
+      setTimeout(function () { realTerrain3D.onResize(); }, 50);
+    }
+  }
+
+  function toggleMaximize() {
+    isMaximized = !isMaximized;
+    windowEl.classList.toggle('maximized', isMaximized);
+    var btnMax = windowEl.querySelector('#btn-win-maximize');
+    if (btnMax) btnMax.textContent = isMaximized ? '❐' : '□';
+    setTimeout(function () {
+      realTerrain3D.onResize();
+    }, 50);
+  }
+
+  function popOutWindow() {
+    if (!currentSector) return;
+
+    if (window.r4 && typeof window.r4.open3DWindow === 'function') {
+      window.r4.open3DWindow(currentSector);
+      return;
+    }
+
+    var url = '3d-window.html?sector=' + encodeURIComponent(currentSector.id);
+    var popWin = window.open(
+      url,
+      'R4_3D_Terrain_' + currentSector.id,
+      'width=1280,height=850,menubar=no,toolbar=no,location=no,status=no'
+    );
+    if (popWin) popWin.focus();
+  }
+
+  function close() {
+    windowEl.style.display = 'none';
+  }
+
+  return {
+    init: init,
+    openSector: openSector,
+    close: close,
+    toggleMinimize: toggleMinimize,
+    toggleMaximize: toggleMaximize,
+    popOutWindow: popOutWindow
+  };
+})();

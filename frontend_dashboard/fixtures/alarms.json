@@ -1,0 +1,84 @@
+[
+  {
+    "alarm_id": "ALM-N05",
+    "t_utc": "2026-09-05T13:20:00.000Z",
+    "panel_id": "PNL-A-NORTH",
+    "level": 2,
+    "centroid": {
+      "lat": 23.7455,
+      "lng": 86.419
+    },
+    "affected_nodes": [
+      "N07",
+      "N26",
+      "N27",
+      "N06",
+      "N08",
+      "N05",
+      "N25"
+    ],
+    "trough_fit_r2": 0.89,
+    "projection": {
+      "days_to_level_3": 4.8,
+      "confidence": 0.84
+    },
+    "blast_correlated": false,
+    "explanation": "LEVEL 2 WARNING: Coordinated multi-sensor tensile deflection detected across Inner and Middle rings. 7 adjacent nodes show correlated ground extension over extraction front.",
+    "confidence_zone": "medium_warning"
+  },
+  {
+    "alarm_id": "ALM-N07",
+    "t_utc": "2026-09-05T13:42:00.000Z",
+    "panel_id": "PNL-A-EAST",
+    "level": 3,
+    "centroid": {
+      "lat": 23.7455,
+      "lng": 86.419
+    },
+    "affected_nodes": [
+      "N06",
+      "N07",
+      "N08",
+      "N26",
+      "N27",
+      "N04",
+      "N05",
+      "N09",
+      "N10",
+      "N25",
+      "N28",
+      "N47",
+      "N48"
+    ],
+    "trough_fit_r2": 0.97,
+    "projection": {
+      "days_to_level_3": 0,
+      "confidence": 0.96
+    },
+    "blast_correlated": false,
+    "explanation": "CRITICAL LEVEL 3 SUBSIDENCE: Multi-ring subsidence trough fully formed. Core settlement cluster (N06, N07, N08, N26, N27) exceeds critical rupture strain (>600-920 ustrain). Radial inflection confirmed across 13 coordinated nodes. Evacuate extraction front immediately.",
+    "confidence_zone": "high_confidence"
+  },
+  {
+    "alarm_id": "ALM-N48",
+    "t_utc": "2026-09-05T13:52:00.000Z",
+    "panel_id": "PNL-A-DEFENSE",
+    "level": 3,
+    "centroid": {
+      "lat": 23.7466,
+      "lng": 86.4171
+    },
+    "affected_nodes": [
+      "N48",
+      "N47"
+    ],
+    "trough_fit_r2": 0.98,
+    "projection": {
+      "days_to_level_3": 0,
+      "confidence": 0.98
+    },
+    "blast_correlated": false,
+    "explanation": "CRITICAL LAST-GASP EVENT: Outer perimeter shear rupture. Node N48 transmitted final rupture RF burst upon edge fault displacement before sensor decapitation.",
+    "confidence_zone": "high_confidence"
+  }
+]

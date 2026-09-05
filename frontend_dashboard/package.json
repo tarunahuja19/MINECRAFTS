@@ -1,0 +1,50 @@
+{
+  "name": "r4-dashboard",
+  "version": "0.2.0",
+  "description": "Mine Subsidence Early-Warning Dashboard — R4 Electron Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "serve": "node serve.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.sih.r4-dashboard",
+    "productName": "R4 Mine Dashboard",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "main/**/*",
+      "renderer/**/*",
+      "fixtures/**/*",
+      "tiles/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "tiles",
+        "to": "tiles"
+      }
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}

@@ -1,0 +1,185 @@
+const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const MqttClient = require('./main/mqtt-client');
+const OfflineCache = require('./main/offline-cache');
+const historyApi = require('./main/history-api');
+
+let mainWindow = null;
+let mqttClient = null;
+let offlineCache = null;
+let cacheFlushTimer = null;
+
+const BROKER_URL = process.env.R4_BROKER_URL || 'mqtt://localhost:1883';
+const CACHE_FLUSH_INTERVAL_MS = 10000;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1920,
+    height: 1080,
+    minWidth: 1440,
+    minHeight: 900,
+    backgroundColor: '#1E2830',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    const snapshot = offlineCache.load();
+    if (snapshot && snapshot.nodes) {
+      const nodes = snapshot.nodes;
+      Object.keys(nodes).forEach((nodeId) => {
+        mainWindow.webContents.send('mqtt:telemetry', nodes[nodeId]);
+      });
+      console.log('[main] Restored', Object.keys(nodes).length, 'cached nodes from', snapshot._saved || 'unknown');
+    }
+  });
+
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log('[RENDERER]', level, message, sourceId, line);
+  });
+
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'File',
+      submenu: [
+        { label: 'Export Report', accelerator: 'CmdOrCtrl+E', click: () => mainWindow.webContents.send('menu:export-report') },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'togglefullscreen' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { role: 'resetZoom' },
+        { type: 'separator' },
+        { role: 'toggleDevTools' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About R4 Dashboard',
+          click: () => {
+            const { dialog } = require('electron');
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'About R4 Dashboard',
+              message: 'R4 Mine Subsidence Early-Warning Dashboard',
+              detail: 'Version 0.1.0\nSIH Smart India Hackathon\n\nMine subsidence monitoring and alarm system.'
+            });
+          }
+        }
+      ]
+    }
+  ]);
+  Menu.setApplicationMenu(menu);
+
+  offlineCache = new OfflineCache();
+
+  mqttClient = new MqttClient(mainWindow, {
+    brokerUrl: BROKER_URL,
+    onTelemetry: function (data) {
+      var nodeId = data._node_id || data.node_id;
+      if (nodeId) offlineCache.updateNode(nodeId, data);
+    }
+  });
+
+  mqttClient.connect();
+
+  cacheFlushTimer = setInterval(function () {
+    if (offlineCache) offlineCache.flush();
+  }, CACHE_FLUSH_INTERVAL_MS);
+
+  mainWindow.on('closed', () => {
+    if (mqttClient) mqttClient.disconnect();
+    if (cacheFlushTimer) clearInterval(cacheFlushTimer);
+    if (offlineCache) offlineCache.flush();
+    mainWindow = null;
+  });
+
+  if (process.env.SCREENSHOT_PATH) {
+    setTimeout(async () => {
+      try {
+        if (process.env.SCREENSHOT_ACTION) {
+          await mainWindow.webContents.executeJavaScript(process.env.SCREENSHOT_ACTION);
+          await new Promise(r => setTimeout(r, 600));
+        }
+        const img = await mainWindow.webContents.capturePage();
+        const fs = require('fs');
+        fs.writeFileSync(process.env.SCREENSHOT_PATH, img.toPNG());
+        console.log('SCREENSHOT_SAVED');
+      } catch (e) {
+        console.error(e);
+      }
+      app.quit();
+    }, parseInt(process.env.SCREENSHOT_DELAY || '3500'));
+  }
+}
+
+historyApi.register();
+
+ipcMain.handle('export:report', async (_event, html) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save Report as PDF',
+    defaultPath: 'R4-Subsidence-Report.pdf',
+    filters: [{ name: 'PDF', extensions: ['pdf'] }]
+  });
+  if (canceled || !filePath) return { success: false, reason: 'cancelled' };
+
+  const reportWin = new BrowserWindow({
+    width: 1024,
+    height: 768,
+    show: false,
+    webPreferences: { contextIsolation: true, nodeIntegration: false }
+  });
+
+  await reportWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+  const pdfData = await reportWin.webContents.printToPDF({
+    marginsType: 0,
+    printBackground: true,
+    pageSize: 'A4',
+    landscape: true
+  });
+  fs.writeFileSync(filePath, pdfData);
+  reportWin.close();
+  return { success: true, path: filePath };
+});
+
+ipcMain.handle('window:open-3d', async (_event, sectorData) => {
+  const sectorId = (sectorData && sectorData.id) ? sectorData.id : 'E5';
+  const win3d = new BrowserWindow({
+    width: 1280,
+    height: 850,
+    minWidth: 800,
+    minHeight: 600,
+    title: `3D Terrain Workstation — Sector ${sectorId}`,
+    backgroundColor: '#070D12',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  win3d.loadFile(path.join(__dirname, 'renderer', '3d-window.html'), { query: { sector: sectorId } });
+  return { success: true };
+});
+
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+  app.quit();
+});
+
+app.on('activate', () => {
+  if (mainWindow === null) createWindow();
+});

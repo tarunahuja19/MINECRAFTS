@@ -1,0 +1,20 @@
+{
+  "name": "mine-backend",
+  "version": "1.0.0",
+  "description": "Mine Subsidence Early-Warning System Backend - PostgreSQL Store & REST API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "migrate": "node db/migrate.js",
+    "seed": "node scripts/seed.js",
+    "setup": "node db/migrate.js && node scripts/seed.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.3",
+    "ws": "^8.21.3"
+  }
+}
