@@ -127,30 +127,45 @@ var nodeDetail = (function () {
     }
   }
 
+  // ISO 8601 local time with offset. Same formatter shape as the health table
+  // so the two views cannot disagree about what "last seen" means.
+  function formatIsoLocal(d) {
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    var offMin = -d.getTimezoneOffset();
+    var sign = offMin >= 0 ? '+' : '-';
+    var abs = Math.abs(offMin);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+           sign + pad(Math.floor(abs / 60)) + ':' + pad(abs % 60);
+  }
+
+  function formatAge(ageS) {
+    if (ageS < 0) ageS = 0;
+    if (ageS < 60) return ageS + 's ago';
+    if (ageS < 3600) return Math.floor(ageS / 60) + 'm ' + (ageS % 60) + 's ago';
+    return Math.floor(ageS / 3600) + 'h ' + Math.floor((ageS % 3600) / 60) + 'm ago';
+  }
+
   function updateLastSeen(nd) {
     var el = document.getElementById('detail-last-seen');
     if (!el) return;
     var t = nd.lastTelemetry;
     if (!t || !t.t_epoch_s) { el.textContent = '--'; return; }
 
-    if (typeof modeSwitch !== 'undefined' && modeSwitch.getMode() === 'fixture') {
-      var d = new Date(t.t_epoch_s * 1000);
-      var hh = String(d.getHours()).padStart(2, '0');
-      var mm = String(d.getMinutes()).padStart(2, '0');
-      var ss = String(d.getSeconds()).padStart(2, '0');
-      el.textContent = hh + ':' + mm + ':' + ss + ' (LIVE)';
+    // The absolute timestamp is now shown in every mode. It used to be relative
+    // only ("42s AGO"), which loses the actual instant the packet arrived - the
+    // thing you need when correlating against a log or an alarm record. The
+    // relative age stays alongside it because it answers "is this node alive
+    // right now" at a glance.
+    var iso = formatIsoLocal(new Date(t.t_epoch_s * 1000));
+    var isFixture = (typeof modeSwitch !== 'undefined' && modeSwitch.getMode() === 'fixture');
+
+    if (isFixture) {
+      el.textContent = iso + ' (LIVE)';
       return;
     }
 
-    var ageS = Math.floor(Date.now() / 1000) - t.t_epoch_s;
-    if (ageS < 0) ageS = 0;
-    if (ageS < 60) {
-      el.textContent = ageS + 's AGO';
-    } else if (ageS < 3600) {
-      el.textContent = Math.floor(ageS / 60) + 'm ' + (ageS % 60) + 's AGO';
-    } else {
-      el.textContent = Math.floor(ageS / 3600) + 'h ' + Math.floor((ageS % 3600) / 60) + 'm AGO';
-    }
+    el.textContent = iso + ' (' + formatAge(Math.floor(Date.now() / 1000) - t.t_epoch_s) + ')';
   }
 
   function startAgeTimer(nd) {

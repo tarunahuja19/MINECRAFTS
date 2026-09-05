@@ -1366,13 +1366,17 @@ html, body {
    ========================================================================== */
 .grid-cell-watermark {
   font-family: 'Courier New', monospace;
-  font-size: 8.5px;
+  /* Bumped from 8.5px / 75%-opacity slate: at the 600 m window these tags sat
+     on satellite imagery and were unreadable, which is what pushed the sector
+     labels onto their own toggle. Now they are legible when on, and gone when
+     off, instead of permanently half-there. */
+  font-size: 10px;
   font-weight: bold;
-  color: rgba(135, 178, 196, 0.75);
-  background: rgba(10, 18, 24, 0.65);
+  color: #FF6BF0;
+  background: rgba(8, 12, 18, 0.88);
   padding: 1px 5px;
   border-radius: 2px;
-  border: 1px solid rgba(43, 66, 76, 0.6);
+  border: 1px solid rgba(255, 0, 229, 0.55);
   pointer-events: none;
   letter-spacing: 0.08em;
   user-select: none;

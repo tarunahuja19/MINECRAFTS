@@ -77,7 +77,7 @@ var nodeTable = (function () {
 
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
-      var timeStr = r.lastSeen ? formatTime(r.lastSeen) : '--:--:--';
+      var timeStr = r.lastSeen ? formatTime(r.lastSeen) : '--';
       var rssiStr = r.rssi !== null ? r.rssi + ' dBm' : '--';
       var snrStr = r.snr !== null ? r.snr.toFixed(1) + ' dB' : '--';
 
@@ -86,7 +86,7 @@ var nodeTable = (function () {
           '<td>' + r.node_id + '</td>' +
           '<td><span class="state-badge ' + r.state + '">' + r.state.toUpperCase() + '</span></td>' +
           '<td>' + r.ring.toUpperCase() + '</td>' +
-          '<td>' + timeStr + '</td>' +
+          '<td class="mono">' + timeStr + '</td>' +
           '<td>' + r.rxCount + '</td>' +
           '<td>' + r.missedCount + '</td>' +
           '<td>' + rssiStr + '</td>' +
@@ -151,11 +151,23 @@ var nodeTable = (function () {
     return rows;
   }
 
+  // ISO 8601 local time, date included. A bare HH:MM:SS is ambiguous the
+  // moment a node was last heard from on a previous day - it reads as "seen
+  // minutes ago" when it was actually yesterday. Local rather than UTC, and
+  // with the offset spelled out, so an operator can compare it against a wall
+  // clock without doing timezone arithmetic.
   function formatTime(ms) {
-    var d = new Date(ms);
-    return String(d.getHours()).padStart(2, '0') + ':' +
-           String(d.getMinutes()).padStart(2, '0') + ':' +
-           String(d.getSeconds()).padStart(2, '0');
+    return formatIsoLocal(new Date(ms));
+  }
+
+  function formatIsoLocal(d) {
+    var pad = function (n, w) { return String(n).padStart(w || 2, '0'); };
+    var offMin = -d.getTimezoneOffset();
+    var sign = offMin >= 0 ? '+' : '-';
+    var abs = Math.abs(offMin);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+           sign + pad(Math.floor(abs / 60)) + ':' + pad(abs % 60);
   }
 
   return { init: init, render: render };

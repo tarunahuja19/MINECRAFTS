@@ -28,11 +28,13 @@ function getNodeMetadata(nodeId) {
 }
 
 function enrichNode(row) {
-  // If node has physical metric coordinates, compute geographic lat/lng from panel origin
-  const hasMetricCoords = row.x != null && row.y != null && (row.x !== 0 || row.y !== 0);
-  const meta = hasMetricCoords ? null : getNodeMetadata(row.node_id);
-  const lat = (meta && meta.lat != null) ? meta.lat : Math.round((23.7445 + (row.y / 111000)) * 100000) / 100000;
-  const lng = (meta && meta.lng != null) ? meta.lng : Math.round((86.4205 + (row.x / 102000)) * 100000) / 100000;
+  // lat/lon are written by the simulation (sandbox.geo) alongside x/y and are the
+  // single source of truth for where a node sits on the map. Older rows that
+  // predate the geo alignment work have NULL lat/lon; those fall back to the
+  // fixture metadata so the legacy mock dashboard keeps rendering.
+  const meta = (row.lat == null || row.lon == null) ? getNodeMetadata(row.node_id) : null;
+  const lat = (row.lat != null) ? row.lat : (meta ? meta.lat : null);
+  const lon = (row.lon != null) ? row.lon : (meta ? meta.lng : null);
   const ring = (meta && meta.ring) ? meta.ring : (row.node_type === 'gateway' ? 'outer' : (row.node_type === 'anchor' ? 'middle' : 'inner'));
 
   return {
@@ -40,7 +42,9 @@ function enrichNode(row) {
     // Frontend map & table display fields
     label: row.node_id,
     lat: lat,
-    lng: lng,
+    lon: lon,
+    // `lng` is the name the existing map code reads; keep it as an alias of lon.
+    lng: lon,
     ring: ring,
     state: row.status
   };

@@ -15,10 +15,16 @@ var nodeKillViewer = (function () {
 
   function buildChart() {
     if (!container) return;
+    // In LIVE mode the fixture module is loaded but never populated, so these
+    // getters return null rather than an empty array. Guarding only on the
+    // function existing let that null through and threw on .length below,
+    // which the event bus caught and logged as "nodes-loaded TypeError".
     var alarms = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms)
-      ? fixtureProvider.getAlarms() : [];
+      ? fixtureProvider.getAlarms() : null;
     var telemetry = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getTelemetry)
-      ? fixtureProvider.getTelemetry() : [];
+      ? fixtureProvider.getTelemetry() : null;
+    if (!alarms) alarms = [];
+    if (!telemetry) telemetry = [];
 
     if (alarms.length === 0 && telemetry.length === 0) {
       container.innerHTML = '<div class="empty-state">NO EVENT DATA</div>';

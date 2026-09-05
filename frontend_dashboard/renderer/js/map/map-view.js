@@ -2,13 +2,44 @@
 
 var mapView = (function () {
   var map = null;
-  var currentBasemap = 'satellite'; // 'satellite' (aerial) or 'dark' (tactical)
+  var currentBasemap = 'satellite'; // 'satellite' (aerial) or 'topo' (contours)
   var baseLayers = {};
 
-  var MINE_CENTER = [23.7440, 86.4195];
+  // Adriyala longwall site, Telangana - the same origin the simulation uses
+  // (simulation/sandbox/geo.py ORIGIN_LAT/ORIGIN_LON, dem.py, server.py's
+  // dem_lat/dem_lon). The map previously centred on Jharia, ~1000 km away from
+  // the ground the physics actually models, so no real node could ever land on
+  // it. Do not hand-edit these to a different mine without moving geo.py too.
+  var ORIGIN_LAT = 18.6435;
+  var ORIGIN_LON = 79.5725;
+
+  // Mirrors geo.py: metres per degree, with longitude scaled by cos(origin lat).
+  var M_PER_DEG_LAT = 111320.0;
+  var M_PER_DEG_LON = M_PER_DEG_LAT * Math.cos(ORIGIN_LAT * Math.PI / 180);
+
+  // Panel-frame metres -> [lat, lon]. Kept here (rather than importing) because
+  // this file loads as a plain browser script, but it is the same flat-earth
+  // projection as geo.xy_to_latlon with PANEL_BEARING_DEG = 0.
+  function xyToLatLon(x, y) {
+    return [ORIGIN_LAT + y / M_PER_DEG_LAT, ORIGIN_LON + x / M_PER_DEG_LON];
+  }
+
+  // The simulation window is 600 x 600 m centred on the panel centre
+  // (constants.WINDOW_SIZE_M), so the visible box is +/-300 m on each axis.
+  var WINDOW_HALF_M = 300;
+
+  var MINE_CENTER = [ORIGIN_LAT, ORIGIN_LON];
   var MINE_BOUNDS = [
-    [23.7385, 86.4125],
-    [23.7495, 86.4265]
+    xyToLatLon(-WINDOW_HALF_M, -WINDOW_HALF_M),
+    xyToLatLon(WINDOW_HALF_M, WINDOW_HALF_M)
+  ];
+
+  // Panning room around the window: enough to see the site in context without
+  // letting the user drift off to unmodelled ground.
+  var PAN_LIMIT_M = 1500;
+  var MINE_MAX_BOUNDS = [
+    xyToLatLon(-PAN_LIMIT_M, -PAN_LIMIT_M),
+    xyToLatLon(PAN_LIMIT_M, PAN_LIMIT_M)
   ];
 
   function init(containerId) {
@@ -18,10 +49,7 @@ var mapView = (function () {
         zoom: 17,
         minZoom: 13,
         maxZoom: 19,
-        maxBounds: [
-          [23.7300, 86.4000],
-          [23.7600, 86.4400]
-        ],
+        maxBounds: MINE_MAX_BOUNDS,
         maxBoundsViscosity: 0.9,
         zoomControl: true,
         attributionControl: false
@@ -51,20 +79,22 @@ var mapView = (function () {
       );
       baseLayers.satellite = L.layerGroup([satTiles, satLabels]);
 
-      // 2. Dark SCADA Basemap (Local offline tiles + ESRI Dark Canvas fallback)
-      var darkLocal = L.tileLayer(
-        '../tiles/{z}/{x}/{y}.png',
+      // 2. Topographic basemap. This replaces the old TACTICAL option, which
+      // pointed at '../tiles/{z}/{x}/{y}.png' - a directory that does not exist
+      // in this repo, so every tile 404'd and the button produced a blank map.
+      // Topo is served (Esri World Topo) and is the genuinely useful second
+      // view here: contours show the surface relief the subsidence model acts
+      // on, which the aerial imagery flattens out.
+      var topoTiles = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
         {
-          minZoom: 14,
-          maxNativeZoom: 16,
+          minZoom: 12,
           maxZoom: 19,
-          errorTileUrl: ''
+          maxNativeZoom: 19,
+          attribution: 'Esri Topographic'
         }
       );
-      darkLocal.on('tileerror', function (err) {
-        if (err.tile) err.tile.style.display = 'none';
-      });
-      baseLayers.dark = L.layerGroup([darkLocal]);
+      baseLayers.topo = L.layerGroup([topoTiles]);
 
       var savedBasemap = 'satellite';
       setBasemap(savedBasemap);
@@ -112,30 +142,40 @@ var mapView = (function () {
 
   function setupSwitcherUI() {
     var btnSat = document.getElementById('btn-basemap-sat');
-    var btnDark = document.getElementById('btn-basemap-dark');
+    var btnTopo = document.getElementById('btn-basemap-topo');
 
     if (btnSat) btnSat.addEventListener('click', function () { setBasemap('satellite'); });
-    if (btnDark) btnDark.addEventListener('click', function () { setBasemap('dark'); });
+    if (btnTopo) btnTopo.addEventListener('click', function () { setBasemap('topo'); });
 
     updateSwitcherButtons();
   }
 
   function updateSwitcherButtons() {
     var btnSat = document.getElementById('btn-basemap-sat');
-    var btnDark = document.getElementById('btn-basemap-dark');
+    var btnTopo = document.getElementById('btn-basemap-topo');
 
     if (btnSat) {
       if (currentBasemap === 'satellite') btnSat.classList.add('active');
       else btnSat.classList.remove('active');
     }
-    if (btnDark) {
-      if (currentBasemap === 'dark') btnDark.classList.add('active');
-      else btnDark.classList.remove('active');
+    if (btnTopo) {
+      if (currentBasemap === 'topo') btnTopo.classList.add('active');
+      else btnTopo.classList.remove('active');
     }
   }
 
   function getMap() { return map; }
   function fitToMine() { if (map) map.fitBounds(MINE_BOUNDS); }
+
+  // The gateway is deliberately sited outside the angle of draw, and so outside
+  // the 600 m simulation window. Fitting to MINE_BOUNDS alone therefore hides
+  // it. This fits the window PLUS whatever the markers actually occupy, so
+  // every node is on screen at load without widening the window itself - the
+  // window stays the physics extent that the sector grid is built on.
+  function fitToNodes(bounds) {
+    if (!map || !bounds || !bounds.isValid()) return fitToMine();
+    map.fitBounds(L.latLngBounds(MINE_BOUNDS).extend(bounds).pad(0.05));
+  }
   function panTo(lat, lng, zoom) { if (map) map.setView([lat, lng], zoom || 17); }
 
   return {
@@ -143,8 +183,14 @@ var mapView = (function () {
     getMap: getMap,
     setBasemap: setBasemap,
     fitToMine: fitToMine,
+    fitToNodes: fitToNodes,
     panTo: panTo,
     MINE_CENTER: MINE_CENTER,
-    MINE_BOUNDS: MINE_BOUNDS
+    MINE_BOUNDS: MINE_BOUNDS,
+    // Exposed so map layers (node markers, sector grid) project panel-frame
+    // metres through this one function instead of trusting whatever lat/lon a
+    // record happens to carry. See geo.py for the authoritative definition.
+    xyToLatLon: xyToLatLon,
+    WINDOW_HALF_M: WINDOW_HALF_M
   };
 })();

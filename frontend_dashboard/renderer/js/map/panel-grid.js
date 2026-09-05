@@ -8,6 +8,10 @@
 var panelGrid = (function () {
   var map = null;
   var gridGroup = null;
+  // Cells and labels live in separate groups so LABELS can be turned off while
+  // GRID stays on - the four-way combination the HUD exposes.
+  var cellGroup = null;
+  var labelGroup = null;
   var tagMarkers = {};
   var cellPolygons = {};
   var selectedCellId = null;
@@ -19,35 +23,182 @@ var panelGrid = (function () {
     cols: 8, // Cols 1, 2, 3, 4, 5, 6, 7, 8 (West to East)
     rowNames: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
     colNames: ['1', '2', '3', '4', '5', '6', '7', '8'],
-    bounds: {
-      minLat: 23.7395,
-      maxLat: 23.7485,
-      minLng: 86.4140,
-      maxLng: 86.4250
-    },
+    // The grid is defined in METRES on the panel frame, not in degrees. The
+    // simulation window is 600 x 600 m centred on the panel centre, so an 8x8
+    // grid gives 75 x 75 m sectors. Corners are projected to lat/lon through
+    // mapView.xyToLatLon (the same converter as geo.py), which is what makes
+    // the grid cover literally the same ground as the physics. The old
+    // hardcoded Jharia degree box sat ~1000 km from the modelled site.
+    halfM: 300,
+    // Grid lines are magenta, not the old slate blue at 45% opacity. Over ESRI
+    // satellite imagery (browns, greens, greys) the previous lines were nearly
+    // invisible at the 600 m window; magenta appears nowhere in aerial terrain
+    // and nowhere else in this HUD, so a grid line can never be mistaken for
+    // ground detail or for another overlay.
     defaultStyle: {
-      color: 'rgba(90, 143, 168, 0.45)',
-      weight: 0.9,
-      dashArray: '3, 3',
-      fillColor: 'rgba(90, 143, 168, 0.02)',
-      fillOpacity: 0.02,
+      color: '#FF00E5',
+      weight: 1.6,
+      opacity: 0.95,
+      dashArray: '5, 4',
+      fillColor: '#FF00E5',
+      fillOpacity: 0.05,
       interactive: true
     },
     hoverStyle: {
-      color: '#38BDF8',
-      weight: 1.6,
+      color: '#FFFFFF',
+      weight: 2.6,
+      opacity: 1,
       dashArray: 'none',
-      fillColor: 'rgba(56, 189, 248, 0.18)',
-      fillOpacity: 0.18
+      fillColor: '#FF00E5',
+      fillOpacity: 0.22
     },
     selectedStyle: {
       color: '#00E5FF',
-      weight: 2.2,
+      weight: 3.2,
+      opacity: 1,
       dashArray: 'none',
-      fillColor: 'rgba(0, 229, 255, 0.26)',
-      fillOpacity: 0.26
+      fillColor: '#00E5FF',
+      fillOpacity: 0.30
+    },
+    // 64 cells over 31 nodes means most sectors legitimately hold none. Drawing
+    // them in the normal style would imply they are monitored and healthy, so
+    // an empty sector is greyed and labelled "no coverage" instead.
+    emptyStyle: {
+      color: '#8A97A0',
+      weight: 1.1,
+      opacity: 0.7,
+      dashArray: '2, 6',
+      fillColor: '#8A97A0',
+      fillOpacity: 0.06,
+      interactive: true
     }
   };
+
+  // SURFACE shading is a SEPARATE channel from the grid line colour on purpose:
+  // the point of the toggle is to compare the two. The magenta outline says
+  // "this is sector D4"; the fill says "this is what the ground under D4 is
+  // doing". Mixing them into one colour would make the comparison impossible.
+  //
+  // Bands are on peak strain across the sector's nodes, matching the thresholds
+  // node-markers.js already uses for marker state, so a sector cannot disagree
+  // with the markers sitting inside it.
+  var SURFACE_BANDS = [
+    { max: 400, color: '#2E7D32', label: 'STABLE' },
+    { max: 600, color: '#FFC107', label: 'SUBSIDING' },
+    { max: Infinity, color: '#B71C1C', label: 'TROUGH' }
+  ];
+  var SURFACE_FILL_OPACITY = 0.42;
+  var surfaceOn = false;
+  var gridOn = true;
+  var labelsOn = true;
+
+  // Cell geometry in the physics frame. Row 0 is the NORTH-most row, so y runs
+  // downward with r; col 0 is the WEST-most, so x runs rightward with c.
+  function cellExtentM(r, c) {
+    var half = GRID_CONFIG.halfM;
+    var cellM = (half * 2) / GRID_CONFIG.rows;
+    var xMin = -half + c * cellM;
+    var yMax = half - r * cellM;
+    return { xMin: xMin, xMax: xMin + cellM, yMin: yMax - cellM, yMax: yMax };
+  }
+
+  // Project a metre extent to the lat/lon corners Leaflet needs, through the
+  // map's single converter so the grid cannot drift from the markers.
+  function cellCorners(ext) {
+    var sw = mapView.xyToLatLon(ext.xMin, ext.yMin);
+    var ne = mapView.xyToLatLon(ext.xMax, ext.yMax);
+    return { south: sw[0], west: sw[1], north: ne[0], east: ne[1] };
+  }
+
+  // Node -> cell assignment is done on x/y METRES, never on lat/lon, so it is
+  // computed in the same frame the physics runs in and cannot drift with the
+  // projection. Nodes outside the 600 m window (the gateway) match no cell.
+  function nodesInExtent(allNodes, ext) {
+    var ids = [];
+    for (var i = 0; i < allNodes.length; i++) {
+      var n = allNodes[i];
+      if (typeof n.x !== 'number' || typeof n.y !== 'number') continue;
+      if (n.x >= ext.xMin && n.x < ext.xMax && n.y >= ext.yMin && n.y < ext.yMax) {
+        ids.push(n.node_id);
+      }
+    }
+    return ids;
+  }
+
+  // Peak strain over the nodes in a cell, or null when the cell holds no node
+  // with telemetry yet - null means "unknown", which is drawn differently from
+  // "stable". Reading through nodeMarkers keeps one source of live telemetry.
+  function cellSurface(cellId) {
+    var d = cellsData[cellId];
+    if (!d || !d.nodes || d.nodes.length === 0) return null;
+    if (typeof nodeMarkers === 'undefined' || typeof nodeMarkers.getNodeData !== 'function') return null;
+
+    var peak = null;
+    for (var i = 0; i < d.nodes.length; i++) {
+      var nd = nodeMarkers.getNodeData(d.nodes[i]);
+      var t = nd && nd.lastTelemetry;
+      if (!t) continue;
+      var v = t.strain_ustrain || 0;
+      if (peak === null || v > peak) peak = v;
+    }
+    if (peak === null) return null;
+
+    for (var b = 0; b < SURFACE_BANDS.length; b++) {
+      if (peak < SURFACE_BANDS[b].max) {
+        return { peak: peak, color: SURFACE_BANDS[b].color, label: SURFACE_BANDS[b].label };
+      }
+    }
+    return null;
+  }
+
+  function styleForCell(cellId) {
+    if (selectedCellId === cellId) return GRID_CONFIG.selectedStyle;
+    var d = cellsData[cellId];
+    var base = (d && d.nodeCount === 0) ? GRID_CONFIG.emptyStyle : GRID_CONFIG.defaultStyle;
+
+    if (!surfaceOn) return base;
+
+    // Surface mode repaints only the fill and keeps the outline, so the sector
+    // boundary stays readable on top of the shading.
+    var surf = cellSurface(cellId);
+    if (!surf) {
+      return Object.assign({}, base, { fillColor: '#404A50', fillOpacity: 0.28 });
+    }
+    return Object.assign({}, base, { fillColor: surf.color, fillOpacity: SURFACE_FILL_OPACITY });
+  }
+
+  function tooltipFor(cellId, count) {
+    var line = (count === 0)
+      ? '<div class="grid-tooltip-info">NO COVERAGE — 0 sensor nodes</div>'
+      : '<div class="grid-tooltip-info">' + count + ' Sensor Nodes Active</div>';
+
+    var surfLine = '';
+    if (surfaceOn) {
+      var surf = cellSurface(cellId);
+      surfLine = surf
+        ? '<div class="grid-tooltip-info">SURFACE: ' + surf.label +
+          ' (peak ' + Math.round(surf.peak) + ' ustrain)</div>'
+        : '<div class="grid-tooltip-info">SURFACE: NO DATA</div>';
+    }
+
+    return '<div class="grid-tooltip-content">' +
+             '<div class="grid-tooltip-title">PANEL A : SECTOR ' + cellId + '</div>' +
+             line +
+             surfLine +
+             '<div class="grid-tooltip-hint">⚡ CLICK FOR 3D TERRAIN VIEW</div>' +
+           '</div>';
+  }
+
+  // Both build and refresh read nodes from the same place: the live records
+  // carrying x/y. fixtureProvider returns null in live mode, hence the guard.
+  function currentNodes(passed) {
+    if (Array.isArray(passed)) return passed;
+    if (typeof fixtureProvider !== 'undefined' && typeof fixtureProvider.getNodes === 'function') {
+      var n = fixtureProvider.getNodes();
+      if (Array.isArray(n)) return n;
+    }
+    return [];
+  }
 
   function init(mapInstance) {
     map = mapInstance;
@@ -55,6 +206,7 @@ var panelGrid = (function () {
 
     createHUDNotificationBanner();
     buildGrid();
+    setupToggleUI();
 
     if (typeof bus !== 'undefined') {
       bus.on('nodes-loaded', function (nodes) {
@@ -64,7 +216,10 @@ var panelGrid = (function () {
         refreshNodeDistribution();
       });
       bus.on('telemetry', function () {
-        // Live telemetry listener
+        // Surface shading is driven by live strain, so it has to repaint as
+        // telemetry lands. Cheap: 64 setStyle calls, and only while SURFACE
+        // is actually on.
+        if (surfaceOn) restyleAllCells();
       });
     }
 
@@ -133,39 +288,27 @@ var panelGrid = (function () {
     }
 
     gridGroup = L.featureGroup({ pane: 'gridPane' });
+    cellGroup = L.featureGroup({ pane: 'gridPane' });
+    labelGroup = L.featureGroup({ pane: 'gridPane' });
     tagMarkers = {};
     cellPolygons = {};
     cellsData = {};
 
-    var b = GRID_CONFIG.bounds;
-    var rowHeight = (b.maxLat - b.minLat) / GRID_CONFIG.rows;
-    var colWidth = (b.maxLng - b.minLng) / GRID_CONFIG.cols;
-
-    var allNodes = [];
-    if (typeof fixtureProvider !== 'undefined' && typeof fixtureProvider.getNodes === 'function') {
-      var n = fixtureProvider.getNodes();
-      if (Array.isArray(n)) allNodes = n;
-    }
+    var allNodes = currentNodes();
 
     for (var r = 0; r < GRID_CONFIG.rows; r++) {
       var rowName = GRID_CONFIG.rowNames[r];
-      var north = b.maxLat - r * rowHeight;
-      var south = north - rowHeight;
 
       for (var c = 0; c < GRID_CONFIG.cols; c++) {
         var colName = GRID_CONFIG.colNames[c];
-        var west = b.minLng + c * colWidth;
-        var east = west + colWidth;
         var cellId = rowName + colName;
 
-        // Correlate sensor nodes inside this 8x8 cell
-        var cellNodes = [];
-        for (var i = 0; i < allNodes.length; i++) {
-          var node = allNodes[i];
-          if (node.lat >= south && node.lat < north && node.lng >= west && node.lng < east) {
-            cellNodes.push(node.node_id);
-          }
-        }
+        var ext = cellExtentM(r, c);
+        var k = cellCorners(ext);
+        var south = k.south, north = k.north, west = k.west, east = k.east;
+
+        // Assignment happens on x/y metres, in the physics frame.
+        var cellNodes = nodesInExtent(allNodes, ext);
 
         var cellCenter = [(south + north) / 2, (west + east) / 2];
         var cellBounds = [[south, west], [north, east]];
@@ -181,6 +324,10 @@ var panelGrid = (function () {
           center: cellCenter,
           latRange: [south, north],
           lngRange: [west, east],
+          // The metre extent travels with the cell so the 3D terrain window
+          // can cut exactly this patch of the simulation window.
+          xRange: [ext.xMin, ext.xMax],
+          yRange: [ext.yMin, ext.yMax],
           nodeCount: cellNodes.length,
           nodes: cellNodes
         };
@@ -188,20 +335,14 @@ var panelGrid = (function () {
         cellsData[cellId] = cellData;
 
         // Create polygon for cell
-        var polyOpts = Object.assign({}, GRID_CONFIG.defaultStyle, { pane: 'gridPane' });
+        var polyOpts = Object.assign({}, styleForCell(cellId), { pane: 'gridPane' });
         var polygon = L.polygon(
           [[south, west], [south, east], [north, east], [north, west]],
           polyOpts
         );
         polygon._cellId = cellId;
 
-        // Tooltip
-        var tooltipHtml = 
-          '<div class="grid-tooltip-content">' +
-            '<div class="grid-tooltip-title">PANEL A : SECTOR ' + cellId + '</div>' +
-            '<div class="grid-tooltip-info">' + cellNodes.length + ' Sensor Nodes Active</div>' +
-            '<div class="grid-tooltip-hint">⚡ CLICK FOR 3D TERRAIN VIEW</div>' +
-          '</div>';
+        var tooltipHtml = tooltipFor(cellId, cellNodes.length);
 
         polygon.bindTooltip(tooltipHtml, {
           className: 'grid-sector-tooltip',
@@ -221,7 +362,9 @@ var panelGrid = (function () {
         polygon.on('mouseout', function () {
           var cid = this._cellId;
           if (selectedCellId !== cid) {
-            this.setStyle(GRID_CONFIG.defaultStyle);
+            // styleForCell, not defaultStyle: a hovered empty cell must fall
+            // back to grey, otherwise it silently repaints as a covered one.
+            this.setStyle(styleForCell(cid));
           }
         });
 
@@ -230,12 +373,12 @@ var panelGrid = (function () {
           selectSector(this._cellId);
         });
 
-        polygon.addTo(gridGroup);
+        polygon.addTo(cellGroup);
         cellPolygons[cellId] = polygon;
 
         // Watermark Label at top-left corner of each 8x8 cell
-        var labelLat = north - (rowHeight * 0.16);
-        var labelLng = west + (colWidth * 0.08);
+        var labelLat = north - (north - south) * 0.16;
+        var labelLng = west + (east - west) * 0.08;
 
         var tagIcon = L.divIcon({
           className: 'grid-cell-watermark-icon',
@@ -245,12 +388,83 @@ var panelGrid = (function () {
         });
 
         var tagMarker = L.marker([labelLat, labelLng], { icon: tagIcon, interactive: false });
-        tagMarker.addTo(gridGroup);
+        tagMarker.addTo(labelGroup);
         tagMarkers[cellId] = tagMarker;
       }
     }
 
+    cellGroup.addTo(gridGroup);
+    labelGroup.addTo(gridGroup);
     gridGroup.addTo(map);
+    applyVisibility();
+  }
+
+  // GRID off hides the cells AND the labels: labels alone, floating with no
+  // boundaries, name sectors the user cannot see. LABELS off hides only the
+  // tags. That gives the four states: grid+labels, grid only, labels-with-grid
+  // implied off (= nothing), and nothing.
+  function applyVisibility() {
+    if (!map || !gridGroup) return;
+
+    if (gridOn) {
+      if (!map.hasLayer(gridGroup)) gridGroup.addTo(map);
+      if (!gridGroup.hasLayer(cellGroup)) cellGroup.addTo(gridGroup);
+      if (labelsOn) {
+        if (!gridGroup.hasLayer(labelGroup)) labelGroup.addTo(gridGroup);
+      } else if (gridGroup.hasLayer(labelGroup)) {
+        gridGroup.removeLayer(labelGroup);
+      }
+    } else if (map.hasLayer(gridGroup)) {
+      map.removeLayer(gridGroup);
+    }
+  }
+
+  function restyleAllCells() {
+    var ids = Object.keys(cellPolygons);
+    for (var i = 0; i < ids.length; i++) {
+      cellPolygons[ids[i]].setStyle(styleForCell(ids[i]));
+      cellPolygons[ids[i]].setTooltipContent(
+        tooltipFor(ids[i], cellsData[ids[i]] ? cellsData[ids[i]].nodeCount : 0)
+      );
+    }
+  }
+
+  function setActive(btn, on) {
+    if (!btn) return;
+    if (on) btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
+
+  function setupToggleUI() {
+    var btnGrid = document.getElementById('btn-grid-toggle');
+    var btnLabels = document.getElementById('btn-grid-labels');
+    var btnSurface = document.getElementById('btn-grid-surface');
+
+    if (btnGrid) {
+      btnGrid.addEventListener('click', function () {
+        gridOn = !gridOn;
+        setActive(btnGrid, gridOn);
+        applyVisibility();
+      });
+    }
+    if (btnLabels) {
+      btnLabels.addEventListener('click', function () {
+        labelsOn = !labelsOn;
+        setActive(btnLabels, labelsOn);
+        applyVisibility();
+      });
+    }
+    if (btnSurface) {
+      btnSurface.addEventListener('click', function () {
+        surfaceOn = !surfaceOn;
+        setActive(btnSurface, surfaceOn);
+        restyleAllCells();
+      });
+    }
+
+    setActive(btnGrid, gridOn);
+    setActive(btnLabels, labelsOn);
+    setActive(btnSurface, surfaceOn);
   }
 
   function selectSector(cellId) {
@@ -258,7 +472,10 @@ var panelGrid = (function () {
 
     // Reset previously selected cell
     if (selectedCellId && cellPolygons[selectedCellId]) {
-      cellPolygons[selectedCellId].setStyle(GRID_CONFIG.defaultStyle);
+      var prevId = selectedCellId;
+      selectedCellId = null;
+      cellPolygons[prevId].setStyle(styleForCell(prevId));
+      selectedCellId = prevId;
       var oldTag = document.getElementById('grid-tag-' + selectedCellId);
       if (oldTag) oldTag.classList.remove('active');
     }
@@ -306,36 +523,18 @@ var panelGrid = (function () {
   }
 
   function refreshNodeDistribution(passedNodes) {
-    var allNodes = [];
-    if (Array.isArray(passedNodes)) {
-      allNodes = passedNodes;
-    } else if (typeof fixtureProvider !== 'undefined' && typeof fixtureProvider.getNodes === 'function') {
-      var n = fixtureProvider.getNodes();
-      if (Array.isArray(n)) allNodes = n;
-    }
-
-    var b = GRID_CONFIG.bounds;
-    var rowHeight = (b.maxLat - b.minLat) / GRID_CONFIG.rows;
-    var colWidth = (b.maxLng - b.minLng) / GRID_CONFIG.cols;
+    var allNodes = currentNodes(passedNodes);
+    var covered = 0;
 
     for (var r = 0; r < GRID_CONFIG.rows; r++) {
       var rowName = GRID_CONFIG.rowNames[r];
-      var north = b.maxLat - r * rowHeight;
-      var south = north - rowHeight;
 
       for (var c = 0; c < GRID_CONFIG.cols; c++) {
         var colName = GRID_CONFIG.colNames[c];
-        var west = b.minLng + c * colWidth;
-        var east = west + colWidth;
         var cellId = rowName + colName;
 
-        var cellNodes = [];
-        for (var i = 0; i < allNodes.length; i++) {
-          var node = allNodes[i];
-          if (node.lat >= south && node.lat < north && node.lng >= west && node.lng < east) {
-            cellNodes.push(node.node_id);
-          }
-        }
+        var cellNodes = nodesInExtent(allNodes, cellExtentM(r, c));
+        if (cellNodes.length > 0) covered++;
 
         if (cellsData[cellId]) {
           cellsData[cellId].nodes = cellNodes;
@@ -343,16 +542,16 @@ var panelGrid = (function () {
         }
 
         if (cellPolygons[cellId]) {
-          var tooltipHtml = 
-            '<div class="grid-tooltip-content">' +
-              '<div class="grid-tooltip-title">PANEL A : SECTOR ' + cellId + '</div>' +
-              '<div class="grid-tooltip-info">' + cellNodes.length + ' Sensor Nodes Active</div>' +
-              '<div class="grid-tooltip-hint">⚡ CLICK FOR 3D TERRAIN VIEW</div>' +
-            '</div>';
-          cellPolygons[cellId].setTooltipContent(tooltipHtml);
+          cellPolygons[cellId].setTooltipContent(tooltipFor(cellId, cellNodes.length));
+          // Restyle: a cell that just gained or lost its nodes must change
+          // between the grey "no coverage" look and the normal one.
+          cellPolygons[cellId].setStyle(styleForCell(cellId));
         }
       }
     }
+
+    console.log('[PANEL_GRID] Distribution over ' + allNodes.length + ' nodes: ' +
+                covered + '/' + (GRID_CONFIG.rows * GRID_CONFIG.cols) + ' sectors covered');
   }
 
   function getSelectedSector() {
@@ -368,6 +567,9 @@ var panelGrid = (function () {
     selectSector: selectSector,
     getSelectedSector: getSelectedSector,
     getAllSectors: getAllSectors,
-    trigger3DView: trigger3DView
+    trigger3DView: trigger3DView,
+    setGridVisible: function (on) { gridOn = !!on; applyVisibility(); },
+    setLabelsVisible: function (on) { labelsOn = !!on; applyVisibility(); },
+    setSurfaceVisible: function (on) { surfaceOn = !!on; restyleAllCells(); }
   };
 })();

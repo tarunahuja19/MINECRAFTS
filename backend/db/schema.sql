@@ -14,8 +14,20 @@ CREATE TABLE IF NOT EXISTS nodes (
     y DOUBLE PRECISION NOT NULL,
     z DOUBLE PRECISION NOT NULL DEFAULT 0.0,
     installed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    status VARCHAR(32) NOT NULL DEFAULT 'active'
+    status VARCHAR(32) NOT NULL DEFAULT 'active',
+    -- Display projection of x/y, written by the simulation via sandbox.geo.
+    -- x/y stay the physics truth; these exist so map surfaces never hand-roll
+    -- their own metres->degrees conversion. Nullable: a node is valid before
+    -- the simulation has projected it.
+    lat DOUBLE PRECISION,
+    lon DOUBLE PRECISION
 );
+
+-- Existing deployments predate lat/lon; add them in place. Mirrors
+-- ALTER_NODES_GEO_SQL in simulation/sandbox/db.py, which applies the same
+-- migration on connect so either side can bring a database up to date.
+ALTER TABLE nodes ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+ALTER TABLE nodes ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION;
 
 CREATE INDEX IF NOT EXISTS idx_nodes_site_status ON nodes (site_id, status);
 

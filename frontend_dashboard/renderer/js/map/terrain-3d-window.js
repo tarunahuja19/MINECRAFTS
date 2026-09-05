@@ -6,6 +6,28 @@
  * persistent sensor markers, 3D tilt presets, and a Google Earth 3D redirect icon button.
  */
 var terrain3DWindow = (function () {
+
+  // Single source for "all node records, whatever mode we are in". nodeMarkers
+  // holds the live set (with x/y and lat/lon) once nodes-loaded has fired.
+  function liveNodeRecords() {
+    var out = [];
+    if (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData &&
+        typeof panelGrid !== 'undefined' && panelGrid.getAllSectors) {
+      var sectors = panelGrid.getAllSectors() || {};
+      var seen = {};
+      Object.keys(sectors).forEach(function (sid) {
+        (sectors[sid].nodes || []).forEach(function (nid) {
+          if (seen[nid]) return;
+          var nd = nodeMarkers.getNodeData(nid);
+          if (nd) { seen[nid] = 1; out.push(nd); }
+        });
+      });
+    }
+    if (out.length) return out;
+    var f = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getNodes)
+      ? fixtureProvider.getNodes() : null;
+    return Array.isArray(f) ? f : [];
+  }
   var windowEl = null;
   var currentSector = null;
   var isMinimized = false;
@@ -248,8 +270,11 @@ var terrain3DWindow = (function () {
       return;
     }
 
-    var allNodes = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getNodes)
-      ? fixtureProvider.getNodes() : [];
+    // In LIVE mode fixtureProvider is loaded but never populated, so getNodes()
+    // returns null and the guard above (function exists) is not enough - the
+    // .length below then throws. Prefer the live node records the markers are
+    // already holding, and fall back to the fixtures only if those are absent.
+    var allNodes = liveNodeRecords();
     var nodeMap = {};
     for (var i = 0; i < allNodes.length; i++) nodeMap[allNodes[i].node_id] = allNodes[i];
 
