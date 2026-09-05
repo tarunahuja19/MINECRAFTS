@@ -36,8 +36,15 @@ var realTerrain3D = (function () {
   var isTerrainActive = true;
   var areSensorsActive = true;
 
-  var DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
-  var SATELLITE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  // Tiles come from the dashboard's own proxy (see serve.js) rather than
+  // straight from ESRI/AWS. Two reasons: the proxy caches every tile to disk,
+  // so imagery is downloaded once instead of on every launch and the window
+  // keeps working with no network at all; and it makes tile requests
+  // same-origin, which removes the remote-host fetch as a failure mode for
+  // this page (Electron serves it from file://).
+  var TILE_BASE = 'http://127.0.0.1:8085/tiles';
+  var DEM_URL = TILE_BASE + '/dem/{z}/{x}/{y}.png';
+  var SATELLITE_URL = TILE_BASE + '/satellite/{z}/{x}/{y}.png';
 
   function init(containerId, sectorData) {
     var container = document.getElementById(containerId);
@@ -118,22 +125,40 @@ var realTerrain3D = (function () {
       showCompass: true
     }), 'top-right');
 
-    map.on('load', function () {
+    // Guarded so the setup body runs exactly once even though 'load' and
+    // 'styledata' can both reach it (a sector reload re-fires styledata).
+    var setupDone = false;
+
+    function runSetup() {
+      if (setupDone || !map) return;
+      if (!map.isStyleLoaded()) return;
+      setupDone = true;
+
       map.resize();
-      // Enable 3D Terrain elevation displacement
-      try {
-        map.setTerrain({
-          source: 'terrain-dem',
-          exaggeration: currentExaggeration
-        });
-      } catch (e) {
-        console.warn('[REAL_TERRAIN_3D] Error setting terrain:', e);
-      }
+
+      // Attaching terrain needs the DEM source to hold real data, and the DEM
+      // legitimately 404s above its z15 coverage, so this retries on source
+      // data and gives up quietly: a flat satellite view beats a blank window.
+      applyTerrainWhenReady();
 
       if (currentSector) {
         addSectorBadge(currentSector);
         addSectorOverlay(currentSector);
         addSensorMarkers(currentSector);
+      }
+    }
+
+    map.on('load', runSetup);
+    map.on('styledata', runSetup);
+
+    // Tile failures must stay non-fatal - a DEM 404 above z15 is expected - but
+    // they are still reported so a dead proxy or cache miss is visible rather
+    // than silently degrading into a flat, textureless view.
+    map.on('error', function (e) {
+      var msg = (e && e.error && e.error.message) ? e.error.message : String(e);
+      console.warn('[REAL_TERRAIN_3D] map error (non-fatal):', msg);
+      if (typeof bus !== 'undefined' && bus.emit) {
+        bus.emit('tile-error', { source: 'terrain-3d', message: msg });
       }
     });
 
@@ -327,6 +352,38 @@ var realTerrain3D = (function () {
 
       markerInstances.push(marker);
     });
+  }
+
+  // Attaches the 3D terrain once the DEM source has usable data. The DEM
+  // endpoint 404s outside its coverage, so setTerrain is retried on source
+  // data rather than assumed to work on the first call, and gives up quietly.
+  function applyTerrainWhenReady() {
+    if (!map || !isTerrainActive) return;
+
+    var attempts = 0;
+
+    function tryAttach() {
+      if (!map || !isTerrainActive) return true;
+      try {
+        if (map.getTerrain && map.getTerrain()) return true;
+        if (!map.getSource('terrain-dem')) return false;
+        map.setTerrain({ source: 'terrain-dem', exaggeration: currentExaggeration });
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    if (tryAttach()) return;
+
+    function onData(ev) {
+      if (ev && ev.sourceId && ev.sourceId !== 'terrain-dem') return;
+      attempts++;
+      if (tryAttach() || attempts > 40) {
+        map.off('sourcedata', onData);
+      }
+    }
+    map.on('sourcedata', onData);
   }
 
   function setExaggeration(val) {

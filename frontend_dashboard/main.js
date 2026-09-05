@@ -9,6 +9,38 @@ let mainWindow = null;
 let mqttClient = null;
 let offlineCache = null;
 let cacheFlushTimer = null;
+let tileServer = null;
+
+// Map tiles are served by the local proxy in serve.js, which caches them to
+// disk so imagery is downloaded once rather than on every launch, and keeps the
+// map and 3D terrain window working with no network once warm.
+//
+// scripts/start_all.sh already starts that server, but Electron must not depend
+// on being launched that way: if nothing is listening on 8085 we start the
+// server in-process, so `electron .` on its own still renders terrain.
+function ensureTileServer() {
+  const net = require('net');
+  return new Promise((resolve) => {
+    const probe = net
+      .connect(8085, '127.0.0.1')
+      .on('connect', () => {
+        probe.end();
+        console.log('[main] Tile server already running on 8085');
+        resolve();
+      })
+      .on('error', () => {
+        try {
+          tileServer = require('./serve.js');
+          console.log('[main] Started tile server on 8085');
+        } catch (e) {
+          // Non-fatal: the map falls back to whatever is already cached, and
+          // the renderer surfaces tile failures rather than dying.
+          console.warn('[main] Could not start tile server:', e.message);
+        }
+        resolve();
+      });
+  });
+}
 
 const BROKER_URL = process.env.R4_BROKER_URL || 'mqtt://localhost:1883';
 const CACHE_FLUSH_INTERVAL_MS = 10000;
@@ -174,7 +206,7 @@ ipcMain.handle('window:open-3d', async (_event, sectorData) => {
   return { success: true };
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(ensureTileServer).then(createWindow);
 
 app.on('window-all-closed', () => {
   app.quit();

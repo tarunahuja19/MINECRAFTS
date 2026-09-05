@@ -61,7 +61,7 @@ var mapView = (function () {
     try {
       // 1. Satellite Basemap (ESRI World Imagery + Reference Overlay)
       var satTiles = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        'http://127.0.0.1:8085/tiles/satellite/{z}/{x}/{y}.png',
         {
           minZoom: 12,
           maxZoom: 19,
@@ -70,7 +70,7 @@ var mapView = (function () {
         }
       );
       var satLabels = L.tileLayer(
-        'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        'http://127.0.0.1:8085/tiles/labels/{z}/{x}/{y}.png',
         {
           minZoom: 12,
           maxZoom: 19,
@@ -86,7 +86,7 @@ var mapView = (function () {
       // view here: contours show the surface relief the subsidence model acts
       // on, which the aerial imagery flattens out.
       var topoTiles = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+        'http://127.0.0.1:8085/tiles/topo/{z}/{x}/{y}.png',
         {
           minZoom: 12,
           maxZoom: 19,

@@ -22,6 +22,7 @@ cleanup() {
     echo "[LAUNCHER] Shutting down services..."
     kill "$BACKEND_PID" 2>/dev/null || true
     kill "$FRONTEND_PID" 2>/dev/null || true
+    kill "$ELECTRON_PID" 2>/dev/null || true
     echo "[LAUNCHER] All services stopped."
     exit 0
 }
@@ -33,7 +34,7 @@ kill -9 $(lsof -t -i:8085) 2>/dev/null || true
 sleep 1
 
 # 2. Start Backend API & WebSocket Server
-echo "[1/3] Starting Backend API Server (Port 8080)..."
+echo "[1/4] Starting Backend API Server (Port 8080)..."
 (cd backend && node server.js) &
 BACKEND_PID=$!
 sleep 2
@@ -46,15 +47,30 @@ else
 fi
 
 # 3. Start Frontend Dashboard Web Server
-echo "[2/3] Starting Frontend Dashboard Server (Port 8085)..."
+echo "[2/4] Starting Frontend Dashboard Server (Port 8085)..."
 (cd frontend_dashboard && node serve.js) &
 FRONTEND_PID=$!
 sleep 1
 
 echo "      Dashboard Web UI available at: http://127.0.0.1:8085/"
 
+# 3a. Report map tile cache state. Tiles are served and cached by serve.js, so
+#     a warm cache means the map and the 3D terrain window work with no network.
+TILE_COUNT=$(find frontend_dashboard/tiles -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+if [ "$TILE_COUNT" -gt 0 ]; then
+    echo "      Map tiles: $TILE_COUNT cached (offline-capable)"
+else
+    echo "      [WARNING] Map tile cache is empty - run 'npm run tiles:prefetch' while online"
+fi
+
+# 3b. Launch the Electron desktop dashboard. This is the actual operator UI;
+#     without it the launcher only ever started the headless services.
+echo "[3/4] Launching Electron Dashboard..."
+(cd frontend_dashboard && npx electron . >/dev/null 2>&1) &
+ELECTRON_PID=$!
+
 # 4. Start Physics Simulation Runner
-echo "[3/3] Starting Physics Simulation Engine (Connecting to PostgreSQL)..."
+echo "[4/4] Starting Physics Simulation Engine (Connecting to PostgreSQL)..."
 echo "      Press Ctrl+C at any time to stop all services."
 echo "-----------------------------------------------------------------"
 
