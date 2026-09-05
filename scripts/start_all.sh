@@ -112,9 +112,9 @@ ok "backend dependencies present"
 ok "MQTT broker (aedes) present"
 
 if [ "$RUN_UI" = 1 ]; then
-  [ -x frontend_dashboard/node_modules/.bin/electron ] \
+  [ -x dashboard_electron/node_modules/.bin/electron ] \
     && ok "electron present" \
-    || { warn "electron missing - run 'npm --prefix frontend_dashboard install'; continuing headless"; RUN_UI=0; }
+    || { warn "electron missing - run 'npm --prefix dashboard_electron install'; continuing headless"; RUN_UI=0; }
 fi
 
 if [ "$RUN_SIM" = 1 ]; then
@@ -126,7 +126,7 @@ if [ "$RUN_SIM" = 1 ]; then
   ok "sandbox frontend dependencies present"
 fi
 
-TILE_COUNT=$(find frontend_dashboard/tiles -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+TILE_COUNT=$(find dashboard_electron/tiles -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
 [ "${TILE_COUNT:-0}" -gt 0 ] \
   && ok "map tiles: $TILE_COUNT cached (offline-capable)" \
   || warn "tile cache empty - run 'npm run tiles:prefetch' while online"
@@ -175,7 +175,7 @@ curl -sf http://localhost:8080/api/health >/dev/null 2>&1 \
 
 # ----------------------------------------------------------------- frontend --
 say "[3] Dashboard web server (port 8085)"
-(cd frontend_dashboard && node serve.js) &
+(cd dashboard_electron && node serve.js) &
 FRONTEND_PID=$!
 
 for i in $(seq 1 20); do
@@ -221,7 +221,7 @@ if [ "$RUN_UI" = 1 ]; then
   # ELECTRON_RUN_AS_NODE leaks from some editors/terminals; unset it or Electron
   # boots as plain Node and main.js dies on undefined `app`/`ipcMain`.
   ELECTRON_LOG="$ROOT_DIR/.electron.log"
-  (cd frontend_dashboard && env -u ELECTRON_RUN_AS_NODE \
+  (cd dashboard_electron && env -u ELECTRON_RUN_AS_NODE \
       ./node_modules/.bin/electron . >"$ELECTRON_LOG" 2>&1) &
   ELECTRON_PID=$!
 

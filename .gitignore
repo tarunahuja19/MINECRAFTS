@@ -19,16 +19,17 @@ out/
 scratch/
 .pytest_cache/
 
-# ---- Large generated ML dataset (regenerable; ~3 GB) ----
-archive_legacy/similation-data-making/dataset/
-archive_legacy/similation-data-making/.venv-train/
+# ---- Large generated ML dataset (regenerable; ~2 GB) ----
+ml_dataset_generator/dataset/
+ml_dataset_generator/training/
+ml_dataset_generator/.venv-train/
 
 # ---- OS noise ----
 .DS_Store
 
-# ---- Embedded legacy git repos (kept on disk, not vendored) ----
-archive_legacy/sih-usersite/
-archive_legacy/similation-data-making/
+# ---- Nested repo: ml_dataset_generator/ keeps its own git history ----
+# Tracked independently at github.com/agarwaladarshcoding-maker/similation-data-making
+ml_dataset_generator/
 
 # Electron runtime log written by scripts/start_all.sh
 .electron.log

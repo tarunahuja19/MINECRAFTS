@@ -8,9 +8,9 @@ const { query } = require('../db/db');
 
 // The dashboard's offline fixture. Previously this pointed at an `r4-dashboard`
 // directory that does not exist in this repo, so the route silently returned []
-// on every request. The dashboard lives in `frontend_dashboard`.
+// on every request. The dashboard lives in `dashboard_electron`.
 const ALARMS_FIXTURE = path.join(
-  __dirname, '..', '..', 'frontend_dashboard', 'fixtures', 'alarms.json'
+  __dirname, '..', '..', 'dashboard_electron', 'fixtures', 'alarms.json'
 );
 
 let broadcastFn = null;

@@ -9,7 +9,7 @@
 //
 // Who talks to it:
 //   publisher   simulation/sandbox/mqtt_bridge.py  (per-tick telemetry + alarms)
-//   subscriber  frontend_dashboard/main/mqtt-client.js  (the Electron dashboard)
+//   subscriber  dashboard_electron/main/mqtt-client.js  (the Electron dashboard)
 //
 // Topics (the real ones mqtt-client.js already subscribes to):
 //   mine/<panel>/node/<node>/telemetry

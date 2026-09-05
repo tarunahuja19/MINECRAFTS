@@ -76,7 +76,7 @@ The user's core requests (derived directly from the user prompt):
 
 3. **Consolidate Under "One Hood" & Remove Dead Code:**
    > *"and also the thing is want to put this thing together under one hood like different folders but improve the name of the folders and make sure you refine the code to remove the dead codes and also fix the ui part"*
-   * Reorganize the messy, misspelled folders (`filess/`, `similation-data-making/`, `sih-usersite/`, etc.) into clean, intuitive root directories (`backend/`, `simulation/`, `frontend_dashboard/`, `docs/`, `scripts/`).
+   * Reorganize the messy, misspelled folders (`filess/`, `similation-data-making/`, `sih-usersite/`, etc.) into clean, intuitive root directories (`backend/`, `simulation/`, `dashboard_electron/`, `docs/`, `scripts/`).
    * Quarantine legacy/dead code into `archive_legacy/` so active development is uncluttered.
 
 4. **Strict Phased Plan with User Checkpoints (Zero Blind Coding):**
@@ -110,6 +110,6 @@ When working on this codebase, adhere to the following invariants:
    * Gateway (1): `N31` (Tier 3).
 3. **Ports & Service Architecture:**
    * Backend REST & WebSocket API: Port `8080` (`backend/server.js`).
-   * Operator Dashboard Web Server: Port `8085` (`frontend_dashboard/serve.js`).
+   * Operator Dashboard Web Server: Port `8085` (`dashboard_electron/serve.js`).
    * Python Simulation Engine: `simulation/.venv/bin/python simulation/sandbox/runner.py`.
    * One-click Launcher: `bash scripts/start_all.sh` (or `npm start`).

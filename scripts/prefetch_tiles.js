@@ -4,7 +4,7 @@
 /**
  * Warms the on-disk map tile cache for the Adriyala site.
  *
- * The dashboard's tile proxy (frontend_dashboard/serve.js) caches whatever it
+ * The dashboard's tile proxy (dashboard_electron/serve.js) caches whatever it
  * fetches, so the cache fills in naturally as you pan the map. This script just
  * front-loads that work: run it once with a network connection and the 2D map
  * and the 3D terrain window both render fully offline afterwards, which is what

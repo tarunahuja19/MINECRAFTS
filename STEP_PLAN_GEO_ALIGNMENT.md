@@ -121,7 +121,7 @@ Expect 31 entries each carrying lat and lon.
 
 ## Step 4 - Move the dashboard map to Adriyala
 
-`frontend_dashboard/renderer/js/map/map-view.js`:
+`dashboard_electron/renderer/js/map/map-view.js`:
 
     MINE_CENTER  23.7440, 86.4195   ->   18.6435, 79.5725
     MINE_BOUNDS  Jharia box         ->   18.6408..18.6462 / 79.5697..79.5753
@@ -136,7 +136,7 @@ at the real Adriyala site in Telangana instead of Jharkhand.
 
 ## Step 5 - Put the 31 real nodes on the map
 
-`frontend_dashboard/renderer/js/map/node-markers.js` currently expects the old
+`dashboard_electron/renderer/js/map/node-markers.js` currently expects the old
 60-node mock shape. Point it at `GET /api/nodes` and render one marker per
 returned node at its lat/lon, styled by role:
 
@@ -153,7 +153,7 @@ the gateway is clearly outside the others.
 
 ## Step 6 - Redraw the sector grid over the real panel
 
-`frontend_dashboard/renderer/js/map/panel-grid.js` has a hardcoded Jharia box
+`dashboard_electron/renderer/js/map/panel-grid.js` has a hardcoded Jharia box
 (line 22) and an 8x8 grid. Two changes:
 
 1. Replace the bounds with the Adriyala window computed from `geo`, so the
