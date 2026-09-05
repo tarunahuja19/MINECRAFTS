@@ -36,6 +36,7 @@ archive_legacy/similation-data-making/
 # Runtime logs written by the launcher
 .stack.log
 .pyvista.log
+.broker.log
 
 # Session transcript dump, not project source
 checkout.md

@@ -5,6 +5,8 @@
   "scripts": {
     "start": "bash scripts/start_all.sh",
     "start:all": "bash scripts/start_all.sh",
+    "broker": "node scripts/broker.js",
+    "mqtt:tap": "node scripts/mqtt_tap.js",
     "backend": "cd backend && node server.js",
     "frontend": "cd frontend_dashboard && node serve.js",
     "tiles:prefetch": "node scripts/prefetch_tiles.js",
@@ -21,5 +23,9 @@
     "early-warning"
   ],
   "author": "SIH Team",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "aedes": "^1.1.2",
+    "mqtt": "^5.15.2"
+  }
 }
