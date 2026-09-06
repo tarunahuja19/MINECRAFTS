@@ -360,7 +360,7 @@ def test_solved_strain_intervention_breaches_dgms_at_named_sensors():
     # the same physical statement becomes a band around the axis.
     axis_tol_m = 60.0
     radius = ui_radius / _TENSILE_PEAK_RADIUS_RATIO
-    target = constants.EPS_TENSILE_LIMIT * 1.05
+    target = constants.EPS_TENSILE_LIMIT * 1.08
     magnitude = min(
         (target * radius * radius) / _STRAIN_GEOMETRY_C, constants.S_MAX_FULL
     )

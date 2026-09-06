@@ -47,12 +47,14 @@ export const TargetBeacon: React.FC<TargetBeaconProps> = ({
     return sampleTerrainSurfaceY(tx, ty, exaggeration, perturbations);
   }, [tx, ty, exaggeration, perturbations]);
 
-  // Conformal 3D terrain-following geometry for the outline ring and reticle
-  const { lineGeo, innerRingGeo, innerLineGeo } = useMemo(() => {
+  // Conformal 3D terrain-following geometry for the outline ring, 1.2x alert ring, and reticle
+  const { lineGeo, alertLineGeo, innerRingGeo, innerLineGeo } = useMemo(() => {
     const segments = 128;
     const linePos: number[] = [];
+    const alertPos: number[] = [];
 
     const outerR = radiusM;
+    const alertR = radiusM * 1.2;
 
     // Vertical float offset to ensure vertices strictly stay above terrain triangles
     const SURFACE_OFFSET = 0.75;
@@ -62,17 +64,24 @@ export const TargetBeacon: React.FC<TargetBeaconProps> = ({
       const cosT = Math.cos(theta);
       const sinT = Math.sin(theta);
 
-      // Outer perimeter vertex in world coordinates
+      // Physical collapse perimeter
       const ox = tx + outerR * cosT;
       const oz = ty + outerR * sinT;
       const oy = sampleTerrainSurfaceY(ox, oz, exaggeration, perturbations) + SURFACE_OFFSET;
-
-      // Line perimeter follows the outer edge, raised slightly
       linePos.push(ox - tx, oy + 0.12, oz - ty);
+
+      // 1.2x Red alert boundary perimeter
+      const ax = tx + alertR * cosT;
+      const az = ty + alertR * sinT;
+      const ay = sampleTerrainSurfaceY(ax, az, exaggeration, perturbations) + SURFACE_OFFSET;
+      alertPos.push(ax - tx, ay + 0.15, az - ty);
     }
 
     const lGeo = new THREE.BufferGeometry();
     lGeo.setAttribute("position", new THREE.Float32BufferAttribute(linePos, 3));
+
+    const aGeo = new THREE.BufferGeometry();
+    aGeo.setAttribute("position", new THREE.Float32BufferAttribute(alertPos, 3));
 
     // Conformal inner targeting reticle (radius 7.5m - 10.0m)
     const inSegments = 64;
@@ -120,6 +129,7 @@ export const TargetBeacon: React.FC<TargetBeaconProps> = ({
 
     return {
       lineGeo: lGeo,
+      alertLineGeo: aGeo,
       innerRingGeo: inGeo,
       innerLineGeo: inLine,
     };
@@ -145,11 +155,24 @@ export const TargetBeacon: React.FC<TargetBeaconProps> = ({
         />
       </mesh>
 
-      {/* 3. Outer Perimeter Outline (neutral, terrain-conforming, occluded by hills) */}
+      {/* 3. Outer Physical Perimeter Outline (radius R) */}
       <lineLoop geometry={lineGeo}>
         <lineBasicMaterial
           color="#8fa3ad"
           linewidth={2}
+          depthTest={true}
+          depthWrite={false}
+          polygonOffset={true}
+          polygonOffsetFactor={-8}
+          polygonOffsetUnits={-8}
+        />
+      </lineLoop>
+
+      {/* 3b. 1.2x Red Alert Boundary Outline (radius 1.2 * R) */}
+      <lineLoop geometry={alertLineGeo}>
+        <lineBasicMaterial
+          color="#ff3333"
+          linewidth={3}
           depthTest={true}
           depthWrite={false}
           polygonOffset={true}

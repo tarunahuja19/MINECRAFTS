@@ -246,18 +246,16 @@ class MqttBridge:
         zones: list[Any],
         iso_ts: str,
         sensor_nodes: list[Any] | None = None,
+        active_collapses: list[Any] | None = None,
     ) -> list[dict[str, Any]]:
-        """Publish an alarm per zone that has *entered* an alarming state.
+        """Publish an alarm for each zone that changed state on this tick.
 
-        Deduplicated on the zone's last published state, so a zone sitting in
-        CRITICAL raises one alarm rather than one per tick.
-
-        Returns the alarms it raised. The caller forwards them to the backend so
-        they get a row in `alarms` and reach the dashboard's history panel. The
-        broker being down must not suppress that: alarm construction and dedup
-        happen unconditionally, and only the `_publish` call is skipped when
-        MQTT is unavailable. `_publish` is already a no-op when disabled.
+        Only active collapse events trigger zone alarms. Without an active collapse,
+        continuous Knothe extraction represents normal baseline settling (0 alarms).
         """
+        if not active_collapses:
+            return []
+
         raised = []
         for z in zones:
             zone_id = getattr(z, "zone_id", None)
@@ -273,8 +271,21 @@ class MqttBridge:
             if level is None:
                 continue  # STABLE / SETTLING are normal operation.
 
-            lat, lon = geo.xy_to_latlon(float(getattr(z, "cx", 0.0)),
-                                        float(getattr(z, "cy", 0.0)))
+            # Check if this zone is within 1.2x alert radius of any active collapse
+            z_cx = float(getattr(z, "cx", 0.0))
+            z_cy = float(getattr(z, "cy", 0.0))
+            in_alert = False
+            for pf in active_collapses:
+                alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.2
+                p_cx = float(getattr(pf, "cx", 0.0))
+                p_cy = float(getattr(pf, "cy", 0.0))
+                if math.hypot(z_cx - p_cx, z_cy - p_cy) <= alert_r + 50.0:
+                    in_alert = True
+                    break
+            if not in_alert:
+                continue
+
+            lat, lon = geo.xy_to_latlon(z_cx, z_cy)
 
             affected_nodes: list[str] = []
             if sensor_nodes:
@@ -318,12 +329,16 @@ class MqttBridge:
         readings: list[Any],
         iso_ts: str,
         sensor_nodes: list[Any] | None = None,
+        active_collapses: list[Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Publish an alarm for any node in an elevated strain, tilt, or failure state.
 
-        Deduplicated on the node's last published state (e.g. NORMAL -> TENSION -> CRITICAL).
-        Returns the list of newly raised or escalated alarms.
+        Only active collapse events trigger alarms. Nodes within 1.2x of the collapse
+        radius are evaluated. Normal continuous subsidence produces zero alarms.
         """
+        if not active_collapses:
+            return []
+
         node_pos_map: dict[str, tuple[float, float]] = {}
         if sensor_nodes:
             for n in sensor_nodes:
@@ -333,10 +348,22 @@ class MqttBridge:
                 if nx is not None and ny is not None:
                     node_pos_map[nid] = (float(nx), float(ny))
 
+        alert_nodes = set()
+        for pf in active_collapses:
+            alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.2
+            cx = float(getattr(pf, "cx", 0.0))
+            cy = float(getattr(pf, "cy", 0.0))
+            for nid, (nx, ny) in node_pos_map.items():
+                if math.hypot(nx - cx, ny - cy) <= alert_r:
+                    alert_nodes.add(nid)
+
         raised = []
         for r in readings:
             raw_id = getattr(r, "node_id", "")
             node_id_str = _node_topic_id(raw_id)
+
+            if node_id_str not in alert_nodes:
+                continue
 
             alive = getattr(r, "alive", 1)
             crack_flags = getattr(r, "crack_flags", 0) or 0
@@ -352,10 +379,10 @@ class MqttBridge:
             if alive == 0:
                 level = 3
                 state = "FAILED"
-            elif (crack_flags & 1) or (strain_ue is not None and strain_ue >= 600) or tilt_mag >= 3500:
+            elif (crack_flags & 1) or (strain_ue is not None and strain_ue >= 5300) or tilt_mag >= 3500:
                 level = 3
                 state = "CRITICAL"
-            elif (strain_ue is not None and strain_ue >= 400) or tilt_mag >= 1750:
+            elif (strain_ue is not None and strain_ue >= 4000) or tilt_mag >= 1750:
                 level = 2
                 state = "TENSION"
 

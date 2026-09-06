@@ -4,6 +4,7 @@ var nodeMarkers = (function () {
   var markers = {};
   var nodeData = {};
   var heartbeatTimers = {};
+  var activeAlarmsByNode = {};
   var HEARTBEAT_TIMEOUT_MS = 30000;
   var simState = 'STOPPED';
 
@@ -348,6 +349,7 @@ var nodeMarkers = (function () {
 
     bus.on('system-reset', function () {
       simState = 'STOPPED';
+      activeAlarmsByNode = {};
       var ids = Object.keys(nodeData);
       for (var k = 0; k < ids.length; k++) {
         nodeData[ids[k]].lastTelemetry = null;
@@ -432,6 +434,11 @@ var nodeMarkers = (function () {
     updateNodeCount();
 
     if (state === 'critical' || state === 'warning' || state === 'lastgasp') {
+      if (activeAlarmsByNode[nodeId] === state) {
+        return;
+      }
+      activeAlarmsByNode[nodeId] = state;
+
       var isCrit = (state === 'critical' || state === 'lastgasp');
       var nd = nodeData[nodeId];
       var t = nd ? nd.lastTelemetry : null;
@@ -466,6 +473,8 @@ var nodeMarkers = (function () {
           body: JSON.stringify(nodeAlarm)
         }).catch(function () {});
       }
+    } else {
+      delete activeAlarmsByNode[nodeId];
     }
   }
 

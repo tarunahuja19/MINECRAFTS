@@ -45,14 +45,6 @@ var fixtureProvider = (function () {
       bus.emit('nodes-loaded', nodes);
       bus.emit('alarms-loaded', alarms);
 
-      // On initial startup, show active alarm situation (Level 3 subsidence)
-      if (alarms && alarms.length > 0) {
-        var activeAlarm = alarms.find(function (a) { return a.level === 3; }) || alarms[0];
-        if (activeAlarm) {
-          bus.emit('alarm', activeAlarm);
-        }
-      }
-
       return { nodes: nodes, telemetry: telemetry, alarms: alarms, source: 'postgresql' };
     }).catch(function (err) {
       console.warn('[data-provider] Live backend unavailable (' + err.message + '). Falling back to static fixtures.');
@@ -67,13 +59,6 @@ var fixtureProvider = (function () {
 
         bus.emit('nodes-loaded', nodes);
         bus.emit('alarms-loaded', alarms);
-
-        if (alarms && alarms.length > 0) {
-          var activeAlarm = alarms.find(function (a) { return a.level === 3; }) || alarms[0];
-          if (activeAlarm) {
-            bus.emit('alarm', activeAlarm);
-          }
-        }
 
         return { nodes: nodes, telemetry: telemetry, alarms: alarms, source: 'fixtures' };
       });
@@ -164,6 +149,15 @@ var fixtureProvider = (function () {
       clearInterval(liveSimTimer);
       liveSimTimer = null;
     }
+  }
+
+  if (typeof bus !== 'undefined' && bus.on) {
+    bus.on('system-reset', function () {
+      stopReplay();
+      replayIndex = 0;
+      alarms = [];
+      lastKnownNodeTelemetry = {};
+    });
   }
 
   function getNodes() { return nodes; }

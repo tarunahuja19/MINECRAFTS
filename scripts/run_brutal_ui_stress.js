@@ -94,6 +94,7 @@ app.whenReady().then(async () => {
 
         // First, ensure simulation is running so telemetry is processed
         bus.emit('simulation-status', { is_running: true, state: 'RUNNING' });
+        await new Promise(r => setTimeout(r, 100));
 
         const TOTAL_TELEMETRY = 5000;
         for (let i = 0; i < TOTAL_TELEMETRY; i++) {
@@ -205,7 +206,7 @@ app.whenReady().then(async () => {
         // ------------------------------------------------------------------
         console.log('[Stress 5] In-Flight Database Reset Button Chaos...');
         for (let k = 0; k < 200; k++) {
-          bus.emit('telemetry', { _node_id: nodeIds[k % 31], strain_ustrain: 600 });
+          bus.emit('telemetry', { _node_id: nodeIds[k % nodeIds.length], strain_ustrain: 600 });
         }
 
         const resetBtn = document.getElementById('btn-db-reset');

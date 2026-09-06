@@ -18,6 +18,7 @@ Wire Protocol (§3.2):
 
 import asyncio
 from contextlib import asynccontextmanager
+import json
 import sys
 from typing import Any
 

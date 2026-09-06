@@ -4,17 +4,62 @@ var pastAlarms = (function () {
   var container = null;
   var alarms = [];
 
+  function dedupeAlarms(list) {
+    var result = [];
+    var seenIds = {};
+    var seenNodes = {};
+    for (var i = 0; i < list.length; i++) {
+      var a = list[i];
+      if (!a) continue;
+      var aid = a.alarm_id;
+      var pNode = (a.affected_nodes && a.affected_nodes.length === 1) ? a.affected_nodes[0] : null;
+      if (aid && seenIds[aid]) continue;
+      if (pNode && seenNodes[pNode]) continue;
+      if (aid) seenIds[aid] = true;
+      if (pNode) seenNodes[pNode] = true;
+      result.push(a);
+    }
+    return result;
+  }
+
   function init(containerId) {
     container = document.getElementById(containerId);
     if (!container) return;
 
     bus.on('alarms-loaded', function (data) {
-      alarms = data || [];
+      alarms = dedupeAlarms(data || []);
+      render();
+    });
+
+    bus.on('system-reset', function () {
+      alarms = [];
+      render();
+    });
+
+    bus.on('alarm', function (alarm) {
+      if (!alarm || (!alarm.alarm_id && (!alarm.affected_nodes || !alarm.affected_nodes.length))) return;
+      var primaryNode = (alarm.affected_nodes && alarm.affected_nodes.length === 1) ? alarm.affected_nodes[0] : null;
+      var foundIndex = -1;
+      for (var i = 0; i < alarms.length; i++) {
+        if (alarm.alarm_id && alarms[i].alarm_id === alarm.alarm_id) {
+          foundIndex = i;
+          break;
+        }
+        if (primaryNode && alarms[i].affected_nodes && alarms[i].affected_nodes.length === 1 && alarms[i].affected_nodes[0] === primaryNode) {
+          foundIndex = i;
+          break;
+        }
+      }
+      if (foundIndex !== -1) {
+        alarms[foundIndex] = Object.assign({}, alarms[foundIndex], alarm);
+      } else {
+        alarms.unshift(alarm);
+      }
       render();
     });
 
     bus.on('fixture-started', function () {
-      alarms = fixtureProvider.getAlarms() || [];
+      alarms = dedupeAlarms(fixtureProvider.getAlarms() || []);
       render();
     });
 
@@ -24,20 +69,28 @@ var pastAlarms = (function () {
   function loadAlarms() {
     var mode = (typeof modeSwitch !== 'undefined') ? modeSwitch.getMode() : 'fixture';
     if (mode === 'fixture') {
-      alarms = fixtureProvider.getAlarms() || [];
+      alarms = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) ? (fixtureProvider.getAlarms() || []) : [];
       render();
     } else {
       if (window.r4 && window.r4.getHistory) {
         window.r4.getHistory({ type: 'alarms' }).then(function (data) {
-          alarms = data || [];
+          alarms = Array.isArray(data) ? data : [];
           render();
         }).catch(function () {
-          alarms = fixtureProvider.getAlarms() || [];
+          alarms = [];
           render();
         });
       } else {
-        alarms = fixtureProvider.getAlarms() || [];
-        render();
+        fetch('http://localhost:8080/api/alarms')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            alarms = Array.isArray(data) ? data : [];
+            render();
+          })
+          .catch(function () {
+            alarms = [];
+            render();
+          });
       }
     }
   }
@@ -102,5 +155,5 @@ var pastAlarms = (function () {
     });
   }
 
-  return { init: init };
+  return { init: init, load: loadAlarms };
 })();

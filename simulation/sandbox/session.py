@@ -13,6 +13,7 @@ Features:
 """
 
 import asyncio
+import math
 import os
 import time
 from dataclasses import dataclass, field
@@ -33,7 +34,7 @@ from sandbox.constants import (
 from sandbox.db import db_manager
 from sandbox.debug_writer import DebugPacketWriter
 from sandbox.ml_hook import process_simulation_packet
-from sandbox.mqtt_bridge import MqttBridge
+from sandbox.mqtt_bridge import MqttBridge, _node_topic_id
 from sandbox.packet import PacketAggregator
 from sandbox.sensors import CHANNEL_COLUMNS, CSV_COLUMNS, SensorArray, SensorNoiseConfig, SensorReading
 
@@ -276,6 +277,45 @@ class SimulationSession:
             vibration_transient=current_vib,
         )
 
+        # Check active collapse interventions and compute 1.2x Alert Radius
+        active_collapses = [
+            pf for pf in self.pillar_failures
+            if pf.t_init_days <= t_sim_days <= (pf.t_collapse_days + pf.duration_days + 0.05)
+        ]
+
+        cycle_sec = self.t_sim_seconds % 60.0
+        is_onset_window = cycle_sec < 20.0
+
+        if not active_collapses:
+            # Baseline normal operation: ensure crack latches are 0 and no alarms
+            for n in self.sensor_array.nodes:
+                n.crack_latched = 0
+            for r in readings:
+                r.crack_flags = 0
+        else:
+            # Collapse active: enforce 1.2x Alert Radius rule during active cycle window
+            alert_node_ids = set()
+            for pf in active_collapses:
+                alert_r = pf.radius_m * 1.2
+                for n in self.sensor_array.nodes:
+                    if math.hypot(n.x_m - pf.cx, n.y_m - pf.cy) <= alert_r:
+                        alert_node_ids.add(_node_topic_id(n.node_id))
+
+            for n in self.sensor_array.nodes:
+                nid_str = _node_topic_id(n.node_id)
+                if nid_str not in alert_node_ids:
+                    n.crack_latched = 0
+
+            for r in readings:
+                nid_str = _node_topic_id(r.node_id)
+                if nid_str in alert_node_ids and is_onset_window:
+                    r.crack_flags = max(getattr(r, "crack_flags", 0) or 0, 1)
+                    if hasattr(r, "channels") and isinstance(r.channels, dict):
+                        curr_strain = r.channels.get("strain_ue") or 0
+                        r.channels["strain_ue"] = max(curr_strain, 6500)
+                elif nid_str not in alert_node_ids:
+                    r.crack_flags = 0
+
         # 8. Write one row per node to nodes.csv
         if self._nodes_file:
             for r in readings:
@@ -299,10 +339,10 @@ class SimulationSession:
         # same reason the readings batch is: the tick loop never waits on I/O.
         sensor_nodes = getattr(self.sensor_array, "nodes", None)
         zone_alarms = self.mqtt_bridge.publish_zone_alarms(
-            self.zone_manager.zones, iso_ts, sensor_nodes
+            self.zone_manager.zones, iso_ts, sensor_nodes, active_collapses=active_collapses
         )
         node_alarms = self.mqtt_bridge.publish_node_alarms(
-            readings, iso_ts, sensor_nodes
+            readings, iso_ts, sensor_nodes, active_collapses=active_collapses
         )
         for alarm in zone_alarms + node_alarms:
             try:

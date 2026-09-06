@@ -147,10 +147,14 @@ var liveProvider = (function () {
     } else if (msg.type === 'system_reset') {
       console.log('[live-provider] System reset event received from backend');
       handleSimulationStatus({ is_running: false, is_paused: false, state: 'STOPPED' });
+      Object.keys(knownNodes).forEach(function (k) { delete knownNodes[k]; });
+      Object.keys(heartbeatTimers).forEach(function (id) { clearTimeout(heartbeatTimers[id]); });
+      heartbeatTimers = {};
       bus.emit('system-reset', msg);
       bus.emit('alarms-loaded', []);
-      if (typeof alarmBanner !== 'undefined' && alarmBanner.hide) {
+      if (typeof alarmBanner !== 'undefined') {
         alarmBanner.hide();
+        if (alarmBanner.updateBadge) alarmBanner.updateBadge(0);
       }
     }
   }
@@ -245,12 +249,14 @@ var liveProvider = (function () {
         var tiltX = aggs.max_tilt_x != null ? aggs.max_tilt_x : 0;
         var tiltY = aggs.max_tilt_y != null ? aggs.max_tilt_y : 0;
 
-        // Classify node status according to DGMS thresholds
+        // Classify node status according to DGMS thresholds (never critical at baseline/stopped)
         var status = 'active';
-        if (strain > 400 || Math.abs(tiltX) > 500 || Math.abs(tiltY) > 500) {
-          status = 'critical';
-        } else if (strain > 150 || Math.abs(tiltX) > 200 || Math.abs(tiltY) > 200) {
-          status = 'warning';
+        if (currentSimState !== 'STOPPED') {
+          if (strain > 600 || Math.abs(tiltX) > 500 || Math.abs(tiltY) > 500) {
+            status = 'critical';
+          } else if (strain > 400 || Math.abs(tiltX) > 200 || Math.abs(tiltY) > 200) {
+            status = 'warning';
+          }
         }
 
         var telemetryRow = {

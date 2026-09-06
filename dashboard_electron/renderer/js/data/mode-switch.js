@@ -69,12 +69,7 @@ var modeSwitch = (function () {
         })
         .catch(function (err) {
           console.warn('[mode-switch] Failed to fetch alarms from live backend:', err.message);
-          if (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) {
-            var fallback = fixtureProvider.getAlarms();
-            if (fallback && fallback.length) {
-              bus.emit('alarms-loaded', fallback);
-            }
-          }
+          bus.emit('alarms-loaded', []);
         });
     }
   }

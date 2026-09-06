@@ -23,7 +23,7 @@ function handleHistoryQuery(_event, query) {
   // to the fixture even when the backend was up.
   if (query && query.type === 'alarms') {
     return r2Fetch('/api/alarms').catch(function () {
-      return alarmFixtureFallback();
+      return [];
     });
   }
   return r2Fetch('/api/telemetry?' + buildQueryString(query))

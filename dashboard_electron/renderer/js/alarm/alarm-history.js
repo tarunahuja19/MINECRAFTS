@@ -14,18 +14,58 @@ var alarmHistory = (function () {
       containerIds = [target];
     }
 
+    function dedupeAlarms(list) {
+      var result = [];
+      var seenIds = {};
+      var seenNodes = {};
+      for (var i = 0; i < list.length; i++) {
+        var a = list[i];
+        if (!a) continue;
+        var aid = a.alarm_id;
+        var pNode = (a.affected_nodes && a.affected_nodes.length === 1) ? a.affected_nodes[0] : null;
+        if (aid && seenIds[aid]) continue;
+        if (pNode && seenNodes[pNode]) continue;
+        if (aid) seenIds[aid] = true;
+        if (pNode) seenNodes[pNode] = true;
+        result.push(a);
+      }
+      return result;
+    }
+
     bus.on('alarms-loaded', function (alarms) {
-      allAlarms = alarms.slice().sort(function (a, b) {
+      var sorted = (alarms || []).slice().sort(function (a, b) {
         return new Date(b.t_utc).getTime() - new Date(a.t_utc).getTime();
       });
+      allAlarms = dedupeAlarms(sorted);
+      page = 0;
+      selectedAlarmId = null;
+      if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
+        alarmBanner.updateBadge(allAlarms.length);
+      }
+      render();
+    });
+
+    bus.on('system-reset', function () {
+      allAlarms = [];
+      selectedAlarmId = null;
+      page = 0;
+      if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
+        alarmBanner.updateBadge(0);
+      }
       render();
     });
 
     bus.on('alarm', function (alarm) {
-      if (!alarm || !alarm.alarm_id) return;
+      if (!alarm || (!alarm.alarm_id && (!alarm.affected_nodes || !alarm.affected_nodes.length))) return;
       var foundIndex = -1;
+      var primaryNode = (alarm.affected_nodes && alarm.affected_nodes.length === 1) ? alarm.affected_nodes[0] : null;
+
       for (var i = 0; i < allAlarms.length; i++) {
-        if (allAlarms[i].alarm_id === alarm.alarm_id) {
+        if (alarm.alarm_id && allAlarms[i].alarm_id === alarm.alarm_id) {
+          foundIndex = i;
+          break;
+        }
+        if (primaryNode && allAlarms[i].affected_nodes && allAlarms[i].affected_nodes.length === 1 && allAlarms[i].affected_nodes[0] === primaryNode) {
           foundIndex = i;
           break;
         }

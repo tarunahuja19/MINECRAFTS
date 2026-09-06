@@ -18,6 +18,11 @@ var alarmBanner = (function () {
     bus.on('replay-started', function () {
       hide();
     });
+
+    bus.on('system-reset', function () {
+      hide();
+      updateBadge(0);
+    });
   }
 
   function show(alarm) {

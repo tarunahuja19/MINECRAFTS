@@ -151,6 +151,14 @@ document.getElementById('tab-map').style.display = 'flex';
       btnDbReset.textContent = 'RESETTING...';
       btnDbReset.disabled = true;
 
+      // Halt any local replay or simulation playback immediately
+      if (typeof replayController !== 'undefined' && replayController.stop) {
+        replayController.stop();
+      }
+      if (typeof fixtureProvider !== 'undefined' && fixtureProvider.stopReplay) {
+        fixtureProvider.stopReplay();
+      }
+
       fetch('http://localhost:8080/api/system/reset', { method: 'POST' })
         .then(function (res) { return res.json(); })
         .then(function (data) {
@@ -158,8 +166,13 @@ document.getElementById('tab-map').style.display = 'flex';
           btnDbReset.disabled = false;
           bus.emit('system-reset', data);
           bus.emit('alarms-loaded', []);
-          if (typeof alarmBanner !== 'undefined' && alarmBanner.hide) {
+          bus.emit('simulation-status', { is_running: false, is_paused: false, state: 'STOPPED' });
+          if (typeof alarmBanner !== 'undefined') {
             alarmBanner.hide();
+            if (alarmBanner.updateBadge) alarmBanner.updateBadge(0);
+          }
+          if (typeof alarmDetail !== 'undefined' && alarmDetail.hide) {
+            alarmDetail.hide();
           }
           if (typeof pastAlarms !== 'undefined' && pastAlarms.load) {
             pastAlarms.load();

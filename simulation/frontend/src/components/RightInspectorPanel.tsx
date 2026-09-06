@@ -792,7 +792,12 @@ export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-label)" }}>
                     <span style={{ color: "var(--text-secondary)" }}>RADIUS (R):</span>
-                    <strong style={{ color: "var(--state-info-alt)" }}>{radiusM.toFixed(0)} m</strong>
+                    <span style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <strong style={{ color: "var(--state-info-alt)" }}>{radiusM.toFixed(0)} m</strong>
+                      <span style={{ fontSize: "10px", color: "var(--state-critical)", fontWeight: 700 }}>
+                        [ALERT: {(radiusM * 1.2).toFixed(0)} m]
+                      </span>
+                    </span>
                   </div>
                   {/* Kept in step with the ribbon's copy of this slider
                       (OfficeRibbon.tsx): minimum 15 m, not 40 m, so the sharp

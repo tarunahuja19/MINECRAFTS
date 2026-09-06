@@ -8,7 +8,7 @@
  *   1. REST Database Reset & Clean State Verification (/api/system/reset)
  *   2. Idle Startup & Zero-Packet Gating Verification
  *   3. PostgreSQL High Concurrency & Pool Saturation (250 concurrent queries & inserts)
- *   4. MQTT Telemetry Storm (1,000 burst packets across 31 nodes)
+ *   4. MQTT Telemetry Storm (1,000 burst packets across 61 nodes)
  *   5. Backend API & WebSocket Chaos (25 concurrent clients, ping storm, malformed payloads, abrupt disconnects)
  *   6. Mid-Stream Reset Resiliency & Node State Preservation
  *   7. Geomechanics Monte Carlo Stability (1,000 Knothe subsidence calculation trials)
@@ -101,9 +101,9 @@ async function runFullStressBattery() {
       cwd: path.join(__dirname, '..', 'backend'),
       stdio: 'ignore'
     });
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 30; i++) {
       if (await isBackendUp()) break;
-      await sleep(150);
+      await sleep(100);
     }
   }
 

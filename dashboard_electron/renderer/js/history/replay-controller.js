@@ -25,6 +25,23 @@ var replayController = (function () {
     bus.on('backend-connected', function () {
       setDateRangeFromData();
     });
+    bus.on('system-reset', function () {
+      if (replayTimer) {
+        clearInterval(replayTimer);
+        replayTimer = null;
+      }
+      playing = false;
+      replayIndex = 0;
+      replayData = [];
+      replayAlarms = [];
+      emittedAlarms = {};
+      document.querySelectorAll('.replay-btn-play').forEach(function (btn) { btn.disabled = false; });
+      document.querySelectorAll('.replay-btn-stop').forEach(function (btn) { btn.disabled = true; });
+      document.querySelectorAll('.replay-progress-bar').forEach(function (bar) { bar.style.width = '0%'; });
+      document.querySelectorAll('.replay-counter').forEach(function (counter) { counter.textContent = '0 / 0'; });
+      setStatus('IDLE (RESET)');
+      updateModeIndicator(false);
+    });
   }
 
   function setDateRangeFromData() {

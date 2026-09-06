@@ -242,12 +242,21 @@ class DatabaseManager:
                             lat,
                             lon,
                         )
+                    # Remove any extraneous non-canonical nodes from old layouts
+                    canonical_ids = [f"N{int(nid):02d}" for nid in ids]
+                    await conn.execute(
+                        "DELETE FROM nodes WHERE NOT (node_id = ANY($1::varchar[]))",
+                        canonical_ids,
+                    )
+            n_scouts = sum(1 for t in tiers if t in ("1A", "1B", "1C"))
+            n_anchors = sum(1 for t in tiers if t in ("2A", "2B"))
+            n_gateways = sum(1 for t in tiers if t == "3")
             self._synced_nodes = True
             print("\n" + "=" * 80)
             print(f"[POSTGRES WRITE] Table: nodes | Synchronized {len(ids)} Canonical Simulation Nodes")
-            print("  • Scouts  (25): N01..N25 (9 baseline 1A, 10 tension-band 1B, 6 fault-line 1C)")
-            print("  • Anchors (5) : N26..N30 (3 routers 2A, 2 geotech boreholes 2B)")
-            print("  • Gateway (1) : N31 (Tier 3 master sink outside draw angle)")
+            print(f"  • Scouts  ({n_scouts}): N01..N{n_scouts:02d}")
+            print(f"  • Anchors ({n_anchors}) : N{n_scouts+1:02d}..N{n_scouts+n_anchors:02d}")
+            print(f"  • Gateway ({n_gateways}) : N{len(ids):02d} (Tier 3 master sink outside draw angle)")
             print("  => Upserted into public.nodes with Adriyala Longwall Panel coordinates")
             print(f"  => lat/lon projected from x,y via sandbox.geo (origin {geo.ORIGIN_LAT}, {geo.ORIGIN_LON}, bearing {geo.PANEL_BEARING_DEG})")
             print("  => z sampled from the real regional DEM via sandbox.dem.elevation_at")

@@ -14,6 +14,10 @@ var alarmDetail = (function () {
     bus.on('alarm-selected', function (alarm) {
       show(alarm);
     });
+
+    bus.on('system-reset', function () {
+      hide();
+    });
   }
 
   function show(alarm) {

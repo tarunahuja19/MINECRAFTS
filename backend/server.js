@@ -135,6 +135,17 @@ app.post(['/api/system/reset', '/api/database/reset'], async (req, res) => {
     `;
     await query(truncateSql);
 
+    // Stop and reset the running simulation engine
+    try {
+      await fetch('http://127.0.0.1:8000/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' })
+      });
+    } catch (e) {
+      // Simulation may not be actively running, ignore fetch error
+    }
+
     // Broadcast reset event to all connected WebSocket clients
     broadcast({
       type: 'system_reset',
@@ -142,10 +153,10 @@ app.post(['/api/system/reset', '/api/database/reset'], async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    console.log('[server] System reset: readings, packets, and alarms cleared; nodes set to active.');
+    console.log('[server] System reset: readings, packets, and alarms cleared; simulation stopped; nodes set to active.');
     res.json({
       ok: true,
-      message: 'Database reset successful: readings, packets, and alarms cleared; nodes reset to active.'
+      message: 'Database reset successful: readings, packets, and alarms cleared; simulation stopped; nodes reset to active.'
     });
   } catch (err) {
     console.error('[server] System reset failed:', err.message);

@@ -6,7 +6,7 @@
  *
  * Tests the entire multi-service system under extreme conditions:
  *   1. PostgreSQL High-Concurrency & Pool Hammering (250 concurrent queries & inserts)
- *   2. MQTT Broker Telemetry Storm (1,000 burst packets across 31 nodes)
+ *   2. MQTT Broker Telemetry Storm (1,000 burst packets across 61 nodes)
  *   3. Backend API & WebSocket Chaos (25 concurrent listeners, ping storm, malformed payloads, abrupt disconnects)
  *   4. Mid-Flight Database Reset Resiliency
  *

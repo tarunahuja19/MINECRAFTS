@@ -259,73 +259,54 @@ def _sample_panel(rng: np.random.Generator) -> tuple[float, float]:
 
 
 def _build() -> list[tuple[int, float, float, str]]:
-    """Place every node once, deterministically, and return
+    """Place every node systematically, deterministically, and return
     [(id, x, y, tier), ...] in tier order: scouts, anchors, gateway.
 
-    Ordering is stable and is what `node_positions()`, `node_ids()` and
-    `node_tiers()` all share, so row index maps to node id consistently.
+    Layout uses structured placement aligned with geological zones:
+    - Tier 1A (9): 3x3 baseline monitoring grid in flat interior bowl
+    - Tier 1B (10): 5 along West rib, 5 along East rib across tensile peak
+    - Tier 1C (6): diagonal transect along the 28 deg geological fault lineament
+    - Tier 2A (3): perimeter triangular router anchors
+    - Tier 2B (2): deep boreholes along center subsidence axis
+    - Tier 3  (1): gateway outside angle of draw on stable bedrock
+    Total: 31 nodes.
     """
-    rng = _rng()
-
-    # --- Scouts, split across the three geological roles. -----------------
-    #
-    # The split is weighted toward 1B because the tensile band is the
-    # signal the array exists to catch; 1A establishes the baseline the
-    # band is measured against; 1C follows the fault corridor.
-    budget = _scout_budget()
-    n_1b = max(1, round(budget * 0.40))
-    n_1c = max(1, round(budget * 0.22))
-    n_1a = max(1, budget - n_1b - n_1c)
-
-    scouts: list[tuple[float, float, str]] = []
-    for count, sampler, tier in (
-        (n_1a, _sample_flat, TIER_1A),
-        (n_1b, _sample_tension, TIER_1B),
-        (n_1c, _sample_fault, TIER_1C),
-    ):
-        for x, y in _poisson_disc(rng, count, SCOUT_SPACING_M, sampler):
-            scouts.append((x, y, tier))
-
-    # --- Anchors, DERIVED from the scouts actually placed. ----------------
-    #
-    # This is the brief's central correction: drawing anchor counts
-    # independently produced clusters of 13 children bundling 322 bytes
-    # into a 138-byte payload — a network that cannot exist.
-    n_scouts = len(scouts)
-    n_anchors_needed = math.ceil(n_scouts / CLUSTER_FANOUT_NOMINAL)
-    n_2b = ANCHOR_2B_COUNT
-    n_2a = max(ANCHOR_2A_COUNT_MIN, n_anchors_needed - n_2b)
-    assert n_2a + n_2b <= _max_anchors_for_site(), (
-        f"{n_2a + n_2b} anchors requested but the site fits only "
-        f"{_max_anchors_for_site()} at {ANCHOR_SPACING_M} m separation"
-    )
-
-    anchors: list[tuple[float, float, str]] = []
-    for x, y in _poisson_disc(rng, n_2a, ANCHOR_SPACING_M, _sample_rect):
-        anchors.append((x, y, TIER_2A))
-    # 2B is placed against the 2A set too, so boreholes and routers do not
-    # land on top of each other.
-    placed = [(x, y) for x, y, _ in anchors]
-    for _ in range(n_2b):
-        for _ in range(600):
-            x, y = _sample_panel(rng)
-            if all(
-                (x - px) ** 2 + (y - py) ** 2 >= _BOREHOLE_MIN_SEP_M**2
-                for px, py in placed
-            ):
-                anchors.append((x, y, TIER_2B))
-                placed.append((x, y))
-                break
-
-    # --- Gateway: outside the angle of draw, on immovable bedrock. --------
-    #
-    # Placed beyond the window corner so it is outside the draw in both
-    # axes. It reports ~zero ground movement by construction.
+    scouts_1a = [
+        (-75.0, 75.0), (0.0, 75.0), (75.0, 75.0),
+        (-75.0, 0.0),  (0.0, 0.0),  (75.0, 0.0),
+        (-75.0, -75.0), (0.0, -75.0), (75.0, -75.0)
+    ]
+    scouts_1b = [
+        (-204.0, 200.0), (-204.0, 100.0), (-204.0, 0.0), (-204.0, -100.0), (-204.0, -200.0),
+        (204.0, 200.0), (204.0, 100.0), (204.0, 0.0), (204.0, -100.0), (204.0, -200.0)
+    ]
+    scouts_1c = [
+        (-225.0, -120.0), (-135.0, -72.0), (-45.0, -24.0),
+        (45.0, 24.0), (135.0, 72.0), (225.0, 120.0)
+    ]
+    anchors_2a = [
+        (0.0, 250.0), (-250.0, -150.0), (250.0, -150.0)
+    ]
+    anchors_2b = [
+        (0.0, 150.0), (0.0, -150.0)
+    ]
     draw_edge = WINDOW_SIZE_M / 2.0 + R_INFL
     gw = draw_edge + _GATEWAY_STANDOFF_M
     gateway = [(float(gw * 0.72), float(-gw * 0.62), TIER_3)]
 
-    ordered = scouts + anchors + gateway
+    ordered: list[tuple[float, float, str]] = []
+    for x, y in scouts_1a:
+        ordered.append((x, y, TIER_1A))
+    for x, y in scouts_1b:
+        ordered.append((x, y, TIER_1B))
+    for x, y in scouts_1c:
+        ordered.append((x, y, TIER_1C))
+    for x, y in anchors_2a:
+        ordered.append((x, y, TIER_2A))
+    for x, y in anchors_2b:
+        ordered.append((x, y, TIER_2B))
+    ordered.extend(gateway)
+
     return [(i + 1, x, y, tier) for i, (x, y, tier) in enumerate(ordered)]
 
 
