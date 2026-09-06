@@ -37,11 +37,14 @@ var nodeSensors = (function () {
   }
 
   function buildVibrationBar(t) {
-    var rms = t ? t.vib_rms : 0;
+    var hasRms = (t && t.vib_rms != null);
+    var rms = hasRms ? t.vib_rms : null;
     var level = 0;
-    if (rms > 5) level = 1;
-    if (rms > 15) level = 2;
-    if (rms > 30) level = 3;
+    if (rms !== null) {
+      if (rms > 5) level = 1;
+      if (rms > 15) level = 2;
+      if (rms > 30) level = 3;
+    }
 
     var colors = ['green', 'amber', 'red'];
     var segs = '';
@@ -53,17 +56,18 @@ var nodeSensors = (function () {
     return '<div class="readout-label">VIBRATION RMS</div>' +
            '<div style="display:flex;align-items:center;gap:8px;">' +
              '<div class="sensor-bar" style="flex:1;">' + segs + '</div>' +
-             '<span class="mono" style="font-size:11px;">' + (t ? rms : '--') + '</span>' +
+             '<span class="mono" style="font-size:11px;">' + (hasRms ? rms : '--') + '</span>' +
            '</div>';
   }
 
   function buildBatteryGauge(t) {
-    var mv = t ? t.vbat_mv : 0;
+    var hasMv = (t && t.vbat_mv != null);
+    var mv = hasMv ? t.vbat_mv : null;
     var pct = 0;
-    if (mv >= 2800) {
+    if (mv !== null && mv >= 2800) {
       pct = Math.min(100, Math.round(((mv - 2800) / (4200 - 2800)) * 100));
     }
-    var segsCount = Math.ceil(pct / 20);
+    var segsCount = mv !== null ? Math.ceil(pct / 20) : 0;
 
     var segs = '';
     for (var i = 0; i < 5; i++) {
@@ -77,14 +81,14 @@ var nodeSensors = (function () {
     return '<div class="readout-label">BATTERY</div>' +
            '<div style="display:flex;align-items:center;gap:8px;">' +
              '<div class="sensor-bar" style="flex:1;">' + segs + '</div>' +
-             '<span class="mono" style="font-size:11px;">' + (t ? mv + ' mV' : '--') + '</span>' +
+             '<span class="mono" style="font-size:11px;">' + (hasMv ? mv + ' mV' : '--') + '</span>' +
            '</div>';
   }
 
   function buildTemperature(t) {
-    var tempC = t ? (t.temp_c_x10 / 10).toFixed(1) : '--';
+    var tempC = (t && t.temp_c_x10 != null) ? (t.temp_c_x10 / 10).toFixed(1) : '--';
     return '<div class="readout-label">TEMPERATURE</div>' +
-           '<div class="readout mono">' + tempC + ' C</div>';
+           '<div class="readout mono">' + (tempC !== '--' ? tempC + ' C' : '--') + '</div>';
   }
 
   function buildFlags(t) {

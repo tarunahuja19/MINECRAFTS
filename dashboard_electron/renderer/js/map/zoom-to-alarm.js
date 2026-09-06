@@ -47,9 +47,9 @@ var zoomToAlarm = (function () {
         if (nd) bounds.push([nd.lat, nd.lng]);
       }
       bounds.push([alarm.centroid.lat, alarm.centroid.lng]);
-      map.fitBounds(L.latLngBounds(bounds).pad(0.6), { maxZoom: 17 });
+      map.fitBounds(L.latLngBounds(bounds).pad(0.6), { maxZoom: 17, animate: true, duration: 1.2 });
     } else {
-      map.setView([alarm.centroid.lat, alarm.centroid.lng], 17);
+      map.setView([alarm.centroid.lat, alarm.centroid.lng], 17, { animate: true, duration: 1.2 });
     }
   }
 

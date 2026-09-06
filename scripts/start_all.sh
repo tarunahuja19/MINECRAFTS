@@ -84,6 +84,8 @@ else
 fi
 PGHOST="${PGHOST:-localhost}"; PGPORT="${PGPORT:-5432}"
 PGUSER="${PGUSER:-postgres}"; PGDATABASE="${PGDATABASE:-mine_subsidence}"
+PGPASSWORD="${PGPASSWORD:-labpass123}"
+export PGPASSWORD
 
 # Bring PostgreSQL up if it is down (Homebrew service / LaunchDaemon / pg_ctl).
 . "$ROOT_DIR/scripts/ensure_postgres.sh"
@@ -103,6 +105,10 @@ if command -v psql >/dev/null; then
     ok "migrations applied"
   fi
   ok "database '$PGDATABASE' reachable ($NODE_COUNT nodes)"
+  PGPASSWORD="${PGPASSWORD:-}" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
+    -c "TRUNCATE TABLE readings, simulation_packets, alarms CASCADE; UPDATE nodes SET status = 'active';" >/dev/null 2>&1 \
+    || die "database auto-reset failed"
+  ok "database auto-reset on boot: 0 readings, 0 packets, 0 alarms ($NODE_COUNT active nodes ready)"
   OFFSITE=$(PGPASSWORD="${PGPASSWORD:-}" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
               -tAc "select count(*) from nodes where lat is null or lat not between 18.5 and 18.8;" 2>/dev/null)
   [ "${OFFSITE:-0}" = "0" ] \

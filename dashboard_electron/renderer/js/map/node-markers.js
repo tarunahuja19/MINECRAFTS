@@ -4,7 +4,6 @@ var nodeMarkers = (function () {
   var markers = {};
   var nodeData = {};
   var heartbeatTimers = {};
-  var activeAlarmsByNode = {};
   var HEARTBEAT_TIMEOUT_MS = 30000;
   var simState = 'STOPPED';
 
@@ -126,35 +125,8 @@ var nodeMarkers = (function () {
       }
     }
 
-    // 4. If node is in critical/warning/lastgasp state, dynamically synthesize a unique alarm
-    if (nd.state === 'critical' || nd.state === 'warning' || nd.state === 'lastgasp') {
-      var isCrit = (nd.state === 'critical' || nd.state === 'lastgasp');
-      var t = nd.lastTelemetry;
-      var strainVal = t ? ((t.strain_ue !== undefined ? t.strain_ue : t.strain_ustrain) || 0) : (isCrit ? 850 : 490);
-      var r2Val = isCrit ? 0.96 : 0.85;
-
-      var synAlarm = {
-        alarm_id: 'ALM-' + nodeId,
-        t_utc: new Date().toISOString(),
-        panel_id: 'adriyala_panel_1',
-        level: isCrit ? 3 : 2,
-        state: isCrit ? 'CRITICAL' : 'TENSION',
-        centroid: { lat: nd.lat, lng: nd.lng },
-        affected_nodes: [nodeId],
-        max_strain_ue: strainVal,
-        trough_fit_r2: r2Val,
-        projection: { days_to_level_3: isCrit ? 0 : 4.5, confidence: isCrit ? 0.95 : 0.83 },
-        blast_correlated: false,
-        confidence_zone: isCrit ? 'high_confidence' : 'medium_warning',
-        explanation: (isCrit ? 'CRITICAL LEVEL 3' : 'LEVEL 2 WARNING') +
-          ': Sensor ' + nodeId + ' in ' + (nd.ring || 'inner') +
-          ' ring indicates acute subsidence deviation (strain: ' + strainVal +
-          ' µε). Local displacement exceeds safety threshold for this sector.'
-      };
-      bus.emit('alarm', synAlarm);
-      return synAlarm;
-    }
-
+    // No server alarm covers this node - return nothing. The renderer does not
+    // invent alarms; the simulation is the only alarm producer.
     return null;
   }
 
@@ -215,8 +187,8 @@ var nodeMarkers = (function () {
       return node.node_id + ' [OFFLINE]\nSIMULATION: STOPPED\nWaiting for simulation start...';
     }
     var t = node.lastTelemetry;
-    var strain = t ? (t.strain_ustrain + ' ustrain') : '--';
-    var battery = t ? (t.vbat_mv + ' mV') : '--';
+    var strain = (t && t.strain_ustrain != null) ? (t.strain_ustrain + ' ustrain') : '--';
+    var battery = (t && t.vbat_mv != null) ? (t.vbat_mv + ' mV') : '--';
     var ts = t ? formatTimestamp(t.t_epoch_s) : '--:--:--';
     return node.node_id + '\n' +
            'Strain: ' + strain + '\n' +
@@ -349,7 +321,6 @@ var nodeMarkers = (function () {
 
     bus.on('system-reset', function () {
       simState = 'STOPPED';
-      activeAlarmsByNode = {};
       var ids = Object.keys(nodeData);
       for (var k = 0; k < ids.length; k++) {
         nodeData[ids[k]].lastTelemetry = null;
@@ -369,19 +340,14 @@ var nodeMarkers = (function () {
       if (nodeData[nodeId]) {
         nodeData[nodeId].lastTelemetry = t;
 
-        var strain = (t.strain_ue !== undefined ? t.strain_ue : t.strain_ustrain) || 0;
-        var tiltX = t.tilt_x_urad !== undefined ? Math.round(t.tilt_x_urad / 17.4533) : (t.tilt_x_mdeg || 0);
-        var tiltY = t.tilt_y_urad !== undefined ? Math.round(t.tilt_y_urad / 17.4533) : (t.tilt_y_mdeg || 0);
-        var tiltMag = Math.max(Math.abs(tiltX), Math.abs(tiltY));
-
+        // The server assigns node state (session.py:_assign_node_states) and
+        // ships it on the telemetry row as `t.state`. The UI obeys it and never
+        // re-derives state from strain/tilt. A genuine last-gasp packet is a
+        // real device event, not a threshold, so it still wins.
         if ((t.flags & 1) || (t.crack_flags && (t.crack_flags & 1))) {
           updateState(nodeId, 'lastgasp');
-        } else if (strain >= 600 || tiltMag >= 200) {
-          updateState(nodeId, 'critical');
-        } else if (strain >= 400 || tiltMag >= 100) {
-          updateState(nodeId, 'warning');
-        } else if (nodeData[nodeId].state !== 'active' && nodeData[nodeId].state !== 'lastgasp') {
-          updateState(nodeId, 'active');
+        } else {
+          updateState(nodeId, t.state || 'active');
         }
 
         if (markers[nodeId]) {
@@ -433,49 +399,18 @@ var nodeMarkers = (function () {
     markers[nodeId].setIcon(createIcon(state, role));
     updateNodeCount();
 
-    if (state === 'critical' || state === 'warning' || state === 'lastgasp') {
-      if (activeAlarmsByNode[nodeId] === state) {
-        return;
-      }
-      activeAlarmsByNode[nodeId] = state;
-
-      var isCrit = (state === 'critical' || state === 'lastgasp');
-      var nd = nodeData[nodeId];
-      var t = nd ? nd.lastTelemetry : null;
-      var strainVal = t ? ((t.strain_ue !== undefined ? t.strain_ue : t.strain_ustrain) || 0) : (isCrit ? 850 : 490);
-      var latVal = nd && typeof nd.lat === 'number' ? nd.lat : 18.636;
-      var lngVal = nd && typeof nd.lng === 'number' ? nd.lng : 79.544;
-
-      var nodeAlarm = {
-        alarm_id: 'ALM-' + nodeId,
-        t_utc: new Date().toISOString(),
-        panel_id: 'adriyala_panel_1',
-        level: isCrit ? 3 : 2,
-        state: isCrit ? 'CRITICAL' : 'TENSION',
-        centroid: { lat: latVal, lng: lngVal },
-        affected_nodes: [nodeId],
-        max_strain_ue: strainVal,
-        trough_fit_r2: isCrit ? 0.96 : 0.86,
-        confidence_zone: isCrit ? 'high_confidence' : 'medium_warning',
-        blast_correlated: false,
-        projection: { days_to_level_3: isCrit ? 0 : 4.5, confidence: isCrit ? 0.95 : 0.83 },
-        explanation: (isCrit ? 'CRITICAL LEVEL 3' : 'LEVEL 2 WARNING') +
-          ': Sensor ' + nodeId + ' entered ' + state.toUpperCase() +
-          ' status (strain: ' + strainVal + ' µε).'
-      };
-
-      bus.emit('alarm', nodeAlarm);
-
-      if (typeof fetch === 'function') {
-        fetch('http://localhost:8080/api/alarms', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nodeAlarm)
-        }).catch(function () {});
+    if (state === 'critical' || state === 'lastgasp') {
+      if (typeof lastgaspMarker !== 'undefined' && lastgaspMarker.showPulse) {
+        lastgaspMarker.showPulse(nodeId, state);
       }
     } else {
-      delete activeAlarmsByNode[nodeId];
+      if (typeof lastgaspMarker !== 'undefined' && lastgaspMarker.removePulse) {
+        lastgaspMarker.removePulse(nodeId);
+      }
     }
+    // The renderer never synthesizes alarms or POSTs to /api/alarms. The
+    // simulation publishes real alarms on the MQTT alarm topic and the backend
+    // persists them; the map only paints node state.
   }
 
   function updateNodeCount() {

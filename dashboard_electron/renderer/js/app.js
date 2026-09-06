@@ -142,14 +142,17 @@ document.getElementById('tab-map').style.display = 'flex';
     }
   });
 
-  var btnDbReset = document.getElementById('btn-db-reset');
-  if (btnDbReset) {
-    btnDbReset.addEventListener('click', function () {
-      var confirmed = window.confirm('Clear all runtime telemetry, simulation packets, and alarms from PostgreSQL?\n\nThis restores the system to baseline active state.');
+  var btnCloseAll = document.getElementById('btn-close-all');
+  if (btnCloseAll) {
+    btnCloseAll.addEventListener('click', async function () {
+      var confirmed = window.confirm(
+        'STOP SIMULATION, WIPE DATABASE & QUIT?\n\n' +
+        'This will halt the simulation engine, wipe runtime tables in PostgreSQL, and quit the application.'
+      );
       if (!confirmed) return;
 
-      btnDbReset.textContent = 'RESETTING...';
-      btnDbReset.disabled = true;
+      btnCloseAll.textContent = 'CLOSING...';
+      btnCloseAll.disabled = true;
 
       // Halt any local replay or simulation playback immediately
       if (typeof replayController !== 'undefined' && replayController.stop) {
@@ -159,37 +162,47 @@ document.getElementById('tab-map').style.display = 'flex';
         fixtureProvider.stopReplay();
       }
 
-      fetch('http://localhost:8080/api/system/reset', { method: 'POST' })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          btnDbReset.textContent = 'RESET DATABASE';
-          btnDbReset.disabled = false;
-          bus.emit('system-reset', data);
-          bus.emit('alarms-loaded', []);
-          bus.emit('simulation-status', { is_running: false, is_paused: false, state: 'STOPPED' });
-          if (typeof alarmBanner !== 'undefined') {
-            alarmBanner.hide();
-            if (alarmBanner.updateBadge) alarmBanner.updateBadge(0);
-          }
-          if (typeof alarmDetail !== 'undefined' && alarmDetail.hide) {
-            alarmDetail.hide();
-          }
-          if (typeof pastAlarms !== 'undefined' && pastAlarms.load) {
-            pastAlarms.load();
-          }
-        })
-        .catch(function (err) {
-          alert('Database reset failed: ' + err.message);
-          btnDbReset.textContent = 'RESET DATABASE';
-          btnDbReset.disabled = false;
-        });
-    });
-  }
+      var host = window.location.hostname || 'localhost';
 
-  var btnDbResetSystem = document.getElementById('btn-db-reset-system');
-  if (btnDbResetSystem) {
-    btnDbResetSystem.addEventListener('click', function () {
-      if (btnDbReset) btnDbReset.click();
+      // 1. Stop simulation engine
+      try {
+        await fetch('http://' + host + ':8000/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'stop' })
+        });
+      } catch (e) {}
+
+      try {
+        await fetch('http://' + host + ':8080/api/simulation/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'stop' })
+        });
+      } catch (e) {}
+
+      // 2. Wipe database
+      try {
+        var res = await fetch('http://' + host + ':8080/api/system/reset', { method: 'POST' });
+        var data = await res.json();
+        bus.emit('system-reset', data);
+      } catch (e) {}
+
+      // 3. Reset local UI state
+      bus.emit('alarms-loaded', []);
+      bus.emit('simulation-status', { is_running: false, is_paused: false, state: 'STOPPED' });
+      if (typeof alarmBanner !== 'undefined') {
+        alarmBanner.hide();
+        if (alarmBanner.updateBadge) alarmBanner.updateBadge(0);
+      }
+      if (typeof alarmDetail !== 'undefined' && alarmDetail.hide) {
+        alarmDetail.hide();
+      }
+
+      // 4. Quit Electron via IPC
+      if (window.r4 && window.r4.closeApp) {
+        window.r4.closeApp();
+      }
     });
   }
 

@@ -25,11 +25,11 @@ interface NodeMarkersProps {
 }
 
 const STATE_COLORS: Record<SegmentState, string> = {
-  STABLE: "#7d9b7a",   // Emerald
+  STABLE: "#00CC44",   // Emerald / Active
   SETTLING: "#7fa0b5", // Sky
-  TENSION: "#d9a25f",  // Amber
-  CRITICAL: "#ff3333", // Vivid Red
-  FAILED: "#ff2222",   // Deep Red
+  TENSION: "#FFA500",  // Amber / Warning
+  CRITICAL: "#FF2222", // Vivid Red
+  FAILED: "#FF4400",   // Orange-Red / Lastgasp
 };
 
 /**
@@ -49,36 +49,36 @@ const STATE_COLORS: Record<SegmentState, string> = {
  * If the layout seed or node counts change server-side, re-dump this block.
  */
 export const FALLBACK_NODES: NodeDef[] = [
-  { id: 1, x: -75.0, y: 75.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 106.07, tx_dbm: 5 },
-  { id: 2, x: 0.0, y: 75.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 75.0, tx_dbm: 5 },
-  { id: 3, x: 75.0, y: 75.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 106.07, tx_dbm: 5 },
-  { id: 4, x: -75.0, y: 0.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 167.71, tx_dbm: 10 },
-  { id: 5, x: 0.0, y: 0.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 30, cluster_id: 29, hop_count: 2, dist_to_parent_m: 150.0, tx_dbm: 5 },
-  { id: 6, x: 75.0, y: 0.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 167.71, tx_dbm: 10 },
-  { id: 7, x: -75.0, y: -75.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 27, cluster_id: 30, hop_count: 2, dist_to_parent_m: 106.07, tx_dbm: 5 },
-  { id: 8, x: 0.0, y: -75.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 75.0, tx_dbm: 5 },
-  { id: 9, x: 75.0, y: -75.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 28, cluster_id: 30, hop_count: 2, dist_to_parent_m: 106.07, tx_dbm: 5 },
-  { id: 10, x: -204.0, y: 200.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 210.04, tx_dbm: 10 },
-  { id: 11, x: -204.0, y: 100.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 253.21, tx_dbm: 10 },
-  { id: 12, x: -204.0, y: 0.0, tier: "1B", role: "Scout / tension", parent_id: 27, backup_parent_id: 29, cluster_id: 27, hop_count: 2, dist_to_parent_m: 156.89, tx_dbm: 10 },
-  { id: 13, x: -204.0, y: -100.0, tier: "1B", role: "Scout / tension", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 67.94, tx_dbm: 5 },
-  { id: 14, x: -204.0, y: -200.0, tier: "1B", role: "Scout / tension", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 67.94, tx_dbm: 5 },
-  { id: 15, x: 204.0, y: 200.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 210.04, tx_dbm: 10 },
-  { id: 16, x: 204.0, y: 100.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 253.21, tx_dbm: 10 },
-  { id: 17, x: 204.0, y: 0.0, tier: "1B", role: "Scout / tension", parent_id: 28, backup_parent_id: 29, cluster_id: 28, hop_count: 2, dist_to_parent_m: 156.89, tx_dbm: 10 },
-  { id: 18, x: 204.0, y: -100.0, tier: "1B", role: "Scout / tension", parent_id: 28, backup_parent_id: 30, cluster_id: 28, hop_count: 2, dist_to_parent_m: 67.94, tx_dbm: 5 },
-  { id: 19, x: 204.0, y: -200.0, tier: "1B", role: "Scout / tension", parent_id: 28, backup_parent_id: 30, cluster_id: 28, hop_count: 2, dist_to_parent_m: 67.94, tx_dbm: 5 },
-  { id: 20, x: -225.0, y: -120.0, tier: "1C", role: "Scout / fault", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 39.05, tx_dbm: 5 },
-  { id: 21, x: -135.0, y: -72.0, tier: "1C", role: "Scout / fault", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 138.96, tx_dbm: 5 },
-  { id: 22, x: -45.0, y: -24.0, tier: "1C", role: "Scout / fault", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 133.79, tx_dbm: 5 },
-  { id: 23, x: 45.0, y: 24.0, tier: "1C", role: "Scout / fault", parent_id: 29, backup_parent_id: 30, cluster_id: 29, hop_count: 2, dist_to_parent_m: 133.79, tx_dbm: 5 },
-  { id: 24, x: 135.0, y: 72.0, tier: "1C", role: "Scout / fault", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 155.91, tx_dbm: 10 },
-  { id: 25, x: 225.0, y: 120.0, tier: "1C", role: "Scout / fault", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 259.86, tx_dbm: 10 },
-  { id: 26, x: 0.0, y: 250.0, tier: "2A", role: "Anchor / router", parent_id: 31, backup_parent_id: 29, cluster_id: 26, hop_count: 1, dist_to_parent_m: 1267.55, tx_dbm: 14 },
-  { id: 27, x: -250.0, y: -150.0, tier: "2A", role: "Anchor / router", parent_id: 31, backup_parent_id: 30, cluster_id: 27, hop_count: 1, dist_to_parent_m: 1213.73, tx_dbm: 14 },
-  { id: 28, x: 250.0, y: -150.0, tier: "2A", role: "Anchor / router", parent_id: 31, backup_parent_id: 30, cluster_id: 28, hop_count: 1, dist_to_parent_m: 804.38, tx_dbm: 14 },
-  { id: 29, x: 0.0, y: 150.0, tier: "2B", role: "Anchor / borehole", parent_id: 31, backup_parent_id: 26, cluster_id: 29, hop_count: 1, dist_to_parent_m: 1193.48, tx_dbm: 14 },
-  { id: 30, x: 0.0, y: -150.0, tier: "2B", role: "Anchor / borehole", parent_id: 31, backup_parent_id: 27, cluster_id: 30, hop_count: 1, dist_to_parent_m: 998.79, tx_dbm: 14 },
+  { id: 1, x: -135.0, y: 135.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 142.30, tx_dbm: 5 },
+  { id: 2, x: -5.0, y: 100.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 80.16, tx_dbm: 5 },
+  { id: 3, x: 135.0, y: 138.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 141.38, tx_dbm: 5 },
+  { id: 4, x: -140.0, y: 5.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 232.00, tx_dbm: 10 },
+  { id: 5, x: 0.0, y: 0.0, tier: "1A", role: "Scout / baseline", parent_id: 29, backup_parent_id: 30, cluster_id: 29, hop_count: 2, dist_to_parent_m: 180.00, tx_dbm: 10 },
+  { id: 6, x: 140.0, y: -5.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 224.11, tx_dbm: 10 },
+  { id: 7, x: -135.0, y: -160.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 27, cluster_id: 30, hop_count: 2, dist_to_parent_m: 136.47, tx_dbm: 5 },
+  { id: 8, x: 5.0, y: -100.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 80.16, tx_dbm: 5 },
+  { id: 9, x: 135.0, y: -138.0, tier: "1A", role: "Scout / baseline", parent_id: 30, backup_parent_id: 28, cluster_id: 30, hop_count: 2, dist_to_parent_m: 141.38, tx_dbm: 5 },
+  { id: 10, x: -216.0, y: 250.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 217.44, tx_dbm: 10 },
+  { id: 11, x: -192.0, y: 125.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 243.65, tx_dbm: 10 },
+  { id: 12, x: -204.0, y: 20.0, tier: "1B", role: "Scout / tension", parent_id: 27, backup_parent_id: 29, cluster_id: 27, hop_count: 2, dist_to_parent_m: 239.28, tx_dbm: 10 },
+  { id: 13, x: -216.0, y: -125.0, tier: "1B", role: "Scout / tension", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 100.70, tx_dbm: 5 },
+  { id: 14, x: -192.0, y: -250.0, tier: "1B", role: "Scout / tension", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 87.66, tx_dbm: 5 },
+  { id: 15, x: 192.0, y: 250.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 193.62, tx_dbm: 10 },
+  { id: 16, x: 216.0, y: 125.0, tier: "1B", role: "Scout / tension", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 262.98, tx_dbm: 10 },
+  { id: 17, x: 204.0, y: -20.0, tier: "1B", role: "Scout / tension", parent_id: 28, backup_parent_id: 30, cluster_id: 28, hop_count: 2, dist_to_parent_m: 201.14, tx_dbm: 10 },
+  { id: 18, x: 192.0, y: -125.0, tier: "1B", role: "Scout / tension", parent_id: 28, backup_parent_id: 30, cluster_id: 28, hop_count: 2, dist_to_parent_m: 115.36, tx_dbm: 5 },
+  { id: 19, x: 216.0, y: -250.0, tier: "1B", role: "Scout / tension", parent_id: 28, backup_parent_id: 30, cluster_id: 28, hop_count: 2, dist_to_parent_m: 67.20, tx_dbm: 5 },
+  { id: 20, x: -245.0, y: -147.3, tier: "1C", role: "Scout / fault", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 67.50, tx_dbm: 5 },
+  { id: 21, x: -150.0, y: -96.8, tier: "1C", role: "Scout / fault", parent_id: 27, backup_parent_id: 30, cluster_id: 27, hop_count: 2, dist_to_parent_m: 164.97, tx_dbm: 10 },
+  { id: 22, x: -50.0, y: -43.6, tier: "1C", role: "Scout / fault", parent_id: 30, backup_parent_id: 29, cluster_id: 30, hop_count: 2, dist_to_parent_m: 145.28, tx_dbm: 5 },
+  { id: 23, x: 50.0, y: 9.6, tier: "1C", role: "Scout / fault", parent_id: 29, backup_parent_id: 30, cluster_id: 29, hop_count: 2, dist_to_parent_m: 177.58, tx_dbm: 10 },
+  { id: 24, x: 150.0, y: 62.8, tier: "1C", role: "Scout / fault", parent_id: 29, backup_parent_id: 26, cluster_id: 29, hop_count: 2, dist_to_parent_m: 190.36, tx_dbm: 10 },
+  { id: 25, x: 245.0, y: 113.3, tier: "1C", role: "Scout / fault", parent_id: 26, backup_parent_id: 29, cluster_id: 26, hop_count: 2, dist_to_parent_m: 293.55, tx_dbm: 10 },
+  { id: 26, x: 0.0, y: 275.0, tier: "2A", role: "Anchor / router", parent_id: 31, backup_parent_id: 29, cluster_id: 26, hop_count: 1, dist_to_parent_m: 1286.61, tx_dbm: 14 },
+  { id: 27, x: -270.0, y: -210.0, tier: "2A", role: "Anchor / router", parent_id: 31, backup_parent_id: 30, cluster_id: 27, hop_count: 1, dist_to_parent_m: 1205.33, tx_dbm: 14 },
+  { id: 28, x: 270.0, y: -210.0, tier: "2A", role: "Anchor / router", parent_id: 31, backup_parent_id: 30, cluster_id: 28, hop_count: 1, dist_to_parent_m: 748.75, tx_dbm: 14 },
+  { id: 29, x: 0.0, y: 180.0, tier: "2B", role: "Anchor / borehole", parent_id: 31, backup_parent_id: 26, cluster_id: 29, hop_count: 1, dist_to_parent_m: 1215.31, tx_dbm: 14 },
+  { id: 30, x: 0.0, y: -180.0, tier: "2B", role: "Anchor / borehole", parent_id: 31, backup_parent_id: 27, cluster_id: 30, hop_count: 1, dist_to_parent_m: 982.24, tx_dbm: 14 },
   { id: 31, x: 826.1052631578948, y: -711.3684210526317, tier: "3", role: "Gateway", parent_id: null, backup_parent_id: null, cluster_id: null, hop_count: 0, dist_to_parent_m: null, tx_dbm: null },
 ];
 
@@ -206,6 +206,7 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
         state,
         tel,
         isReporting,
+        serverState: (tel?.node_state || (pAgg as any)?.node_state) as string | undefined,
         carriesStrain,
         carriesTilt,
         // null means "this node cannot tell you"; only a node that CARRIES
@@ -344,8 +345,10 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
         })();
 
         let stateColor = STATE_COLORS.STABLE;
-        if (isInsideCollapseAlert) {
-          stateColor = STATE_COLORS.FAILED;
+        if (node.serverState === "CRITICAL" || isInsideCollapseAlert) {
+          stateColor = STATE_COLORS.CRITICAL;
+        } else if (node.serverState === "WARNING") {
+          stateColor = STATE_COLORS.TENSION;
         } else if (finalDrop > 0.05) {
           stateColor = STATE_COLORS.SETTLING;
         }

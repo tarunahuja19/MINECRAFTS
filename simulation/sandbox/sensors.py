@@ -174,6 +174,11 @@ class NodePersonality:
     base_snr_db: float = 12.0
     alive: int = 1
     crack_latched: int = 0
+    wander_strain: float = 0.0
+    wander_tilt_x: float = 0.0
+    wander_tilt_y: float = 0.0
+    wander_vib_rms: float = 0.08
+    wander_vbat: float = 0.0
 
     def carries(self, channel: str) -> bool:
         """Whether this node's hardware includes `channel` at all."""
@@ -213,6 +218,12 @@ class SensorReading:
     hops: int | None
     tx_dbm: int | None
     alive: int
+    #: Authoritative health state for this node this tick, assigned by
+    #: `SimulationSession.tick()` from the collapse-radius rule. This is the
+    #: ONLY thing any UI may colour a node by - dashboards must not re-derive
+    #: state from raw strain, or they drift out of step with the physics and
+    #: paint nodes red during ordinary baseline subsidence.
+    node_state: str = "ACTIVE"
 
     def get(self, channel: str) -> float | int | None:
         """This node's value for `channel`, or None if its tier lacks it."""
@@ -410,6 +421,32 @@ class SensorArray:
             def noise(sigma: float) -> float:
                 return self.rng.normal(0.0, sigma) if cfg.enable_noise else 0.0
 
+            # 2. Continuous mean-reverting physical baseline wander (Ornstein-Uhlenbeck drift)
+            # Produces authentic live variation on idle sensors so the UI ticks continuously
+            if cfg.enable_noise:
+                node.wander_strain = float(np.clip(
+                    0.88 * node.wander_strain + self.rng.normal(0.0, 4.5),
+                    -25.0, 25.0
+                ))
+                max_tilt_w = 20.0 if node.tier == TIER_2A else 120.0
+                sigma_w = 3.0 if node.tier == TIER_2A else 18.0
+                node.wander_tilt_x = float(np.clip(
+                    0.88 * node.wander_tilt_x + self.rng.normal(0.0, sigma_w),
+                    -max_tilt_w, max_tilt_w
+                ))
+                node.wander_tilt_y = float(np.clip(
+                    0.88 * node.wander_tilt_y + self.rng.normal(0.0, sigma_w),
+                    -max_tilt_w, max_tilt_w
+                ))
+                node.wander_vib_rms = float(np.clip(
+                    0.85 * node.wander_vib_rms + 0.15 * 0.08 + self.rng.normal(0.0, 0.015),
+                    0.05, 0.16
+                ))
+                node.wander_vbat = float(np.clip(
+                    0.88 * node.wander_vbat + self.rng.normal(0.0, 3.5),
+                    -20.0, 20.0
+                ))
+
             ch: dict[str, float | int] = {}
 
             # 2-5. Per-channel conversion, noise and quantisation — each
@@ -417,14 +454,14 @@ class SensorArray:
             if node.carries("tilt_x_urad"):
                 ch["tilt_x_urad"] = int(
                     np.clip(
-                        round(true_tilt_x * 1e6 + noise(node.sigma_tilt_urad)),
+                        round(true_tilt_x * 1e6 + node.wander_tilt_x + noise(node.sigma_tilt_urad)),
                         -32768,
                         32767,
                     )
                 )
                 ch["tilt_y_urad"] = int(
                     np.clip(
-                        round(true_tilt_y * 1e6 + noise(node.sigma_tilt_urad)),
+                        round(true_tilt_y * 1e6 + node.wander_tilt_y + noise(node.sigma_tilt_urad)),
                         -32768,
                         32767,
                     )
@@ -446,7 +483,7 @@ class SensorArray:
                 ch["gyro_z_mdps"] = int(np.clip(round(noise(35.0)), -32768, 32767))
 
             if node.carries("vib_rms_x100"):
-                base_rms_mms = 0.05 + 0.02 * self.rng.random()
+                base_rms_mms = node.wander_vib_rms + 0.02 * self.rng.random()
                 total_rms_mms = base_rms_mms + vibration_transient
                 ch["vib_rms_x100"] = int(np.clip(round(total_rms_mms * 100.0), 0, 65535))
                 ch["vib_peak_x100"] = int(
@@ -457,7 +494,7 @@ class SensorArray:
             if node.carries("strain_ue"):
                 ch["strain_ue"] = int(
                     np.clip(
-                        round(true_strain_x * 1e6 + noise(cfg.sigma_strain_ue)),
+                        round(true_strain_x * 1e6 + node.wander_strain + noise(cfg.sigma_strain_ue)),
                         -32768,
                         32767,
                     )
@@ -530,7 +567,7 @@ class SensorArray:
                 elif strain_ue > 4000:
                     node.crack_latched = max(node.crack_latched, 1)
 
-            vbat = node.vbat_nominal_mv - vbat_sag + noise(cfg.sigma_vbat_mv)
+            vbat = node.vbat_nominal_mv - vbat_sag + node.wander_vbat + noise(cfg.sigma_vbat_mv)
 
             readings.append(
                 SensorReading(

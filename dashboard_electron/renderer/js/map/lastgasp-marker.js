@@ -8,15 +8,19 @@ var lastgaspMarker = (function () {
     map = mapInstance;
 
     bus.on('telemetry', function (t) {
-      if (t.flags & 1) {
-        var nodeId = t._node_id || t.node_id;
-        showPulse(nodeId);
+      var nodeId = t._node_id || t.node_id;
+      if (!nodeId) return;
+      var state = t.state || (t.aggregates && t.aggregates.node_state ? String(t.aggregates.node_state).toLowerCase() : null);
+      if (state === 'critical' || state === 'lastgasp' || (t.flags & 1) || (t.crack_flags && (t.crack_flags & 1))) {
+        showPulse(nodeId, (state === 'lastgasp' || (t.flags & 1)) ? 'lastgasp' : 'critical');
+      } else if (pulseRings[nodeId]) {
+        removePulse(nodeId);
       }
     });
 
     bus.on('node-status-change', function (data) {
-      if (data.state === 'lastgasp') {
-        showPulse(data.node_id);
+      if (data.state === 'critical' || data.state === 'lastgasp') {
+        showPulse(data.node_id, data.state);
       } else if (pulseRings[data.node_id]) {
         removePulse(data.node_id);
       }
@@ -24,10 +28,21 @@ var lastgaspMarker = (function () {
 
     bus.on('nodes-loaded', function (nodes) {
       for (var i = 0; i < nodes.length; i++) {
-        if (nodes[i].state === 'lastgasp') {
-          showPulse(nodes[i].node_id);
+        if (nodes[i].state === 'critical' || nodes[i].state === 'lastgasp') {
+          showPulse(nodes[i].node_id, nodes[i].state);
         }
       }
+    });
+
+    bus.on('simulation-status', function (data) {
+      var s = data.state || (data.is_running ? 'RUNNING' : 'STOPPED');
+      if (s === 'STOPPED') {
+        removeAll();
+      }
+    });
+
+    bus.on('system-reset', function () {
+      removeAll();
     });
 
     bus.on('fixture-started', function () {
@@ -39,25 +54,35 @@ var lastgaspMarker = (function () {
     });
   }
 
-  function showPulse(nodeId) {
+  function showPulse(nodeId, state) {
     if (!map) return;
     if (pulseRings[nodeId]) return;
 
     var nd = nodeMarkers.getNodeData(nodeId);
-    if (!nd) return;
+    if (!nd || typeof nd.lat !== 'number' || typeof nd.lng !== 'number') return;
 
-    var ring = L.circleMarker([nd.lat, nd.lng], {
-      radius: 12,
-      color: '#FF4400',
-      weight: 1.5,
-      fillColor: 'rgba(255, 51, 0, 0.2)',
-      fillOpacity: 1,
-      interactive: false,
-      className: 'lastgasp-pulse'
+    var isLastgasp = (state === 'lastgasp');
+    var ringClass = isLastgasp ? 'alert-ring ring-lastgasp' : 'alert-ring';
+
+    var icon = L.divIcon({
+      className: 'alert-ring-icon',
+      html: '<div class="alert-ring-container">' +
+            '<div class="' + ringClass + '"></div>' +
+            '<div class="' + ringClass + '"></div>' +
+            '<div class="' + ringClass + '"></div>' +
+            '</div>',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0]
     });
 
-    ring.addTo(map);
-    pulseRings[nodeId] = ring;
+    var marker = L.marker([nd.lat, nd.lng], {
+      icon: icon,
+      interactive: false,
+      zIndexOffset: -100
+    });
+
+    marker.addTo(map);
+    pulseRings[nodeId] = marker;
   }
 
   function removePulse(nodeId) {

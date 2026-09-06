@@ -505,29 +505,15 @@ class DatabaseManager:
         return summaries
 
     async def reset_database(self) -> bool:
-        """Reset PostgreSQL database tables and clear in-memory caches."""
+        """Reset database state via backend /api/system/reset and clear local caches."""
         self._fallback_cache.clear()
         self._latest_cached_packet = None
-        success = False
-        if self.is_connected and self.pool:
-            try:
-                async with self.pool.acquire() as conn:
-                    await conn.execute("""
-                        TRUNCATE TABLE readings, simulation_packets, alarms CASCADE;
-                        UPDATE nodes SET status = 'active';
-                    """)
-                    success = True
-                    print("[DB] PostgreSQL runtime tables truncated; nodes reset to 'active'.")
-            except Exception as e:
-                print(f"[DB] Direct PostgreSQL reset failed: {e}")
-
-        # Also notify backend service if available
         try:
-            await self._post_to_backend("/api/system/reset", {})
-        except Exception:
-            pass
-
-        return success
+            res = await self._post_to_backend("/api/system/reset", {})
+            return res is not None
+        except Exception as e:
+            print(f"[DB] Backend system reset request failed: {e}")
+            return False
 
 
 # Global singleton instance

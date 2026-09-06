@@ -110,6 +110,7 @@ export const App: React.FC = () => {
   const [isMathsModalOpen, setIsMathsModalOpen] = useState<boolean>(false);
   const [showConsole, setShowConsole] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSessionClosed, setIsSessionClosed] = useState<boolean>(false);
 
   // Visual Styling & Viewport Controls
   const [exaggeration, setExaggeration] = useState<number>(15.0);
@@ -413,20 +414,24 @@ export const App: React.FC = () => {
     showToast("⏸ SIMULATION PAUSED");
   };
 
-  const handleFullMasterReset = () => {
+  const handleCloseEverything = async () => {
+    const confirmed = window.confirm(
+      "STOP SIMULATION, WIPE DATABASE & CLOSE SESSION?\n\n" +
+      "This will halt the simulation engine, wipe runtime tables in PostgreSQL, and close this session."
+    );
+    if (!confirmed) return;
+
+    // 1. Send WS {action: "stop"} before reset so engine halts
+    sendWsAction({ action: "stop" });
     setIsRunning(false);
+
+    // Clear React state
     setTSimSeconds(0);
     setTDays(0);
     setTimeScalar(0);
     setPerturbations([]);
     setLogs([]);
     setSelectedNodeId(null);
-
-    // The readings themselves, not just the selection. Without these the
-    // inspector, the nodes table and the 3D markers kept rendering the
-    // previous run's strain and tilt — a reset that cleared the clock while
-    // every instrument still showed the old numbers, until the next tick
-    // happened to overwrite them.
     setNodeTelemetry([]);
     setZoneTelemetry([]);
     setTickCount(0);
@@ -437,9 +442,20 @@ export const App: React.FC = () => {
 
     globalGeomechanics.reset();
     sendWsAction({ action: "reset" });
+
+    // 2. Await database wipe before closing
     const host = window.location.hostname || "localhost";
-    fetch(`http://${host}:8080/api/system/reset`, { method: "POST" }).catch(() => {});
-    showToast("🔄 SYSTEM RESET: Datum baseline restored");
+    try {
+      await fetch(`http://${host}:8080/api/system/reset`, { method: "POST" });
+    } catch (e) {
+      console.warn("Reset POST error:", e);
+    }
+
+    // 3. Attempt window.close()
+    window.close();
+
+    // 4. If window.close() does not take effect (e.g. user-opened browser tab), show full-screen overlay
+    setIsSessionClosed(true);
   };
 
   // Trigger Ground Interventions
@@ -613,6 +629,33 @@ export const App: React.FC = () => {
     };
   }, [targetLocation, tDays, timeScalar, perturbations]);
 
+  if (isSessionClosed) {
+    return (
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        background: "#070D12",
+        color: "#E0E6ED",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 999999,
+        fontFamily: "monospace",
+        textAlign: "center",
+        padding: "24px"
+      }}>
+        <div style={{ fontSize: "28px", fontWeight: "bold", color: "#FF4444", marginBottom: "16px", letterSpacing: "0.05em" }}>
+          SESSION CLOSED
+        </div>
+        <div style={{ fontSize: "14px", color: "#8BA0A8", maxWidth: "480px", lineHeight: "1.6" }}>
+          Simulation has stopped and the database has been completely wiped to baseline.
+          It is safe to close this browser tab.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-viewport)", overflow: "hidden" }}>
       {/* 1. Single 34px menu bar (replaced the 5-tab, ~140px CAD ribbon). */}
@@ -624,7 +667,7 @@ export const App: React.FC = () => {
         latestPacketId={latestPacket?.packet_id ?? null}
         onStart={handleStart}
         onPause={handlePause}
-        onFullMasterReset={handleFullMasterReset}
+        onCloseEverything={handleCloseEverything}
         onOpenMathsModal={() => setIsMathsModalOpen(true)}
       />
 

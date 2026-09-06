@@ -994,8 +994,53 @@ html, body {
   z-index: 1000 !important;
 }
 
-@keyframes blink {
-  50% { opacity: 0; }
+/* Concentric critical alert rings for 2D map */
+@keyframes alertRing {
+  0%   { transform: scale(0.4); opacity: 0.95; }
+  70%  { transform: scale(2.4); opacity: 0.25; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+.alert-ring-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.alert-ring-container {
+  position: relative;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.alert-ring {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #FF2222;
+  box-sizing: border-box;
+  pointer-events: none;
+  animation: alertRing 1.8s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+  transform-origin: center center;
+}
+
+.alert-ring:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.alert-ring:nth-child(2) {
+  animation-delay: 0.6s;
+}
+
+.alert-ring:nth-child(3) {
+  animation-delay: 1.2s;
+}
+
+.alert-ring.ring-lastgasp {
+  border-color: #FF4400;
 }
 
 /* Dark Leaflet Controls */

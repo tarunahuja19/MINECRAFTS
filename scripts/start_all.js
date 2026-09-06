@@ -167,7 +167,7 @@ async function main() {
     const res = await db.query('SELECT count(*) FROM nodes');
     ok(`database auto-reset on boot: 0 readings, 0 packets, 0 alarms (${res.rows[0].count} active nodes ready)`);
   } catch (err) {
-    warn(`Database check/reset notice: ${err.message}`);
+    die(`database auto-reset failed: ${err.message}`);
   }
 
   // 2. Start MQTT Broker

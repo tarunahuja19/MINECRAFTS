@@ -111,6 +111,10 @@ var strainChart = (function () {
 
   function addPoint(t) {
     if (!chart) return;
+    // A node whose tier carries no strain gauge sends null, not 0. Plotting
+    // that as 0 would draw a flat "unstrained" line for a sensor that does
+    // not exist; skip the point instead.
+    if (t.strain_ustrain == null) return;
     var label = formatTime(t.t_epoch_s);
     chart.data.labels.push(label);
     chart.data.datasets[0].data.push(t.strain_ustrain);

@@ -118,6 +118,7 @@ export interface NodeTelemetry {
   rssi: number | null;
   snr: number | null;
   alive: number;
+  node_state?: string;
 }
 
 export interface ZoneTelemetry {

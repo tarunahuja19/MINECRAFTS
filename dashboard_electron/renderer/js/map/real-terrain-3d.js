@@ -586,11 +586,13 @@ var realTerrain3D = (function () {
 
       var nodeId = n.node_id || n.id || 'N??';
       var state = n.state || (n.status ? String(n.status).toLowerCase() : 'active');
-      var color = '#00E676';
-      if (state === 'warning') color = '#FFB300';
-      if (state === 'critical') color = '#FF3333';
-      if (state === 'lastgasp') color = '#FF5722';
-      if (state === 'dead') color = '#607D8B';
+      // Canonical state palette - must match STATE_CONFIG in node-markers.js so
+      // the 2D and 3D panes never disagree on a node's colour.
+      var color = '#00CC44';
+      if (state === 'warning') color = '#FFA500';
+      if (state === 'critical') color = '#FF2222';
+      if (state === 'lastgasp') color = '#FF4400';
+      if (state === 'dead') color = '#5A6A72';
 
       var t = n.lastTelemetry || {};
       var strainVal = (typeof t.strain_ustrain === 'number') ? t.strain_ustrain : (typeof n.strain === 'number' ? n.strain : 142);

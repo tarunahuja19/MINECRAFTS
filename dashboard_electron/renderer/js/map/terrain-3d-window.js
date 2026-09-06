@@ -373,9 +373,15 @@ var terrain3DWindow = (function () {
       if (state === 'dead') color = '#5A6A72';
 
       var t = n.lastTelemetry;
-      var strainVal = t ? (t.strain_ustrain || t.strain_ue || 142) : (state === 'critical' ? 890 : 142);
-      var strainStr = strainVal + ' µε';
-      var tiltStr = t ? (t.tilt_x_mdeg || 0) + ' mdeg' : '-32 mdeg';
+      // `||` treated a genuine 0 reading and an absent channel alike, and
+      // invented 142 / -32 for nodes whose tier carries no such sensor.
+      var strainVal = null;
+      if (t) {
+        if (t.strain_ustrain != null) strainVal = t.strain_ustrain;
+        else if (t.strain_ue != null) strainVal = t.strain_ue;
+      }
+      var strainStr = strainVal != null ? strainVal + ' µε' : '--';
+      var tiltStr = (t && t.tilt_x_mdeg != null) ? t.tilt_x_mdeg + ' mdeg' : '--';
 
       card.innerHTML = 
         '<div class="terrain-node-card-title">' +

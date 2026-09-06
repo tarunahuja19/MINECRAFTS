@@ -27,6 +27,8 @@ class AggregationFunc(str, Enum):
 
 
 DEFAULT_CHANNEL_RULES: dict[str, AggregationFunc] = {
+    # Strain aggregates with signed MAX (tensile peak): positive is tensile, negative is compressive.
+    # We do NOT use MAX_MAGNITUDE here to prevent large compressive negative strains from tripping tensile thresholds.
     "strain": AggregationFunc.MAX,
     "strain_ue": AggregationFunc.MAX,
     "tilt_x": AggregationFunc.MAX_MAGNITUDE,
@@ -131,6 +133,10 @@ class NodeAccumulator:
             "max_vib_rms": aggregates.get("vib_rms_x100", aggregates.get("vib_rms")),
             "last_alive": aggregates.get("alive", 1),
             "last_seq": aggregates.get("seq", 0),
+            # The state the simulation assigned this node. Dashboards colour
+            # by this and nothing else. It is a string, so it never enters
+            # `values` / `aggregates` - read it off the last reading instead.
+            "node_state": self.last_reading_dict.get("node_state", "ACTIVE"),
         }
 
         return {
@@ -226,6 +232,7 @@ class PacketAggregator:
                     "snr_db": getattr(r, "snr_db", None),
                     "hops": getattr(r, "hops", None),
                     "alive": getattr(r, "alive", 1),
+                    "node_state": getattr(r, "node_state", "ACTIVE"),
                 }
                 channels = getattr(r, "channels", {})
                 r_dict.update(channels)

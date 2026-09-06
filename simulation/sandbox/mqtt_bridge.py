@@ -215,6 +215,11 @@ class MqttBridge:
                 "snr_db": _clean(getattr(r, "snr_db", None)),
                 "hops": getattr(r, "hops", None),
                 "crack_flags": getattr(r, "crack_flags", None),
+                # The state the simulation assigned. The dashboard colours the
+                # marker straight from this - it does not re-derive state from
+                # the strain below, which is what used to redden nodes during
+                # ordinary baseline subsidence.
+                "node_state": getattr(r, "node_state", "ACTIVE"),
                 # Channels a tier does not carry stay absent -> null, not 0.
                 "tilt_x_urad": _clean(channels.get("tilt_x_urad")),
                 "tilt_y_urad": _clean(channels.get("tilt_y_urad")),
@@ -348,41 +353,30 @@ class MqttBridge:
                 if nx is not None and ny is not None:
                     node_pos_map[nid] = (float(nx), float(ny))
 
-        alert_nodes = set()
-        for pf in active_collapses:
-            alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.2
-            cx = float(getattr(pf, "cx", 0.0))
-            cy = float(getattr(pf, "cy", 0.0))
-            for nid, (nx, ny) in node_pos_map.items():
-                if math.hypot(nx - cx, ny - cy) <= alert_r:
-                    alert_nodes.add(nid)
-
         raised = []
         for r in readings:
             raw_id = getattr(r, "node_id", "")
             node_id_str = _node_topic_id(raw_id)
 
-            if node_id_str not in alert_nodes:
-                continue
-
-            alive = getattr(r, "alive", 1)
-            crack_flags = getattr(r, "crack_flags", 0) or 0
             channels = getattr(r, "channels", {}) or {}
             strain_ue = channels.get("strain_ue")
-            tilt_x = channels.get("tilt_x_urad")
-            tilt_y = channels.get("tilt_y_urad")
-            tilt_mag = max(abs(tilt_x or 0), abs(tilt_y or 0))
+
+            # Severity comes from the state the session already assigned by the
+            # collapse-radius rule. Re-deriving it from a strain threshold here
+            # would be a second, competing ladder - exactly the drift that let
+            # the dashboard raise alarms the physics never justified.
+            node_state = getattr(r, "node_state", "ACTIVE")
 
             level = None
             state = "NORMAL"
 
-            if alive == 0:
+            if getattr(r, "alive", 1) == 0:
                 level = 3
                 state = "FAILED"
-            elif (crack_flags & 1) or (strain_ue is not None and strain_ue >= 5300) or tilt_mag >= 3500:
+            elif node_state == "CRITICAL":
                 level = 3
                 state = "CRITICAL"
-            elif (strain_ue is not None and strain_ue >= 4000) or tilt_mag >= 1750:
+            elif node_state == "WARNING":
                 level = 2
                 state = "TENSION"
 

@@ -235,6 +235,11 @@ ipcMain.handle('window:open-3d', async (_event, sectorData) => {
   return { success: true };
 });
 
+ipcMain.handle('app:close', async () => {
+  app.quit();
+  return { success: true };
+});
+
 app.whenReady().then(ensureTileServer).then(createWindow);
 
 app.on('window-all-closed', () => {

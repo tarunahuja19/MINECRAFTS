@@ -245,18 +245,17 @@ var liveProvider = (function () {
         var formattedId = nid.startsWith('N') ? nid : ('N' + (parseInt(nid, 10) < 10 ? '0' : '') + nid);
         var aggs = n.aggregates || {};
 
-        var strain = aggs.max_strain != null ? aggs.max_strain : 0;
-        var tiltX = aggs.max_tilt_x != null ? aggs.max_tilt_x : 0;
-        var tiltY = aggs.max_tilt_y != null ? aggs.max_tilt_y : 0;
+        var strain = aggs.max_strain != null ? aggs.max_strain : null;
+        var tiltX = aggs.max_tilt_x != null ? aggs.max_tilt_x : null;
+        var tiltY = aggs.max_tilt_y != null ? aggs.max_tilt_y : null;
 
-        // Classify node status according to DGMS thresholds (never critical at baseline/stopped)
+        // The simulation is the single source of node health state. It assigns
+        // each node's state by carve geometry (session.py:_assign_node_states)
+        // and ships it as `aggregates.node_state`. The UI only paints what the
+        // server sent - it must never re-derive state from strain/tilt.
         var status = 'active';
-        if (currentSimState !== 'STOPPED') {
-          if (strain > 600 || Math.abs(tiltX) > 500 || Math.abs(tiltY) > 500) {
-            status = 'critical';
-          } else if (strain > 400 || Math.abs(tiltX) > 200 || Math.abs(tiltY) > 200) {
-            status = 'warning';
-          }
+        if (currentSimState !== 'STOPPED' && aggs.node_state) {
+          status = String(aggs.node_state).toLowerCase();
         }
 
         var telemetryRow = {
@@ -265,12 +264,12 @@ var liveProvider = (function () {
           raw_id: nid,
           tier: n.tier || '1A',
           t_epoch_s: packetEpochS,
-          strain_ustrain: Math.round(strain),
-          tilt_x_mdeg: Math.round(tiltX / 17.4533),
-          tilt_y_mdeg: Math.round(tiltY / 17.4533),
-          temp_c_x10: Math.round((aggs.max_temperature || 25.0) * 10),
-          vib_rms: Math.round((aggs.max_vib_rms || 8) / 10),
-          vbat_mv: aggs.min_battery || 3600,
+          strain_ustrain: strain != null ? Math.round(strain) : null,
+          tilt_x_mdeg: tiltX != null ? Math.round(tiltX / 17.4533) : null,
+          tilt_y_mdeg: tiltY != null ? Math.round(tiltY / 17.4533) : null,
+          temp_c_x10: aggs.max_temperature != null ? Math.round(aggs.max_temperature * 10) : null,
+          vib_rms: aggs.max_vib_rms != null ? Math.round(aggs.max_vib_rms / 10) : null,
+          vbat_mv: aggs.min_battery != null ? aggs.min_battery : null,
           state: status,
           flags: 0
         };
@@ -301,6 +300,14 @@ var liveProvider = (function () {
     // who wants the in-world clock.
     if (data && data.t_epoch_s == null) {
       data.t_epoch_s = Math.floor(Date.now() / 1000);
+    }
+
+    // The simulation is the single source of node state. Raw MQTT telemetry
+    // frames carry it as `node_state` (uppercase enum); the renderer keys off
+    // lowercase `state`. Normalize here so the UI paints only what the server
+    // sent and never re-derives state from strain/tilt.
+    if (data && data.state == null && data.node_state) {
+      data.state = String(data.node_state).toLowerCase();
     }
 
     var nodeId = data._node_id || data.node_id;

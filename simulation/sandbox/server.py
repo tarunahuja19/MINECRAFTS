@@ -391,6 +391,7 @@ async def get_node_details(node_id: int):
 
 class CommandRequest(BaseModel):
     action: str
+    source: str | None = None
     multiplier: float | None = None
     cx: float | None = None
     cy: float | None = None
@@ -415,7 +416,8 @@ async def control(cmd: CommandRequest):
     elif action in ("stop", "reset"):
         if action == "reset":
             session.reset()
-            await db_manager.reset_database()
+            if (cmd.source or "").lower() != "backend":
+                await db_manager.reset_database()
         else:
             session.stop()
     elif action == "set_speed" and cmd.multiplier is not None:
@@ -571,7 +573,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif action in ("stop", "reset"):
                     if action == "reset":
                         session.reset()
-                        await db_manager.reset_database()
+                        if str(data.get("source", "")).lower() != "backend":
+                            await db_manager.reset_database()
                     else:
                         session.stop()
                 elif action == "set_speed":

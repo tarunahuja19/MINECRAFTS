@@ -141,7 +141,11 @@ var panelGrid = (function () {
       var nd = nodeMarkers.getNodeData(d.nodes[i]);
       var t = nd && nd.lastTelemetry;
       if (!t) continue;
-      var v = t.strain_ustrain || 0;
+      // Null means "no strain gauge on this tier", not "zero strain". Coercing
+      // it to 0 dragged the cell's peak down and painted instrumented cells
+      // as stable.
+      if (t.strain_ustrain == null) continue;
+      var v = t.strain_ustrain;
       if (peak === null || v > peak) peak = v;
     }
     if (peak === null) return null;

@@ -43,7 +43,7 @@ interface MenuBarProps {
   latestPacketId?: number | null;
   onStart: () => void;
   onPause: () => void;
-  onFullMasterReset: () => void;
+  onCloseEverything: () => void;
   onOpenMathsModal: () => void;
 }
 
@@ -72,7 +72,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
   latestPacketId,
   onStart,
   onPause,
-  onFullMasterReset,
+  onCloseEverything,
   onOpenMathsModal,
 }) => {
   const [activeInfo, setActiveInfo] = useState<InfoItem | null>(null);
@@ -126,9 +126,14 @@ export const MenuBar: React.FC<MenuBarProps> = ({
           <span>{isRunning ? "Pause" : "Start"}</span>
         </button>
 
-        <button onClick={onFullMasterReset} className="bar-item">
+        <button
+          onClick={onCloseEverything}
+          className="bar-item"
+          style={{ color: "var(--state-critical)" }}
+          title="Stop simulation, wipe database, and close session"
+        >
           <RotateCcw size={12} />
-          <span>Reset</span>
+          <span>CLOSE EVERYTHING</span>
         </button>
 
         <div className="bar-sep" />

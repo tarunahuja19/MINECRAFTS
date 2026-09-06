@@ -34,7 +34,7 @@
           <span class="sim-hud-dot"></span>
           <span id="sim-hud-text">SIMULATION: STOPPED</span>
         </div>
-        <button id="btn-db-reset" class="btn" style="background:#5A1010; color:#FFB4B4; border:1px solid #FF4444; font-size:10.5px; font-weight:bold; letter-spacing:0.04em; padding:3px 10px; cursor:pointer; border-radius:3px;" title="Truncate runtime readings, simulation packets, and alarms from PostgreSQL and reset nodes to active">RESET DATABASE</button>
+        <button id="btn-close-all" class="btn" style="background:#5A1010; color:#FFB4B4; border:1px solid #FF4444; font-size:10.5px; font-weight:bold; letter-spacing:0.04em; padding:3px 10px; cursor:pointer; border-radius:3px;" title="Stop simulation, wipe runtime database, and quit application">CLOSE EVERYTHING</button>
       </div>
     </div>
 
@@ -485,8 +485,7 @@
             <div class="panel" style="flex:0 0 auto;">
               <div class="panel-header">DATABASE & SYSTEM STATE CONTROL</div>
               <div class="panel-body" style="padding:10px; display:flex; flex-direction:column; gap:8px;">
-                <div style="font-size:11px; color:var(--text-secondary);">Clear accumulated runtime readings, simulation packets, and alarms from PostgreSQL and restore all 31 nodes to 'active'.</div>
-                <button id="btn-db-reset-system" class="btn" style="background:#5A1010; color:#FFB4B4; border:1px solid #FF4444; padding:5px 12px; font-weight:bold; font-size:11px; width:fit-content; cursor:pointer; border-radius:3px;">RESET DATABASE TO BASELINE</button>
+                <div style="font-size:11px; color:var(--text-secondary);">System reset and session teardown is controlled globally by the CLOSE EVERYTHING button in the top navigation bar.</div>
               </div>
             </div>
 

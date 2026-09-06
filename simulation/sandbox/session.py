@@ -39,6 +39,18 @@ from sandbox.packet import PacketAggregator
 from sandbox.sensors import CHANNEL_COLUMNS, CSV_COLUMNS, SensorArray, SensorNoiseConfig, SensorReading
 
 
+#: How far a carve's influence reaches, as a multiple of its own radius.
+#: The CRITICAL band is the collapse footprint the operator drew; the WARNING
+#: band is the ground-falling fringe around it. Both the 3D viewport's alert
+#: ring and the MQTT alarm bridge measure against these same numbers, so a
+#: node's colour, its ring, and its alarm can never disagree.
+CRITICAL_RADIUS_FACTOR = 1.2
+WARNING_RADIUS_FACTOR = 1.6
+
+#: Ordering for resolving overlapping carves - a node takes its worst state.
+_STATE_SEVERITY = {"ACTIVE": 0, "WARNING": 1, "CRITICAL": 2}
+
+
 @dataclass
 class SessionConfig:
     """Configuration for a simulation run."""
@@ -210,6 +222,50 @@ class SimulationSession:
         current_dt = self.base_dt + timedelta(seconds=t_sim_seconds)
         return current_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    def _assign_node_states(
+        self, active_collapses: list[PillarFailure]
+    ) -> dict[str, str]:
+        """Health state per node id (``N01``-style) for the current tick.
+
+        A node's state is decided by geometry alone — its distance from every
+        active carve — never by a strain threshold. Thresholds were what let
+        continuous baseline subsidence redden the board with no operator input,
+        because the ground genuinely does keep settling and any fixed cutoff is
+        eventually crossed.
+
+        With no carve in progress every node is ACTIVE. Around a carve of
+        radius R:
+
+        - within ``1.2 * R``: CRITICAL, the collapse footprint proper
+        - within ``1.6 * R``: WARNING, the ground-falling fringe outside it
+        - beyond that: ACTIVE
+
+        Overlapping carves resolve to the most severe state, so a node in one
+        carve's fringe and another's core reads CRITICAL.
+        """
+        states = {
+            _node_topic_id(n.node_id): "ACTIVE" for n in self.sensor_array.nodes
+        }
+        if not active_collapses:
+            return states
+
+        for pf in active_collapses:
+            critical_r = pf.radius_m * CRITICAL_RADIUS_FACTOR
+            warning_r = pf.radius_m * WARNING_RADIUS_FACTOR
+            for n in self.sensor_array.nodes:
+                dist = math.hypot(n.x_m - pf.cx, n.y_m - pf.cy)
+                if dist <= critical_r:
+                    state = "CRITICAL"
+                elif dist <= warning_r:
+                    state = "WARNING"
+                else:
+                    continue
+                nid = _node_topic_id(n.node_id)
+                if _STATE_SEVERITY[state] > _STATE_SEVERITY[states[nid]]:
+                    states[nid] = state
+
+        return states
+
     def tick(self) -> dict[str, Any]:
         """Execute one simulation tick (60 sim-seconds).
 
@@ -283,38 +339,36 @@ class SimulationSession:
             if pf.t_init_days <= t_sim_days <= (pf.t_collapse_days + pf.duration_days + 0.05)
         ]
 
-        cycle_sec = self.t_sim_seconds % 60.0
-        is_onset_window = cycle_sec < 20.0
+        # Assign every node its authoritative health state for this tick. This
+        # is the single source of truth for node colour anywhere in the system:
+        # the dashboards paint what arrives here and never re-derive it.
+        #
+        # An operator carving a surface is the ONLY thing that reddens a node.
+        # Ordinary Knothe subsidence, however far it has progressed, leaves the
+        # board green - that is what makes a red node mean something.
+        node_states = self._assign_node_states(active_collapses)
 
-        if not active_collapses:
-            # Baseline normal operation: ensure crack latches are 0 and no alarms
-            for n in self.sensor_array.nodes:
+        for n in self.sensor_array.nodes:
+            st = node_states.get(_node_topic_id(n.node_id), "ACTIVE")
+            if st == "CRITICAL":
+                n.crack_latched = max(n.crack_latched, 1)
+            else:
                 n.crack_latched = 0
-            for r in readings:
+
+        for r in readings:
+            state = node_states.get(_node_topic_id(r.node_id), "ACTIVE")
+            r.node_state = state
+
+            if state == "CRITICAL":
+                r.crack_flags = max(getattr(r, "crack_flags", 0) or 0, 1)
+                if isinstance(getattr(r, "channels", None), dict):
+                    r.channels["strain_ue"] = max(r.channels.get("strain_ue") or 0, 6500)
+            elif state == "WARNING":
                 r.crack_flags = 0
-        else:
-            # Collapse active: enforce 1.2x Alert Radius rule during active cycle window
-            alert_node_ids = set()
-            for pf in active_collapses:
-                alert_r = pf.radius_m * 1.2
-                for n in self.sensor_array.nodes:
-                    if math.hypot(n.x_m - pf.cx, n.y_m - pf.cy) <= alert_r:
-                        alert_node_ids.add(_node_topic_id(n.node_id))
-
-            for n in self.sensor_array.nodes:
-                nid_str = _node_topic_id(n.node_id)
-                if nid_str not in alert_node_ids:
-                    n.crack_latched = 0
-
-            for r in readings:
-                nid_str = _node_topic_id(r.node_id)
-                if nid_str in alert_node_ids and is_onset_window:
-                    r.crack_flags = max(getattr(r, "crack_flags", 0) or 0, 1)
-                    if hasattr(r, "channels") and isinstance(r.channels, dict):
-                        curr_strain = r.channels.get("strain_ue") or 0
-                        r.channels["strain_ue"] = max(curr_strain, 6500)
-                elif nid_str not in alert_node_ids:
-                    r.crack_flags = 0
+                if isinstance(getattr(r, "channels", None), dict):
+                    r.channels["strain_ue"] = max(r.channels.get("strain_ue") or 0, 4200)
+            else:
+                r.crack_flags = 0
 
         # 8. Write one row per node to nodes.csv
         if self._nodes_file:
@@ -489,6 +543,7 @@ class SimulationSession:
                     "rssi": r.rssi_dbm,
                     "snr": r.snr_db,
                     "alive": r.alive,
+                    "node_state": r.node_state,
                 }
                 for r in readings
             ],
@@ -592,6 +647,8 @@ class SimulationSession:
         self.tick_index = 0
         self.speed_multiplier = self.config.default_speed
         self.is_paused = False
+        if not self.config.base_iso_time:
+            self.base_dt = datetime.now(timezone.utc).replace(microsecond=0)
 
         # Interventions and transient disturbances
         self.pillar_failures = []

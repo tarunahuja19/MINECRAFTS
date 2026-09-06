@@ -12,5 +12,6 @@ contextBridge.exposeInMainWorld('r4', {
   exportNodeCSV: (nodeId) => ipcRenderer.invoke('export:node-csv', nodeId),
   exportReport: (html) => ipcRenderer.invoke('export:report', html),
   open3DWindow: (sectorData) => ipcRenderer.invoke('window:open-3d', sectorData),
+  closeApp: () => ipcRenderer.invoke('app:close'),
   onMenuExportReport: (cb) => ipcRenderer.on('menu:export-report', () => cb())
 });

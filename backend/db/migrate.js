@@ -52,7 +52,7 @@ async function migrate() {
     const isReset = process.argv.includes('--reset');
     if (isReset) {
       console.log(`[migrate] Reset flag detected. Dropping existing tables...`);
-      await dbClient.query(`DROP TABLE IF EXISTS readings CASCADE; DROP TABLE IF EXISTS nodes CASCADE;`);
+      await dbClient.query(`DROP TABLE IF EXISTS readings, simulation_packets, alarms, nodes CASCADE;`);
     } else {
       await dbClient.query(`ALTER TABLE IF EXISTS nodes DROP CONSTRAINT IF EXISTS nodes_status_check;`);
     }

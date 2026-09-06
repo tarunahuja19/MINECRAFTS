@@ -6,6 +6,42 @@ var alarmHistory = (function () {
   var PAGE_SIZE = 10;
   var containerIds = [];
   var selectedAlarmId = null;
+  var acknowledgedAlarmIds = {};
+
+  function getActiveAlarmCount() {
+    var latestByEntity = {};
+    for (var i = 0; i < allAlarms.length; i++) {
+      var a = allAlarms[i];
+      if (!a) continue;
+      var key = a.zone_id || (a.affected_nodes && a.affected_nodes.length === 1 ? a.affected_nodes[0] : a.alarm_id);
+      if (!key) continue;
+      // allAlarms is ordered newest-first, so the first entry seen is the current state
+      if (!latestByEntity[key]) {
+        latestByEntity[key] = a;
+      }
+    }
+
+    var count = 0;
+    var keys = Object.keys(latestByEntity);
+    for (var k = 0; k < keys.length; k++) {
+      var alarm = latestByEntity[keys[k]];
+      if (alarm.alarm_id && acknowledgedAlarmIds[alarm.alarm_id]) continue;
+      if (alarm.acknowledged || alarm.t_ack) continue;
+      if (alarm.state === 'NORMAL' || alarm.state === 'STABLE' || alarm.state === 'RESOLVED') continue;
+      if (alarm.level === 0 || alarm.level == null) continue;
+      count++;
+    }
+    return count;
+  }
+
+  function updateBadges() {
+    var activeCount = getActiveAlarmCount();
+    if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
+      alarmBanner.updateBadge(activeCount);
+    }
+    var badge = document.getElementById('map-alarm-history-badge');
+    if (badge) badge.textContent = String(activeCount);
+  }
 
   function init(target) {
     if (Array.isArray(target)) {
@@ -39,20 +75,30 @@ var alarmHistory = (function () {
       allAlarms = dedupeAlarms(sorted);
       page = 0;
       selectedAlarmId = null;
-      if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
-        alarmBanner.updateBadge(allAlarms.length);
-      }
+      updateBadges();
       render();
     });
 
     bus.on('system-reset', function () {
       allAlarms = [];
+      acknowledgedAlarmIds = {};
       selectedAlarmId = null;
       page = 0;
-      if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
-        alarmBanner.updateBadge(0);
-      }
+      updateBadges();
       render();
+    });
+
+    bus.on('alarm-ack', function (data) {
+      if (data && data.alarm_id) {
+        acknowledgedAlarmIds[data.alarm_id] = true;
+        for (var i = 0; i < allAlarms.length; i++) {
+          if (allAlarms[i].alarm_id === data.alarm_id) {
+            allAlarms[i].acknowledged = true;
+            allAlarms[i].t_ack = data.t_ack;
+          }
+        }
+        updateBadges();
+      }
     });
 
     bus.on('alarm', function (alarm) {
@@ -75,9 +121,7 @@ var alarmHistory = (function () {
       } else {
         allAlarms.unshift(alarm);
       }
-      if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
-        alarmBanner.updateBadge(allAlarms.length);
-      }
+      updateBadges();
       render();
     });
 
@@ -93,9 +137,7 @@ var alarmHistory = (function () {
         }
         if (!exists) {
           allAlarms.unshift(alarm);
-          if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
-            alarmBanner.updateBadge(allAlarms.length);
-          }
+          updateBadges();
           render();
         } else {
           updateSelectedHighlight();
@@ -129,8 +171,9 @@ var alarmHistory = (function () {
     var end = Math.min(start + PAGE_SIZE, allAlarms.length);
     var slice = allAlarms.slice(start, end);
 
+    var activeCount = getActiveAlarmCount();
     var badge = document.getElementById('map-alarm-history-badge');
-    if (badge) badge.textContent = allAlarms.length;
+    if (badge) badge.textContent = String(activeCount);
 
     var html =
       '<table class="data-table">' +

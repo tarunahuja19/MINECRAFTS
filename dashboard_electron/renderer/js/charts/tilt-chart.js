@@ -125,9 +125,11 @@ var tiltChart = (function () {
     if (!chart) return;
     var label = formatTime(t.t_epoch_s);
     chart.data.labels.push(label);
-    chart.data.datasets[0].data.push(t.tilt_x_mdeg);
-    chart.data.datasets[1].data.push(t.tilt_y_mdeg);
-    chart.data.datasets[2].data.push(t.temp_c_x10 / 10);
+    // Chart.js renders null as a gap in the line, which is the honest
+    // rendering for a channel this node's tier does not carry.
+    chart.data.datasets[0].data.push(t.tilt_x_mdeg != null ? t.tilt_x_mdeg : null);
+    chart.data.datasets[1].data.push(t.tilt_y_mdeg != null ? t.tilt_y_mdeg : null);
+    chart.data.datasets[2].data.push(t.temp_c_x10 != null ? t.temp_c_x10 / 10 : null);
     if (chart.data.labels.length > MAX_POINTS) {
       chart.data.labels.shift();
       chart.data.datasets[0].data.shift();

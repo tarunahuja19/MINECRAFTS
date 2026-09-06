@@ -64,7 +64,7 @@ var nodeDetail = (function () {
         '<div class="readout mono">' + (nd.ring || '--').toUpperCase() + '</div>' +
         '<div class="section-sep"></div>' +
         '<div class="readout-label">STRAIN</div>' +
-        '<div class="readout mono" id="detail-strain">' + (t ? t.strain_ustrain + ' ustrain' : '--') + '</div>' +
+        '<div class="readout mono" id="detail-strain">' + (t && t.strain_ustrain != null ? t.strain_ustrain + ' ustrain' : '--') + '</div>' +
         '<div class="section-sep"></div>' +
         '<div id="strain-chart-container" class="panel-inset" style="height:140px;"></div>' +
         '<div class="section-sep"></div>' +
@@ -113,7 +113,7 @@ var nodeDetail = (function () {
 
   function updateTelemetry(t) {
     var el = document.getElementById('detail-strain');
-    if (el) el.textContent = t.strain_ustrain + ' ustrain';
+    if (el) el.textContent = (t && t.strain_ustrain != null) ? t.strain_ustrain + ' ustrain' : '--';
 
     var nd = nodeMarkers.getNodeData(currentNodeId);
     if (nd) updateLastSeen(nd);

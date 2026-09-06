@@ -140,7 +140,7 @@ app.post(['/api/system/reset', '/api/database/reset'], async (req, res) => {
       await fetch('http://127.0.0.1:8000/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset' })
+        body: JSON.stringify({ action: 'reset', source: 'backend' })
       });
     } catch (e) {
       // Simulation may not be actively running, ignore fetch error
