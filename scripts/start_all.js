@@ -215,11 +215,15 @@ async function main() {
 
   // 6. Start Vite 3D Sandbox Frontend
   say('[5] Sandbox 3D frontend (Vite dev server, port 5173)');
-  const viteCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const viteProc = spawn(viteCmd, ['vite', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], {
+  const localVite = path.join(ROOT_DIR, 'simulation', 'frontend', 'node_modules', '.bin', process.platform === 'win32' ? 'vite.cmd' : 'vite');
+  const viteBin = fs.existsSync(localVite) ? localVite : (process.platform === 'win32' ? 'npx.cmd' : 'npx');
+  const viteArgs = fs.existsSync(localVite)
+    ? ['--host', '127.0.0.1', '--port', '5173', '--strictPort']
+    : ['vite', '--host', '127.0.0.1', '--port', '5173', '--strictPort'];
+  const viteProc = spawn(viteBin, viteArgs, {
     cwd: path.join(ROOT_DIR, 'simulation', 'frontend'),
     stdio: 'inherit',
-    shell: true
+    shell: false
   });
   children.push(viteProc);
   await waitForHttp('http://127.0.0.1:5173/');
@@ -227,11 +231,13 @@ async function main() {
 
   // 7. Start Electron Operator UI
   say('[6] Electron dashboard');
-  const electronCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const electronProc = spawn(electronCmd, ['electron', '.'], {
+  const localElectron = path.join(ROOT_DIR, 'dashboard_electron', 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron');
+  const electronBin = fs.existsSync(localElectron) ? localElectron : (process.platform === 'win32' ? 'npx.cmd' : 'npx');
+  const electronArgs = fs.existsSync(localElectron) ? ['.'] : ['electron', '.'];
+  const electronProc = spawn(electronBin, electronArgs, {
     cwd: path.join(ROOT_DIR, 'dashboard_electron'),
     stdio: 'inherit',
-    shell: true,
+    shell: false,
     env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined }
   });
   children.push(electronProc);
