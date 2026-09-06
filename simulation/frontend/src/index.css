@@ -1,0 +1,651 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* --------------------------------------------------------------------
+     Tactical console palette.
+     --------------------------------------------------------------------
+     Flat, hard-edged and high-contrast, matching the reference console.
+     What changed and why:
+
+     - No glassmorphism. Panels were translucent with a 12px backdrop blur
+       over a moving 3D scene, so a readout's contrast depended on whatever
+       terrain happened to be behind it. Panels are now opaque, so a number
+       reads the same wherever the camera is pointing.
+     - No glows. Every interactive element carried a cyan box-shadow, which
+       spent the strongest signal available (emitted light on a dark ground)
+       on "this is a button" — leaving nothing louder for an actual alarm.
+       Glow is now reserved for the alarm bar alone.
+     - No gradients or lift-on-hover. Instrument faces do not shade or move.
+     - One accent per meaning, not per element: green ACTIVE, amber WARNING,
+       red CRITICAL. --accent-cyan was a blue-grey that read as neither.
+     -------------------------------------------------------------------- */
+
+  /* Surfaces: four steps, darkest to lightest, all opaque. */
+  --bg-void: #05070b;      /* behind everything; deepest */
+  --bg-primary: #0a0d12;   /* app ground */
+  --bg-panel: #10141b;     /* docked panels */
+  --bg-raised: #171c25;    /* headers, group boxes, inputs */
+  --bg-hover: #1e242f;
+  /* The 3D viewport's ground, behind the terrain mesh. Distinct from
+     --bg-primary: this one sits behind a lit WebGL scene rather than behind
+     flat chrome, and is the neutral the terrain's greens are judged against.
+     It is NOT a terrain colour — hypsometry.ts owns those. */
+  --bg-viewport: #1c1d1f;
+
+  /* Hairlines. A console is built from rules, not shadows. */
+  --border-color: #232a36;
+  --border-subtle: #1a1f28;
+  --border-strong: #35404f;
+  --border-active: #4a5568;
+
+  --text-primary: #f7f7f7;
+  --text-secondary: #a3a4a6;
+  --text-muted: #7c7d80;
+  /* Dimmer than --text-muted, for de-emphasised rules and disabled glyphs. */
+  --text-faint: #4a4b4e;
+
+  /* State colours. These carry meaning and nothing else may use them.
+
+     Desaturated deliberately. The vivid set these replaced (#37d67a green,
+     #f03e3e red) was pure emitted light on a dark ground, so every state
+     chip shouted at the same volume as a genuine alarm and the eye had no
+     way to rank them. These are the muted values the components had already
+     drifted to inline; promoting them to tokens keeps that quieter reading
+     while making it adjustable from one place. */
+  --state-active: #7d9b7a;
+  --state-warning: #d9a25f;
+  --state-critical: #c2603f;
+  --state-info: #8fa3ad;
+  /* A second, cooler info tone for secondary data series (plot lines,
+     axis keys) that must stay distinguishable from --state-info. */
+  --state-info-alt: #7fa0b5;
+  /* Reserved for the fourth series where three are already spoken for. */
+  --state-accent: #9585ad;
+
+  /* Aliases kept so existing inline styles keep resolving. */
+  --accent-emerald: var(--state-active);
+  --accent-amber: var(--state-warning);
+  --accent-orange: var(--state-warning);
+  --accent-red: var(--state-critical);
+  --accent-blue: var(--state-info);
+  --accent-cyan: var(--state-info);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* One type scale. The UI previously mixed 7.5/8/8.5/9/9.5/10/10.5/11px,
+     which reads as inconsistency rather than hierarchy. Three sizes: a
+     label, a body, and a value. */
+  --fs-label: 10px;   /* uppercase field labels */
+  --fs-body: 11px;    /* buttons, table cells, prose */
+  --fs-value: 15px;   /* the measured number itself */
+
+  /* 4px spacing grid. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+
+  /* Square corners throughout: 2px is a manufacturing tolerance, not a
+     style. The old 4/6/8/12px scale made panels read as cards. */
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+
+  /* Retained for components still referencing them. */
+  --bg-secondary: var(--bg-panel);
+  --bg-panel-header: var(--bg-raised);
+  --bg-card: var(--bg-raised);
+  --bg-card-hover: var(--bg-hover);
+  --accent-cyan-glow: transparent;
+  --accent-purple: var(--state-info);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ==========================================================================
+   PANELS
+   Opaque, hairline-ruled, square. No blur, no drop shadow: a docked panel is
+   part of the chassis, not a card floating above it.
+   ========================================================================== */
+.docked-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.docked-header {
+  background: var(--bg-raised);
+  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.hud-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-2) var(--sp-3);
+  position: relative;
+}
+
+.hud-card:hover {
+  border-color: var(--border-strong);
+}
+
+/* ==========================================================================
+   BUTTONS
+   One resting state, one hover, one active. Hover brightens the surface and
+   the hairline; it does not move the control or emit light.
+   ========================================================================== */
+.hud-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  padding: 5px 10px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  letter-spacing: 0.04em;
+  transition: background 0.1s linear, border-color 0.1s linear, color 0.1s linear;
+  font-family: var(--font-mono);
+  user-select: none;
+}
+
+.hud-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.hud-btn:active {
+  background: var(--bg-raised);
+}
+
+.hud-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Selected state: a left marker rule and a lit label. This is the one
+   pattern the whole UI uses to say "this is the armed option", replacing
+   four different treatments (glow, fill, border, colour) that previously
+   meant the same thing in different places. */
+.hud-btn-active {
+  background: var(--bg-hover) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+  box-shadow: inset 2px 0 0 0 var(--state-info) !important;
+}
+
+.hud-btn-primary {
+  background: var(--state-active);
+  border-color: var(--state-active);
+  color: #05070b;
+  font-weight: 700;
+}
+
+.hud-btn-primary:hover {
+  background: #4ae08c;
+  border-color: #4ae08c;
+  color: #05070b;
+}
+
+.hud-btn-danger {
+  background: transparent;
+  border-color: var(--state-critical);
+  color: var(--state-critical);
+  font-weight: 700;
+}
+
+.hud-btn-danger:hover {
+  background: var(--state-critical);
+  border-color: var(--state-critical);
+  color: #05070b;
+}
+
+.action-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px var(--sp-2);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.1s linear, border-color 0.1s linear;
+  user-select: none;
+}
+
+.action-card-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.action-card-btn:disabled {
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   SCROLLBARS
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-void);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* The single pulsing element in the UI. Reserved for an active alarm, which
+   is the only thing that has earned the right to move. */
+@keyframes alarmPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+
+/* The ⓘ affordance: a quiet outlined glyph. It previously grew 15% and lit
+   up on hover, which drew more attention than the control it annotates. */
+.simmine-info-icon,
+.inspector-info-icon {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.1s linear, border-color 0.1s linear;
+  font-family: var(--font-mono);
+}
+
+.inspector-info-icon {
+  position: static;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+.simmine-info-icon:hover,
+.inspector-info-icon:hover {
+  color: var(--state-info);
+  border-color: var(--state-info);
+  background: transparent;
+}
+
+/* ==========================================================================
+   FIELD / READOUT
+   The reference's core repeating unit: a small muted uppercase label with
+   the measured value in mono directly beneath it, left-aligned on a shared
+   grid so a column of readings scans vertically.
+   ========================================================================== */
+.field-label {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.field-value {
+  font-size: var(--fs-value);
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  line-height: 1.3;
+}
+
+/* Status chip: square, outlined, mono. */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   MENU BAR
+   One 34px strip replaces the five-tab, 78px ribbon of boxed groups. Items
+   are flat text; the open one is marked by a background step, not a lip.
+   ========================================================================== */
+.menu-bar {
+  height: 34px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 var(--sp-2);
+  font-family: var(--font-mono);
+  user-select: none;
+  z-index: 60;
+}
+
+.bar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.1s linear, background 0.1s linear;
+}
+
+.bar-item:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-raised);
+}
+
+.bar-item:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.bar-item-open {
+  color: var(--text-primary);
+  background: var(--bg-raised);
+}
+
+/* A vertical rule between clusters of bar items. */
+.bar-sep {
+  width: 1px;
+  background: var(--border-color);
+  margin: 7px var(--sp-1);
+  flex-shrink: 0;
+}
+
+
+/* ==========================================================================
+   SEGMENTED CONTROL
+   ========================================================================== */
+.segmented {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.segmented-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 8px;
+  background: var(--bg-panel);
+  border: none;
+  border-right: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s linear, color 0.1s linear;
+}
+
+.segmented-item:last-child { border-right: none; }
+
+.segmented-item:hover:not(:disabled):not(.segmented-item-on) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.segmented-item:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.segmented-item-on {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 0 var(--state-info);
+}
+
+.segmented-sub {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   FIELD READOUT  (LABEL over value, as in the reference panel)
+   ========================================================================== */
+.field {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.field:last-child { border-bottom: none; }
+
+.field .field-label {
+  margin-bottom: 2px;
+}
+
+/* A section heading inside the inspector. */
+.panel-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* A top-level heading inside the inspector column (POSITION, GEOMECHANICS,
+   HARDWARE, VIEW). The 14px lead is part of the rule rather than an inline
+   `marginTop: 14` repeated at every call site — as an override it was easy
+   to omit, so headings spaced themselves inconsistently down the column. */
+.panel-section-title {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  margin-top: 14px;
+  margin-bottom: var(--sp-2);
+}
+
+/* The first heading in a panel sits against the panel's own padding, so it
+   does not need the separating lead the ones below it do. */
+.panel-section-title:first-child {
+  margin-top: 0;
+}
+
+/* A heading one level down (Camera, Overlays inside VIEW). These used the
+   same class as their own parent heading, so a 340px column read as one
+   flat list of equally-loud labels with no sense of what contained what.
+   Dimmer, tighter and unspaced, so it reads as subordinate to the section
+   heading above it rather than as a peer. */
+.panel-subsection-title {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-bottom: var(--sp-1);
+}
+
+/* Alarm bar: full-bleed, the loudest thing in the UI, shown only on breach. */
+.alarm-bar {
+  flex-shrink: 0;
+  height: 30px;
+  background: var(--state-critical);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  z-index: 70;
+}
+
+.alarm-chip {
+  background: rgba(0, 0, 0, 0.28);
+  padding: 2px 8px;
+  letter-spacing: 0.12em;
+  animation: alarmPulse 1.4s ease-in-out infinite;
+}
+
+/* Read-only status text sitting directly on the bar. */
+.bar-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.menu-slider-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+  font-family: var(--font-mono);
+}
+
+.menu-slider-row strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.menu-hint {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-top: 5px;
+}
+
+/* Two-column readout grid for short paired values (X/Y, battery/temp). */
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--sp-3);
+}
+
+/* Thin progress meter under a value, as in the reference's VIBRATION/BATTERY
+   rows. Square, no glow, no rounded cap. */
+.meter {
+  height: 4px;
+  background: var(--bg-void);
+  overflow: hidden;
+  margin: -2px 0 6px;
+}
+
+.meter-fill {
+  height: 100%;
+  transition: width 0.2s linear;
+}
+
+/* Neighbour baseline row: three columns on one line. */
+.nb-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-body);
+  font-family: var(--font-mono);
+}
+
+.nb-row:last-child { border-bottom: none; }
+.nb-row > :last-child { text-align: right; }

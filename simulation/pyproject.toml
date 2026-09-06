@@ -1,0 +1,27 @@
+[project]
+name = "mine-sandbox"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
+    "pytest>=8.0",
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.4",
+    "websockets>=17.1",
+    "httpx>=0.28.1",
+    "pyvista>=0.48.4",
+    "openseespy>=3.7.0.3",
+    "ogs6py>=0.402",
+    "ogs>=6.5.8",
+    "asyncpg>=0.30.0",
+    "paho-mqtt>=2.1.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

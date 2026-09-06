@@ -1,0 +1,17 @@
+# Virtual environments
+.venv/
+.venv-train/
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated dataset (large binary output)
+dataset/
+
+# Training artifacts
+training/cache/
+training/checkpoints/
+
+# Misc
+*.npz

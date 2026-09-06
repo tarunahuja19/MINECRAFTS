@@ -5,10 +5,6 @@ node_modules/
 __pycache__/
 *.pyc
 
-# ---- Nested repo: simulation/ keeps its own git history and branches ----
-# Tracked independently; do not vendor it into the root repo.
-simulation/
-
 # ---- Secrets ----
 .env
 *.env
@@ -18,26 +14,34 @@ simulation/
 out/
 scratch/
 .pytest_cache/
+dist/
+*.tsbuildinfo
 
-# ---- Large generated ML dataset (regenerable; ~2 GB) ----
+# ---- simulation/ : vendored as source (was a nested repo). Keep code, drop the rest ----
+simulation/out/
+simulation/.venv/
+simulation/frontend/node_modules/
+simulation/frontend/dist/
+simulation/ogs_pyvista_mine/
+simulation/opensees_sim/
+
+# ---- ml_dataset_generator/ : vendored as source (was a nested repo) ----
+# Large generated dataset + training artefacts + envs (regenerable; multi-GB)
 ml_dataset_generator/dataset/
-ml_dataset_generator/training/
+ml_dataset_generator/training/cache/
+ml_dataset_generator/training/checkpoints/
+ml_dataset_generator/.venv/
 ml_dataset_generator/.venv-train/
+*.npz
 
 # ---- OS noise ----
 .DS_Store
 
-# ---- Nested repo: ml_dataset_generator/ keeps its own git history ----
-# Tracked independently at github.com/agarwaladarshcoding-maker/similation-data-making
-ml_dataset_generator/
-
-# Electron runtime log written by scripts/start_all.sh
+# ---- Electron / launcher runtime logs ----
 .electron.log
-
-# Runtime logs written by the launcher
 .stack.log
 .pyvista.log
 .broker.log
 
-# Session transcript dump, not project source
+# ---- Session transcript dump, not project source ----
 checkout.md
