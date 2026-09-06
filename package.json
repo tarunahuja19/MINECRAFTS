@@ -15,7 +15,10 @@
     "test:pipeline": "node scripts/verify_data_loop.js",
     "verify": "node scripts/verify_data_loop.js",
     "db:reset": "bash scripts/reset_demo_state.sh",
-    "checklist:audit": "bash scripts/audit_demo_readiness.sh"
+    "checklist:audit": "bash scripts/audit_demo_readiness.sh",
+    "stress:1000": "simulation/.venv/bin/python simulation/scripts/run_1000_stress_trials.py",
+    "stress:geo": "simulation/.venv/bin/python simulation/scripts/deep_geomechanics_chaos.py",
+    "stress:chaos": "node scripts/deep_system_stress_test.js"
   },
   "keywords": [
     "mine-subsidence",

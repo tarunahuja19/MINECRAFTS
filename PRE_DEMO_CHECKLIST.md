@@ -69,6 +69,13 @@ Simulate what happens if your laptop crashes or reboots 5 minutes before the dem
   ```bash
   npm run tiles:prefetch
   ```
+- [ ] **Run Deep Stress & Chaos Batteries (High-Stress Resilience Verification):**
+  *Subject the system to high-concurrency, burst floods, and geomechanical edge cases:*
+  ```bash
+  npm run stress:1000   # 1,000-trial geomechanical & mathematical physics suite
+  npm run stress:geo    # Extreme hypersonic mining, multi-pillar collapse & blast transients
+  npm run stress:chaos  # Full-stack DB hammer, 1,000 msg/s MQTT storm & WS chaos (run while stack is up)
+  ```
 
 ---
 
