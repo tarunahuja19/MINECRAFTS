@@ -29,6 +29,11 @@ var statusBar = (function () {
       updateSimulationIndicator();
     });
 
+    bus.on('system-reset', function () {
+      currentSimState = 'STOPPED';
+      updateSimulationIndicator();
+    });
+
     bus.on('mqtt-status', function (status) {
       mqttConnected = status === 'connected';
       updateMqtt();
