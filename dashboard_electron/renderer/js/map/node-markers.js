@@ -5,6 +5,7 @@ var nodeMarkers = (function () {
   var nodeData = {};
   var heartbeatTimers = {};
   var HEARTBEAT_TIMEOUT_MS = 30000;
+  var simState = 'STOPPED';
 
   var STATE_CONFIG = {
     active:   { color: '#00CC44', border: 'rgba(0,0,0,0.7)' },
@@ -209,6 +210,9 @@ var nodeMarkers = (function () {
   }
 
   function buildTooltip(node) {
+    if (simState === 'STOPPED') {
+      return node.node_id + ' [OFFLINE]\nSIMULATION: STOPPED\nWaiting for simulation start...';
+    }
     var t = node.lastTelemetry;
     var strain = t ? (t.strain_ustrain + ' ustrain') : '--';
     var battery = t ? (t.vbat_mv + ' mV') : '--';
@@ -249,6 +253,7 @@ var nodeMarkers = (function () {
       // consumer report the same place the marker sits.
       n.lat = pos[0];
       n.lng = pos[1];
+      n.state = (simState === 'RUNNING') ? (n.state || 'active') : 'dead';
       nodeData[n.node_id] = n;
 
       var marker = L.marker(pos, {
@@ -300,20 +305,59 @@ var nodeMarkers = (function () {
       updateState(data.node_id, data.state);
     });
 
+    bus.on('simulation-status', function (data) {
+      var newState = data.state || (data.is_running ? 'RUNNING' : 'STOPPED');
+      if (newState === simState) return;
+      simState = newState;
+      console.log('[node-markers] Simulation state transitioned to: ' + simState);
+
+      var ids = Object.keys(nodeData);
+      if (simState === 'STOPPED') {
+        // When simulation is stopped, all nodes become dead and offline
+        for (var k = 0; k < ids.length; k++) {
+          var sid = ids[k];
+          nodeData[sid].state = 'dead';
+          if (markers[sid]) {
+            markers[sid].setIcon(createIcon('dead', roleOf(nodeData[sid])));
+            markers[sid].setTooltipContent(buildTooltip(nodeData[sid]));
+          }
+        }
+      } else if (simState === 'RUNNING') {
+        // When simulation is started, nodes revive to active baseline
+        for (var k = 0; k < ids.length; k++) {
+          var rid = ids[k];
+          nodeData[rid].state = 'active';
+          if (markers[rid]) {
+            markers[rid].setIcon(createIcon('active', roleOf(nodeData[rid])));
+            markers[rid].setTooltipContent(buildTooltip(nodeData[rid]));
+          }
+        }
+      }
+      updateNodeCount();
+    });
+
     bus.on('replay-started', function () {
+      simState = 'RUNNING';
       var ids = Object.keys(nodeData);
       for (var k = 0; k < ids.length; k++) {
         nodeData[ids[k]].lastTelemetry = null;
         updateState(ids[k], 'active');
       }
+      updateNodeCount();
     });
 
     bus.on('system-reset', function () {
+      simState = 'STOPPED';
       var ids = Object.keys(nodeData);
       for (var k = 0; k < ids.length; k++) {
         nodeData[ids[k]].lastTelemetry = null;
-        updateState(ids[k], 'active');
+        nodeData[ids[k]].state = 'dead';
+        if (markers[ids[k]]) {
+          markers[ids[k]].setIcon(createIcon('dead', roleOf(nodeData[ids[k]])));
+          markers[ids[k]].setTooltipContent(buildTooltip(nodeData[ids[k]]));
+        }
       }
+      updateNodeCount();
     });
 
     bus.on('telemetry', function (t) {
@@ -427,12 +471,17 @@ var nodeMarkers = (function () {
 
   function updateNodeCount() {
     var ids = Object.keys(nodeData);
-    var active = 0;
-    for (var i = 0; i < ids.length; i++) {
-      if (nodeData[ids[i]].state !== 'dead') active++;
-    }
     var el = document.getElementById('node-count');
-    if (el) el.textContent = active + '/' + ids.length + ' ACTIVE';
+    if (!el) return;
+    if (simState === 'STOPPED') {
+      el.textContent = '0/' + ids.length + ' ACTIVE (SIM STOPPED)';
+    } else {
+      var active = 0;
+      for (var i = 0; i < ids.length; i++) {
+        if (nodeData[ids[i]].state !== 'dead') active++;
+      }
+      el.textContent = active + '/' + ids.length + ' ACTIVE';
+    }
   }
 
   function getMarker(nodeId) { return markers[nodeId]; }

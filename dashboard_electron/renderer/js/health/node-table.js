@@ -5,6 +5,7 @@ var nodeTable = (function () {
   var nodeStats = {};
   var sortCol = 'node_id';
   var sortAsc = true;
+  var simRunning = false;
 
   function init(targetId) {
     containerIds.push(targetId);
@@ -17,7 +18,7 @@ var nodeTable = (function () {
         nodeStats[n.node_id] = {
           node_id: n.node_id,
           ring: n.ring,
-          state: n.state,
+          state: simRunning ? (n.state || 'active') : 'dead',
           lastSeen: null,
           rxCount: 0,
           missedCount: 0,
@@ -28,7 +29,34 @@ var nodeTable = (function () {
       render();
     });
 
+    bus.on('simulation-status', function (data) {
+      var isRunning = Boolean(data.is_running);
+      var state = data.state || (isRunning ? 'RUNNING' : 'STOPPED');
+      simRunning = (state === 'RUNNING');
+      var ids = Object.keys(nodeStats);
+      for (var k = 0; k < ids.length; k++) {
+        if (!simRunning) {
+          nodeStats[ids[k]].state = 'dead';
+        } else if (nodeStats[ids[k]].state === 'dead') {
+          nodeStats[ids[k]].state = 'active';
+        }
+      }
+      render();
+    });
+
+    bus.on('system-reset', function () {
+      simRunning = false;
+      var ids = Object.keys(nodeStats);
+      for (var k = 0; k < ids.length; k++) {
+        nodeStats[ids[k]].state = 'dead';
+        nodeStats[ids[k]].lastSeen = null;
+        nodeStats[ids[k]].rxCount = 0;
+      }
+      render();
+    });
+
     bus.on('telemetry', function (t) {
+      if (!simRunning) return;
       var id = t._node_id || t.node_id;
       if (!id || !nodeStats[id]) return;
       nodeStats[id].lastSeen = Date.now();

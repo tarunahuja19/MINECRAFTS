@@ -20,47 +20,34 @@
        red CRITICAL. --accent-cyan was a blue-grey that read as neither.
      -------------------------------------------------------------------- */
 
-  /* Surfaces: four steps, darkest to lightest, all opaque. */
-  --bg-void: #05070b;      /* behind everything; deepest */
-  --bg-primary: #0a0d12;   /* app ground */
-  --bg-panel: #10141b;     /* docked panels */
-  --bg-raised: #171c25;    /* headers, group boxes, inputs */
-  --bg-hover: #1e242f;
-  /* The 3D viewport's ground, behind the terrain mesh. Distinct from
-     --bg-primary: this one sits behind a lit WebGL scene rather than behind
-     flat chrome, and is the neutral the terrain's greens are judged against.
-     It is NOT a terrain colour — hypsometry.ts owns those. */
-  --bg-viewport: #1c1d1f;
+  /* Surfaces: matching Electron R4 HMI palette */
+  --bg-void: #111C22;      /* behind everything; deepest */
+  --bg-primary: #162028;   /* app ground / inset */
+  --bg-panel: #1E2830;     /* docked panels (Electron panel dark) */
+  --bg-raised: #243040;    /* headers, group boxes, inputs (Electron panel header) */
+  --bg-hover: #2E4A5A;     /* button hover / elevated */
+  --bg-viewport: #111C22;  /* 3D viewport neutral ground */
 
-  /* Hairlines. A console is built from rules, not shadows. */
-  --border-color: #232a36;
-  --border-subtle: #1a1f28;
-  --border-strong: #35404f;
-  --border-active: #4a5568;
+  /* Hairlines and bevels matching Electron HMI */
+  --border-color: #2E3E4A;
+  --border-subtle: #1E2830;
+  --border-strong: #4A5C68;
+  --border-active: #00E5FF;
 
-  --text-primary: #f7f7f7;
-  --text-secondary: #a3a4a6;
-  --text-muted: #7c7d80;
-  /* Dimmer than --text-muted, for de-emphasised rules and disabled glyphs. */
-  --text-faint: #4a4b4e;
+  --text-primary: #D4D8DC;
+  --text-secondary: #7A9BAA;
+  --text-muted: #5A6A72;
+  --text-faint: #3A4A52;
+  --text-mono: #A8D8A8;
 
-  /* State colours. These carry meaning and nothing else may use them.
-
-     Desaturated deliberately. The vivid set these replaced (#37d67a green,
-     #f03e3e red) was pure emitted light on a dark ground, so every state
-     chip shouted at the same volume as a genuine alarm and the eye had no
-     way to rank them. These are the muted values the components had already
-     drifted to inline; promoting them to tokens keeps that quieter reading
-     while making it adjustable from one place. */
-  --state-active: #7d9b7a;
-  --state-warning: #d9a25f;
-  --state-critical: #c2603f;
-  --state-info: #8fa3ad;
-  /* A second, cooler info tone for secondary data series (plot lines,
-     axis keys) that must stay distinguishable from --state-info. */
-  --state-info-alt: #7fa0b5;
-  /* Reserved for the fourth series where three are already spoken for. */
-  --state-accent: #9585ad;
+  /* State colours matching Electron LED status */
+  --state-active: #00CC44;
+  --state-warning: #FFA500;
+  --state-critical: #FF2222;
+  --state-dead: #5A6A72;
+  --state-info: #38BDF8;
+  --state-info-alt: #00E5FF;
+  --state-accent: #00E5FF;
 
   /* Aliases kept so existing inline styles keep resolving. */
   --accent-emerald: var(--state-active);
@@ -68,14 +55,12 @@
   --accent-orange: var(--state-warning);
   --accent-red: var(--state-critical);
   --accent-blue: var(--state-info);
-  --accent-cyan: var(--state-info);
+  --accent-cyan: var(--state-info-alt);
 
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: Tahoma, 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: Consolas, 'JetBrains Mono', 'Courier New', ui-monospace, monospace;
 
-  /* One type scale. The UI previously mixed 7.5/8/8.5/9/9.5/10/10.5/11px,
-     which reads as inconsistency rather than hierarchy. Three sizes: a
-     label, a body, and a value. */
+  /* One type scale */
   --fs-label: 10px;   /* uppercase field labels */
   --fs-body: 11px;    /* buttons, table cells, prose */
   --fs-value: 15px;   /* the measured number itself */
@@ -86,8 +71,7 @@
   --sp-3: 12px;
   --sp-4: 16px;
 
-  /* Square corners throughout: 2px is a manufacturing tolerance, not a
-     style. The old 4/6/8/12px scale made panels read as cards. */
+  /* Square corners matching SCADA panels */
   --radius-sm: 2px;
   --radius-md: 2px;
   --radius-lg: 2px;
@@ -98,7 +82,7 @@
   --bg-panel-header: var(--bg-raised);
   --bg-card: var(--bg-raised);
   --bg-card-hover: var(--bg-hover);
-  --accent-cyan-glow: transparent;
+  --accent-cyan-glow: rgba(0, 229, 255, 0.35);
   --accent-purple: var(--state-info);
 }
 
@@ -177,10 +161,10 @@ body, html {
    the hairline; it does not move the control or emit light.
    ========================================================================== */
 .hud-btn {
-  background: var(--bg-raised);
-  border: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   padding: 5px 10px;
   font-size: var(--fs-body);
   font-weight: 600;
@@ -195,13 +179,13 @@ body, html {
 }
 
 .hud-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-strong);
-  color: var(--text-primary);
+  background: #3A5C70;
+  border-color: var(--border-active);
+  color: #FFFFFF;
 }
 
 .hud-btn:active {
-  background: var(--bg-raised);
+  background: #223040;
 }
 
 .hud-btn:disabled {
@@ -209,41 +193,38 @@ body, html {
   cursor: not-allowed;
 }
 
-/* Selected state: a left marker rule and a lit label. This is the one
-   pattern the whole UI uses to say "this is the armed option", replacing
-   four different treatments (glow, fill, border, colour) that previously
-   meant the same thing in different places. */
+/* Selected state: a left marker rule and a lit label. */
 .hud-btn-active {
-  background: var(--bg-hover) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--text-primary) !important;
-  box-shadow: inset 2px 0 0 0 var(--state-info) !important;
+  background: #3A5C70 !important;
+  border-color: var(--border-active) !important;
+  color: #FFFFFF !important;
+  box-shadow: inset 2px 0 0 0 var(--state-info-alt) !important;
 }
 
 .hud-btn-primary {
   background: var(--state-active);
   border-color: var(--state-active);
-  color: #05070b;
+  color: #0E1618;
   font-weight: 700;
 }
 
 .hud-btn-primary:hover {
-  background: #4ae08c;
-  border-color: #4ae08c;
-  color: #05070b;
+  background: #00FF55;
+  border-color: #00FF55;
+  color: #0E1618;
 }
 
 .hud-btn-danger {
-  background: transparent;
+  background: #5A1010;
   border-color: var(--state-critical);
-  color: var(--state-critical);
+  color: #FFB4B4;
   font-weight: 700;
 }
 
 .hud-btn-danger:hover {
   background: var(--state-critical);
   border-color: var(--state-critical);
-  color: #05070b;
+  color: #FFFFFF;
 }
 
 .action-card-btn {
@@ -386,8 +367,8 @@ body, html {
 .menu-bar {
   height: 34px;
   flex-shrink: 0;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-color);
+  background: #2B2B2B;
+  border-bottom: 1px solid #0E1618;
   display: flex;
   align-items: stretch;
   gap: 0;

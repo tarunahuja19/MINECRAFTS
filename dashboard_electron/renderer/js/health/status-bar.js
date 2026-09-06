@@ -2,6 +2,8 @@
 
 var statusBar = (function () {
   var mqttLed, mqttStatus, gatewayLed, gatewayStatus, queueCount, lastSync, nodeCount;
+  var simLed, simStatus, simHudBadge, simHudText;
+  var currentSimState = 'STOPPED';
   var mqttConnected = false;
   var gatewayOnline = false;
   var offlineQueue = 0;
@@ -15,6 +17,17 @@ var statusBar = (function () {
     queueCount = document.getElementById('queue-count');
     lastSync = document.getElementById('last-sync');
     nodeCount = document.getElementById('node-count');
+    simLed = document.getElementById('sim-led');
+    simStatus = document.getElementById('sim-status');
+    simHudBadge = document.getElementById('sim-status-hud');
+    simHudText = document.getElementById('sim-hud-text');
+
+    updateSimulationIndicator();
+
+    bus.on('simulation-status', function (data) {
+      currentSimState = data.state || (data.is_running ? 'RUNNING' : 'STOPPED');
+      updateSimulationIndicator();
+    });
 
     bus.on('mqtt-status', function (status) {
       mqttConnected = status === 'connected';
@@ -141,10 +154,45 @@ var statusBar = (function () {
     updateNodeSummary(allNodes);
   }
 
+  function updateSimulationIndicator() {
+    if (simLed && simStatus) {
+      if (currentSimState === 'RUNNING') {
+        simLed.className = 'led led-active';
+        simStatus.textContent = 'RUNNING';
+        simStatus.className = 'status-value connected';
+      } else if (currentSimState === 'PAUSED') {
+        simLed.className = 'led led-warning';
+        simStatus.textContent = 'PAUSED';
+        simStatus.className = 'status-value warning';
+      } else {
+        simLed.className = 'led led-dead';
+        simStatus.textContent = 'STOPPED';
+        simStatus.className = 'status-value disconnected';
+      }
+    }
+
+    if (simHudBadge && simHudText) {
+      if (currentSimState === 'RUNNING') {
+        simHudBadge.className = 'sim-hud-badge status-running';
+        simHudText.textContent = 'SIMULATION: RUNNING';
+      } else if (currentSimState === 'PAUSED') {
+        simHudBadge.className = 'sim-hud-badge status-paused';
+        simHudText.textContent = 'SIMULATION: PAUSED';
+      } else {
+        simHudBadge.className = 'sim-hud-badge status-stopped';
+        simHudText.textContent = 'SIMULATION: STOPPED';
+      }
+    }
+  }
+
   function renderNodeCount(counts, total) {
     if (!nodeCount) return;
-    var active = counts.active + counts.warning + counts.critical + counts.lastgasp;
-    nodeCount.textContent = active + '/' + total + ' ACTIVE';
+    if (currentSimState === 'STOPPED') {
+      nodeCount.textContent = '0/' + total + ' ACTIVE (SIM STOPPED)';
+    } else {
+      var active = counts.active + counts.warning + counts.critical + counts.lastgasp;
+      nodeCount.textContent = active + '/' + total + ' ACTIVE';
+    }
     bus.emit('node-count-updated', counts);
   }
 

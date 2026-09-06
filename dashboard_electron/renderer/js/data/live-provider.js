@@ -59,10 +59,19 @@ var liveProvider = (function () {
       window.r4.onGatewayHealth(function (data) {
         bus.emit('gateway-health', data);
       });
+
+      if (window.r4.onSimulationStatus) {
+        window.r4.onSimulationStatus(function (data) {
+          handleSimulationStatus(data);
+        });
+      }
     }
 
     // 2. Connect to the unified Backend WebSocket server
     connectWebSocket();
+
+    // 3. Start background simulation status monitoring
+    startSimHealthPoll();
   }
 
   function connectWebSocket() {
@@ -133,16 +142,66 @@ var liveProvider = (function () {
       // the wrapper left alarm_id undefined, so the history panel's dedup
       // never matched and every frame counted as a new alarm.
       bus.emit('alarm', msg.alarm || msg);
-    } else if (msg.type === 'node-status-change') {
-      bus.emit('node-status-change', msg);
+    } else if (msg.type === 'simulation_status') {
+      handleSimulationStatus(msg);
     } else if (msg.type === 'system_reset') {
       console.log('[live-provider] System reset event received from backend');
+      handleSimulationStatus({ is_running: false, is_paused: false, state: 'STOPPED' });
       bus.emit('system-reset', msg);
       bus.emit('alarms-loaded', []);
       if (typeof alarmBanner !== 'undefined' && alarmBanner.hide) {
         alarmBanner.hide();
       }
     }
+  }
+
+  var currentSimState = 'STOPPED';
+  var simPollTimer = null;
+
+  function handleSimulationStatus(data) {
+    if (!data) return;
+    var isRunning = Boolean(data.is_running);
+    var isPaused = Boolean(data.is_paused);
+    var state = data.state || (isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED');
+    if (state !== currentSimState) {
+      console.log('[live-provider] Simulation state transition: ' + currentSimState + ' -> ' + state);
+      currentSimState = state;
+    }
+    bus.emit('simulation-status', {
+      is_running: isRunning,
+      is_paused: isPaused,
+      state: state,
+      t_sim_seconds: data.t_sim_seconds || 0
+    });
+  }
+
+  function startSimHealthPoll() {
+    if (simPollTimer) return;
+    function poll() {
+      if (!active) return;
+      var simUrl = 'http://127.0.0.1:8000/health';
+      fetch(simUrl, { cache: 'no-store' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (data) {
+          handleSimulationStatus(data);
+        })
+        .catch(function () {
+          fetch(API_BASE + '/api/simulation/status', { cache: 'no-store' })
+            .then(function (r2) { return r2.json(); })
+            .then(function (data2) {
+              handleSimulationStatus(data2);
+            })
+            .catch(function () {
+              handleSimulationStatus({ is_running: false, is_paused: false, state: 'STOPPED' });
+            });
+        });
+    }
+
+    poll();
+    simPollTimer = setInterval(poll, 1200);
   }
 
   function fetchSimulationPacket(packetId) {

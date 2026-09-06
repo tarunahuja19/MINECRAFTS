@@ -29,7 +29,11 @@
       <button class="tab-btn" data-tab="history">HISTORY</button>
       <button class="tab-btn" data-tab="system">SYSTEM</button>
       <button class="tab-btn" data-tab="info">INFO</button>
-      <div style="margin-left:auto; display:flex; align-items:center; padding-right:10px;">
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-right:10px;">
+        <div id="sim-status-hud" class="sim-hud-badge status-stopped" title="Simulation execution status (controls node activity and telemetry stream)">
+          <span class="sim-hud-dot"></span>
+          <span id="sim-hud-text">SIMULATION: STOPPED</span>
+        </div>
         <button id="btn-db-reset" class="btn" style="background:#5A1010; color:#FFB4B4; border:1px solid #FF4444; font-size:10.5px; font-weight:bold; letter-spacing:0.04em; padding:3px 10px; cursor:pointer; border-radius:3px;" title="Truncate runtime readings, simulation packets, and alarms from PostgreSQL and reset nodes to active">RESET DATABASE</button>
       </div>
     </div>
@@ -864,8 +868,13 @@
         <span class="status-value" id="last-sync">--:--:--</span>
       </div>
       <div class="status-item">
+        <span class="led led-dead" id="sim-led"></span>
+        <span class="status-label">SIMULATION:</span>
+        <span class="status-value disconnected" id="sim-status">STOPPED</span>
+      </div>
+      <div class="status-item">
         <span class="status-label">NODES:</span>
-        <span class="status-value" id="node-count">0/0 ACTIVE</span>
+        <span class="status-value" id="node-count">0/31 ACTIVE (SIM STOPPED)</span>
       </div>
       <div class="status-item" id="mode-indicator" style="margin-left:auto;">
         <span class="status-value warning">FIXTURE MODE</span>

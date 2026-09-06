@@ -136,6 +136,61 @@ router.post('/packets', async (req, res) => {
   }
 });
 
+// GET /simulation/status - Query simulation server health and return running/stopped state
+router.get('/status', async (req, res) => {
+  try {
+    const http = require('http');
+    const simReq = http.get('http://127.0.0.1:8000/health', (simRes) => {
+      let data = '';
+      simRes.on('data', chunk => { data += chunk; });
+      simRes.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const isRunning = Boolean(json.is_running);
+          const isPaused = Boolean(json.is_paused);
+          const state = isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED';
+          res.json({
+            is_running: isRunning,
+            is_paused: isPaused,
+            state: state,
+            t_sim_seconds: json.t_sim_seconds || 0,
+            tick_index: json.tick_index || 0
+          });
+        } catch (e) {
+          res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+        }
+      });
+    });
+    simReq.on('error', () => {
+      res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+    });
+    simReq.setTimeout(800, () => {
+      simReq.destroy();
+      res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+    });
+  } catch (err) {
+    res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+  }
+});
+
+// POST /simulation/status - Update and broadcast simulation state over WebSocket
+router.post('/status', (req, res) => {
+  const { is_running, is_paused, state } = req.body || {};
+  const isRunning = Boolean(is_running);
+  const isPaused = Boolean(is_paused);
+  const statusState = state || (isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED');
+  if (typeof broadcastFn === 'function') {
+    broadcastFn({
+      type: 'simulation_status',
+      is_running: isRunning,
+      is_paused: isPaused,
+      state: statusState,
+      timestamp: new Date().toISOString()
+    });
+  }
+  res.json({ ok: true, state: statusState });
+});
+
 module.exports = {
   router,
   setBroadcaster,

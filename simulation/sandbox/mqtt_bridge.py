@@ -183,6 +183,12 @@ class MqttBridge:
         except Exception as e:
             print(f"[MQTT] publish failed on {topic}: {e}")
 
+    def publish_simulation_status(self, is_running: bool, is_paused: bool = False) -> None:
+        """Publish simulation run status to mine/<panel>/simulation/status."""
+        state = "RUNNING" if is_running and not is_paused else ("PAUSED" if is_paused else "STOPPED")
+        topic = f"mine/{self.panel_id}/simulation/status"
+        self._publish(topic, {"state": state, "is_running": is_running, "is_paused": is_paused}, retain=True)
+
     def publish_tick(self, readings: list[Any], iso_ts: str) -> int:
         """Publish one telemetry message per node for a single tick.
 

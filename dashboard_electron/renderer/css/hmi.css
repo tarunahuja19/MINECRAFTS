@@ -152,6 +152,63 @@ html, body {
   display: block;
 }
 
+/* --- Simulation HUD Status Badge --- */
+.sim-hud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 3px;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.sim-hud-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.sim-hud-badge.status-stopped {
+  background: #162028;
+  border: 1px solid #4A5C68;
+  color: #7A9BAA;
+}
+.sim-hud-badge.status-stopped .sim-hud-dot {
+  background: #5A6A72;
+}
+
+.sim-hud-badge.status-running {
+  background: #0E2A1E;
+  border: 1px solid #00CC44;
+  color: #00FF66;
+  box-shadow: 0 0 8px rgba(0, 204, 68, 0.25);
+}
+.sim-hud-badge.status-running .sim-hud-dot {
+  background: #00CC44;
+  box-shadow: 0 0 6px #00FF66;
+  animation: pulseSimDot 1.5s infinite;
+}
+
+.sim-hud-badge.status-paused {
+  background: #2A200E;
+  border: 1px solid #FFA500;
+  color: #FFA500;
+}
+.sim-hud-badge.status-paused .sim-hud-dot {
+  background: #FFA500;
+}
+
+@keyframes pulseSimDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
 /* --- Main content area --- */
 #main-content {
   display: flex;

@@ -432,7 +432,43 @@ async def control(cmd: CommandRequest):
     else:
         return {"status": "error", "message": f"Unknown action {cmd.action}"}
 
-    return {"status": "success", "action": action, "speed": session.speed_multiplier}
+    # Broadcast updated status to MQTT and WebSocket clients
+    status_state = "RUNNING" if session.is_running and not session.is_paused else ("PAUSED" if session.is_paused else "STOPPED")
+    session.mqtt_bridge.publish_simulation_status(session.is_running, session.is_paused)
+
+    status_frame = json.dumps({
+        "type": "simulation_status",
+        "is_running": session.is_running,
+        "is_paused": session.is_paused,
+        "state": status_state,
+        "t_sim_seconds": session.t_sim_seconds,
+    })
+    dead_clients = set()
+    for ws in list(_connected_clients):
+        try:
+            await ws.send_text(status_frame)
+        except Exception:
+            dead_clients.add(ws)
+    _connected_clients.difference_update(dead_clients)
+
+    # Inform backend of status transition (non-blocking)
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "http://localhost:8080/api/simulation/status",
+            data=json.dumps({
+                "is_running": session.is_running,
+                "is_paused": session.is_paused,
+                "state": status_state,
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=0.3)
+    except Exception:
+        pass
+
+    return {"status": "success", "action": action, "speed": session.speed_multiplier, "state": status_state}
 
 
 @app.websocket("/ws")

@@ -156,14 +156,18 @@ function getPythonExecutable() {
 async function main() {
   say('[0] Preflight checks');
   
-  // 1. Check DB
+  // 1. Check & Auto-Reset DB for a pristine run
   try {
     const db = require(path.join(ROOT_DIR, 'backend', 'db', 'db'));
     await db.testConnection();
+    await db.query(`
+      TRUNCATE TABLE readings, simulation_packets, alarms CASCADE;
+      UPDATE nodes SET status = 'active';
+    `);
     const res = await db.query('SELECT count(*) FROM nodes');
-    ok(`database reachable (${res.rows[0].count} nodes in PostgreSQL)`);
+    ok(`database auto-reset on boot: 0 readings, 0 packets, 0 alarms (${res.rows[0].count} active nodes ready)`);
   } catch (err) {
-    warn(`Database check notice: ${err.message}`);
+    warn(`Database check/reset notice: ${err.message}`);
   }
 
   // 2. Start MQTT Broker

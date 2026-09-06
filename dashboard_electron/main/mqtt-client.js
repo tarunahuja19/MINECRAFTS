@@ -6,7 +6,8 @@ const TOPICS = [
   'mine/+/node/+/telemetry',
   'mine/+/node/+/status',
   'mine/+/alarm',
-  'mine/+/gateway/health'
+  'mine/+/gateway/health',
+  'mine/+/simulation/status'
 ];
 
 class MqttClient {
@@ -94,6 +95,9 @@ class MqttClient {
     } else if (parts.length === 4 && parts[2] === 'gateway' && parts[3] === 'health') {
       data._panel_id = parts[1];
       wc.send('mqtt:gateway-health', data);
+    } else if (parts.length === 4 && parts[2] === 'simulation' && parts[3] === 'status') {
+      data._panel_id = parts[1];
+      wc.send('mqtt:simulation-status', data);
     }
   }
 

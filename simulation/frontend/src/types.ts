@@ -15,7 +15,7 @@ export const STATE_COLORS: Record<SegmentState, string> = {
   STABLE: "var(--state-active)",
   SETTLING: "var(--state-info-alt)",
   TENSION: "var(--state-warning)",
-  CRITICAL: "var(--state-warning)",
+  CRITICAL: "var(--state-critical)",
   FAILED: "var(--state-critical)",
 };
 
