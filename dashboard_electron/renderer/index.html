@@ -29,6 +29,9 @@
       <button class="tab-btn" data-tab="history">HISTORY</button>
       <button class="tab-btn" data-tab="system">SYSTEM</button>
       <button class="tab-btn" data-tab="info">INFO</button>
+      <div style="margin-left:auto; display:flex; align-items:center; padding-right:10px;">
+        <button id="btn-db-reset" class="btn" style="background:#5A1010; color:#FFB4B4; border:1px solid #FF4444; font-size:10.5px; font-weight:bold; letter-spacing:0.04em; padding:3px 10px; cursor:pointer; border-radius:3px;" title="Truncate runtime readings, simulation packets, and alarms from PostgreSQL and reset nodes to active">RESET DATABASE</button>
+      </div>
     </div>
 
     <!-- MAIN CONTENT AREA -->
@@ -183,7 +186,7 @@
                         <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #00E676;"></span>3D SELECTION</span>
                         <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #FFD700;"></span>DEFENSE RING</span>
                         <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #5A8FA8;"></span>PANEL A</span>
-                        <span class="hud-item" id="hud-legend-sectors"><span class="hud-line" style="border-top:1.5px dashed #FF00E5;"></span>SECTORS (8x8)</span>
+                        <span class="hud-item" id="hud-legend-sectors"><span class="hud-line" style="border-top:1.5px dashed #38BDF8;"></span>SECTORS (8x8)</span>
                         <span class="hud-item"><span class="hud-dot" style="background:#2E7D32;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE STABLE</span>
                         <span class="hud-item"><span class="hud-dot" style="background:#FFC107;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE SUBSIDING</span>
                         <span class="hud-item"><span class="hud-dot" style="background:#B71C1C;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE TROUGH</span>
@@ -476,6 +479,14 @@
           <!-- LEFT COLUMN: GATEWAY & NODE COMMUNICATIONS -->
           <div class="system-col">
             <div class="panel" style="flex:0 0 auto;">
+              <div class="panel-header">DATABASE & SYSTEM STATE CONTROL</div>
+              <div class="panel-body" style="padding:10px; display:flex; flex-direction:column; gap:8px;">
+                <div style="font-size:11px; color:var(--text-secondary);">Clear accumulated runtime readings, simulation packets, and alarms from PostgreSQL and restore all 31 nodes to 'active'.</div>
+                <button id="btn-db-reset-system" class="btn" style="background:#5A1010; color:#FFB4B4; border:1px solid #FF4444; padding:5px 12px; font-weight:bold; font-size:11px; width:fit-content; cursor:pointer; border-radius:3px;">RESET DATABASE TO BASELINE</button>
+              </div>
+            </div>
+
+            <div class="panel" style="flex:0 0 auto;">
               <div class="panel-header">MQTT CONNECTION LOG</div>
               <div class="panel-body" id="mqtt-log-container" style="max-height:120px; overflow-y:auto;"></div>
             </div>
@@ -655,7 +666,7 @@
                 <tbody>
                   <tr><td>Defence ring</td><td>gold dashed circle</td><td>The perimeter the anchor/reference nodes hold. Movement here means instrument drift, not ground.</td></tr>
                   <tr><td>Panel A</td><td>blue dashed rectangle</td><td>The longwall extraction footprint &mdash; the coal being removed underground.</td></tr>
-                  <tr><td>Sectors (8&times;8)</td><td>magenta dashed grid</td><td>The fine display grid on the operator map (distinct from the 6&times;6 physics zones).</td></tr>
+                  <tr><td>Sectors (8&times;8)</td><td>cyan dashed grid</td><td>The fine display grid on the operator map (distinct from the 6&times;6 physics zones).</td></tr>
                   <tr><td>Surface stable / subsiding / trough</td><td>green / amber / dark-red fill</td><td>Per-sector shading by how far that ground has dropped, shown when <em>SURFACE</em> is toggled on.</td></tr>
                   <tr><td>Hemispherical subsidence bowl</td><td>concentric rings + R&sup2; label</td><td>The detector's best-fit Knothe bowl for the current event. R&sup2; is how well a real bowl shape fits the readings &mdash; below 0.85 the anomaly is treated as sensor noise, not ground.</td></tr>
                   <tr><td>Last-gasp marker</td><td>orange pulse ring</td><td>Where a node sent its final packet.</td></tr>

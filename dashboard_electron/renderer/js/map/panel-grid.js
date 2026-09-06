@@ -37,44 +37,42 @@ var panelGrid = (function () {
     halfM: 300,
     // Grid lines are magenta, not the old slate blue at 45% opacity. Over ESRI
     // satellite imagery (browns, greens, greys) the previous lines were nearly
-    // invisible at the 600 m window; magenta appears nowhere in aerial terrain
-    // and nowhere else in this HUD, so a grid line can never be mistaken for
-    // ground detail or for another overlay.
+    // Grid lines match system tactical cyan/slate coloring (#38BDF8).
     defaultStyle: {
-      color: '#FF00E5',
-      weight: 1.6,
-      opacity: 0.95,
-      dashArray: '5, 4',
-      fillColor: '#FF00E5',
-      fillOpacity: 0.05,
+      color: '#38BDF8',
+      weight: 1.5,
+      opacity: 0.85,
+      dashArray: '4, 4',
+      fillColor: '#38BDF8',
+      fillOpacity: 0.04,
       interactive: true
     },
     hoverStyle: {
       color: '#FFFFFF',
-      weight: 2.6,
+      weight: 2.2,
       opacity: 1,
       dashArray: 'none',
-      fillColor: '#FF00E5',
-      fillOpacity: 0.22
+      fillColor: '#38BDF8',
+      fillOpacity: 0.16
     },
     selectedStyle: {
       color: '#00E5FF',
-      weight: 3.2,
+      weight: 3.0,
       opacity: 1,
       dashArray: 'none',
       fillColor: '#00E5FF',
-      fillOpacity: 0.30
+      fillOpacity: 0.28
     },
     // 64 cells over 31 nodes means most sectors legitimately hold none. Drawing
     // them in the normal style would imply they are monitored and healthy, so
     // an empty sector is greyed and labelled "no coverage" instead.
     emptyStyle: {
-      color: '#8A97A0',
+      color: '#64748B',
       weight: 1.1,
-      opacity: 0.7,
+      opacity: 0.65,
       dashArray: '2, 6',
-      fillColor: '#8A97A0',
-      fillOpacity: 0.06,
+      fillColor: '#64748B',
+      fillOpacity: 0.05,
       interactive: true
     }
   };
@@ -219,7 +217,6 @@ var panelGrid = (function () {
     map = mapInstance;
     if (!map) return;
 
-    createHUDNotificationBanner();
     buildGrid();
     setupToggleUI();
 
@@ -231,66 +228,11 @@ var panelGrid = (function () {
         refreshNodeDistribution();
       });
       bus.on('telemetry', function () {
-        // Surface shading is driven by live strain, so it has to repaint as
-        // telemetry lands. Cheap: 64 setStyle calls, and only while SURFACE
-        // is actually on.
         if (surfaceOn) restyleAllCells();
       });
     }
 
     console.log('[PANEL_GRID] Initialized 8x8 Sector Grid (64 Sectors) over Panel A');
-  }
-
-  function createHUDNotificationBanner() {
-    var mapContainer = document.getElementById('map-container');
-    if (!mapContainer || bannerEl) return;
-    mapContainer.style.position = 'relative';
-
-    bannerEl = document.createElement('div');
-    bannerEl.id = 'panel-grid-hud-banner';
-    bannerEl.className = 'grid-hud-banner';
-    bannerEl.innerHTML = 
-      '<span class="grid-hud-badge" id="grid-hud-badge">3D SECTOR --</span>' +
-      '<span class="grid-hud-text" id="grid-hud-text">Select an 8x8 sector to inspect or launch 3D</span>' +
-      '<button class="grid-hud-btn" id="btn-grid-3d-launch">OPEN IN 3D</button>' +
-      '<span class="grid-hud-close" id="btn-grid-hud-close" title="Dismiss">×</span>';
-
-    mapContainer.appendChild(bannerEl);
-
-    var closeBtn = bannerEl.querySelector('#btn-grid-hud-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        hideBanner();
-      });
-    }
-
-    var launchBtn = bannerEl.querySelector('#btn-grid-3d-launch');
-    if (launchBtn) {
-      launchBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        trigger3DView(selectedCellId);
-      });
-    }
-  }
-
-  function showBanner(cellData) {
-    if (!ENABLE_GRID_FEATURE) return;
-    if (!bannerEl) return;
-    var badge = bannerEl.querySelector('#grid-hud-badge');
-    var text = bannerEl.querySelector('#grid-hud-text');
-
-    if (badge) badge.textContent = '3D SECTOR ' + cellData.id;
-    if (text) {
-      var nodeCountStr = cellData.nodeCount + ' sensor' + (cellData.nodeCount === 1 ? '' : 's');
-      text.textContent = '8x8 Sector ' + cellData.id + ' (' + nodeCountStr + ') — Ready for 3D View';
-    }
-
-    bannerEl.style.display = 'flex';
-  }
-
-  function hideBanner() {
-    if (bannerEl) bannerEl.style.display = 'none';
   }
 
   function buildGrid() {
@@ -357,15 +299,6 @@ var panelGrid = (function () {
           polyOpts
         );
         polygon._cellId = cellId;
-
-        var tooltipHtml = tooltipFor(cellId, cellNodes.length);
-
-        polygon.bindTooltip(tooltipHtml, {
-          className: 'grid-sector-tooltip',
-          direction: 'center',
-          sticky: true,
-          opacity: 0.98
-        });
 
         // Mouse events
         polygon.on('mouseover', function () {
@@ -450,9 +383,6 @@ var panelGrid = (function () {
     var ids = Object.keys(cellPolygons);
     for (var i = 0; i < ids.length; i++) {
       cellPolygons[ids[i]].setStyle(styleForCell(ids[i]));
-      cellPolygons[ids[i]].setTooltipContent(
-        tooltipFor(ids[i], cellsData[ids[i]] ? cellsData[ids[i]].nodeCount : 0)
-      );
     }
   }
 
@@ -521,8 +451,6 @@ var panelGrid = (function () {
 
     // Expose for external access and 3D window caller
     window.__selectedGridSector = cellData;
-
-    showBanner(cellData);
 
     // Emit event across app bus for selection
     if (typeof bus !== 'undefined') {

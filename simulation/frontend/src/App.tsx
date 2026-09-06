@@ -437,6 +437,8 @@ export const App: React.FC = () => {
 
     globalGeomechanics.reset();
     sendWsAction({ action: "reset" });
+    const host = window.location.hostname || "localhost";
+    fetch(`http://${host}:8080/api/system/reset`, { method: "POST" }).catch(() => {});
     showToast("🔄 SYSTEM RESET: Datum baseline restored");
   };
 

@@ -1372,11 +1372,11 @@ html, body {
      off, instead of permanently half-there. */
   font-size: 10px;
   font-weight: bold;
-  color: #FF6BF0;
+  color: #38BDF8;
   background: rgba(8, 12, 18, 0.88);
   padding: 1px 5px;
   border-radius: 2px;
-  border: 1px solid rgba(255, 0, 229, 0.55);
+  border: 1px solid rgba(56, 189, 248, 0.45);
   pointer-events: none;
   letter-spacing: 0.08em;
   user-select: none;

@@ -142,5 +142,43 @@ document.getElementById('tab-map').style.display = 'flex';
     }
   });
 
+  var btnDbReset = document.getElementById('btn-db-reset');
+  if (btnDbReset) {
+    btnDbReset.addEventListener('click', function () {
+      var confirmed = window.confirm('Clear all runtime telemetry, simulation packets, and alarms from PostgreSQL?\n\nThis restores the system to baseline active state.');
+      if (!confirmed) return;
+
+      btnDbReset.textContent = 'RESETTING...';
+      btnDbReset.disabled = true;
+
+      fetch('http://localhost:8080/api/system/reset', { method: 'POST' })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          btnDbReset.textContent = 'RESET DATABASE';
+          btnDbReset.disabled = false;
+          bus.emit('system-reset', data);
+          bus.emit('alarms-loaded', []);
+          if (typeof alarmBanner !== 'undefined' && alarmBanner.hide) {
+            alarmBanner.hide();
+          }
+          if (typeof pastAlarms !== 'undefined' && pastAlarms.load) {
+            pastAlarms.load();
+          }
+        })
+        .catch(function (err) {
+          alert('Database reset failed: ' + err.message);
+          btnDbReset.textContent = 'RESET DATABASE';
+          btnDbReset.disabled = false;
+        });
+    });
+  }
+
+  var btnDbResetSystem = document.getElementById('btn-db-reset-system');
+  if (btnDbResetSystem) {
+    btnDbResetSystem.addEventListener('click', function () {
+      if (btnDbReset) btnDbReset.click();
+    });
+  }
+
   modeSwitch.init();
 })();

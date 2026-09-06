@@ -15,6 +15,7 @@
 // ==============================================================================
 
 const { spawn } = require('child_process');
+const fs = require('fs');
 const http = require('http');
 const net = require('net');
 const path = require('path');
@@ -137,6 +138,21 @@ function waitForHttp(url, timeoutMs = 25000) {
   });
 }
 
+function getPythonExecutable() {
+  const venvCandidates = [
+    path.join(ROOT_DIR, 'simulation', '.venv', 'bin', 'python'),
+    path.join(ROOT_DIR, 'simulation', '.venv', 'Scripts', 'python.exe'),
+    path.join(ROOT_DIR, 'simulation', 'venv', 'bin', 'python'),
+    path.join(ROOT_DIR, 'simulation', 'venv', 'Scripts', 'python.exe')
+  ];
+  for (const candidate of venvCandidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return process.platform === 'win32' ? 'python' : 'python3';
+}
+
 async function main() {
   say('[0] Preflight checks');
   
@@ -183,10 +199,11 @@ async function main() {
 
   // 5. Start Sandbox Simulation Server
   say('[4] Sandbox simulation server (port 8000)');
-  const simProc = spawn('python', ['-m', 'uvicorn', 'sandbox.server:app', '--host', '0.0.0.0', '--port', '8000', '--log-level', 'info'], {
+  const pythonCmd = getPythonExecutable();
+  const simProc = spawn(pythonCmd, ['-m', 'uvicorn', 'sandbox.server:app', '--host', '0.0.0.0', '--port', '8000', '--log-level', 'info'], {
     cwd: path.join(ROOT_DIR, 'simulation'),
     stdio: 'inherit',
-    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' }
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', PYTHONUNBUFFERED: '1' }
   });
   children.push(simProc);
   await waitForHttp('http://127.0.0.1:8000/health');

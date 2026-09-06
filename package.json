@@ -20,7 +20,8 @@
     "checklist:audit": "bash scripts/audit_demo_readiness.sh",
     "stress:1000": "simulation/.venv/bin/python simulation/scripts/run_1000_stress_trials.py 2>/dev/null || python3 simulation/scripts/run_1000_stress_trials.py",
     "stress:geo": "simulation/.venv/bin/python simulation/scripts/deep_geomechanics_chaos.py 2>/dev/null || python3 simulation/scripts/deep_geomechanics_chaos.py",
-    "stress:chaos": "node scripts/deep_system_stress_test.js"
+    "stress:chaos": "node scripts/deep_system_stress_test.js",
+    "stress:full": "node scripts/run_full_system_stress.js"
   },
   "keywords": [
     "mine-subsidence",

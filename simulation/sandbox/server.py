@@ -118,7 +118,7 @@ async def lifespan(app: FastAPI):
     await db_manager.connect()
     # Start publishing ticks to the MQTT broker the dashboard subscribes to.
     session.mqtt_bridge.connect()
-    session.start()
+    # Note: session starts idle (is_running = False) until user explicitly clicks Start
     _sim_task = asyncio.create_task(simulation_loop())
     yield
     if _sim_task:
@@ -414,6 +414,7 @@ async def control(cmd: CommandRequest):
     elif action in ("stop", "reset"):
         if action == "reset":
             session.reset()
+            await db_manager.reset_database()
         else:
             session.stop()
     elif action == "set_speed" and cmd.multiplier is not None:
@@ -533,6 +534,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif action in ("stop", "reset"):
                     if action == "reset":
                         session.reset()
+                        await db_manager.reset_database()
                     else:
                         session.stop()
                 elif action == "set_speed":

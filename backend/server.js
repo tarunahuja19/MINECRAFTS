@@ -126,6 +126,33 @@ app.use('/api/alarms', alarmsRouter);
 app.use('/simulation', simulationRouter);
 app.use('/api/simulation', simulationRouter);
 
+// System & Database Reset Endpoint (§Clean state restoration)
+app.post(['/api/system/reset', '/api/database/reset'], async (req, res) => {
+  try {
+    const truncateSql = `
+      TRUNCATE TABLE readings, simulation_packets, alarms CASCADE;
+      UPDATE nodes SET status = 'active';
+    `;
+    await query(truncateSql);
+
+    // Broadcast reset event to all connected WebSocket clients
+    broadcast({
+      type: 'system_reset',
+      action: 'reset',
+      timestamp: new Date().toISOString()
+    });
+
+    console.log('[server] System reset: readings, packets, and alarms cleared; nodes set to active.');
+    res.json({
+      ok: true,
+      message: 'Database reset successful: readings, packets, and alarms cleared; nodes reset to active.'
+    });
+  } catch (err) {
+    console.error('[server] System reset failed:', err.message);
+    res.status(500).json({ error: 'Database reset failed', details: err.message });
+  }
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: `Cannot ${req.method} ${req.url}` });

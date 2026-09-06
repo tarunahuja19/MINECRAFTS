@@ -63,13 +63,8 @@ var modeSwitch = (function () {
       fetch('http://localhost:8080/api/alarms')
         .then(function (r) { return r.json(); })
         .then(function (alarms) {
-          if (Array.isArray(alarms) && alarms.length > 0) {
+          if (Array.isArray(alarms)) {
             bus.emit('alarms-loaded', alarms);
-          } else if (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) {
-            var fallback = fixtureProvider.getAlarms();
-            if (fallback && fallback.length) {
-              bus.emit('alarms-loaded', fallback);
-            }
           }
         })
         .catch(function (err) {

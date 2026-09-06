@@ -61,15 +61,12 @@ router.get('/', async (req, res) => {
       `SELECT * FROM alarms ORDER BY t_utc DESC LIMIT $1;`,
       [limit]
     );
-    if (result.rowCount > 0) {
-      return res.json(result.rows.map(rowToAlarm));
-    }
+    return res.json(result.rows.map(rowToAlarm));
   } catch (err) {
-    // An unmigrated or unreachable database is a fallback case, not a 500:
-    // the operator still needs to see history.
-    console.error('[routes:alarms] DB read failed, serving fixture:', err.message);
+    // An unmigrated or unreachable database is a fallback case:
+    console.error('[routes:alarms] DB read failed, serving fixture fallback:', err.message);
+    res.json(readFixture());
   }
-  res.json(readFixture());
 });
 
 // POST /api/alarms - persist an alarm raised by the simulation.

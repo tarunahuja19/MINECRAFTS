@@ -308,6 +308,14 @@ var nodeMarkers = (function () {
       }
     });
 
+    bus.on('system-reset', function () {
+      var ids = Object.keys(nodeData);
+      for (var k = 0; k < ids.length; k++) {
+        nodeData[ids[k]].lastTelemetry = null;
+        updateState(ids[k], 'active');
+      }
+    });
+
     bus.on('telemetry', function (t) {
       var nodeId = t._node_id || t.node_id;
       if (!nodeId) return;

@@ -135,6 +135,13 @@ var liveProvider = (function () {
       bus.emit('alarm', msg.alarm || msg);
     } else if (msg.type === 'node-status-change') {
       bus.emit('node-status-change', msg);
+    } else if (msg.type === 'system_reset') {
+      console.log('[live-provider] System reset event received from backend');
+      bus.emit('system-reset', msg);
+      bus.emit('alarms-loaded', []);
+      if (typeof alarmBanner !== 'undefined' && alarmBanner.hide) {
+        alarmBanner.hide();
+      }
     }
   }
 
