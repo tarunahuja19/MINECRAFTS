@@ -78,7 +78,9 @@ var mapTabs = (function () {
         open3DTab(sectorData);
       });
       bus.on('grid-selected', function (sectorData) {
-        open3DTab(sectorData);
+        if (currentLayout !== 'single') {
+          assignTabToSlot(2, null, sectorData);
+        }
       });
     }
 
@@ -952,6 +954,7 @@ var mapTabs = (function () {
   return {
     init: init,
     open3DTab: open3DTab,
+    assignTabToSlot: assignTabToSlot,
     selectTab: selectTab,
     close3DTab: close3DTab,
     applyLayout: applyLayout,

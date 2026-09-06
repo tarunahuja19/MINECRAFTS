@@ -63,6 +63,9 @@ var areaSelect3D = (function () {
       '.leaflet-container.area-select-active .leaflet-pane {' +
       '  cursor: crosshair !important;' +
       '}' +
+      '.leaflet-container.area-select-active .leaflet-gridPane-pane {' +
+      '  pointer-events: none !important;' +
+      '}' +
       '.map-marquee-box {' +
       '  position: absolute;' +
       '  border: 1.5px dashed #00E676;' +

@@ -280,12 +280,12 @@ async def download_events_csv():
 @app.get("/simulation/packets/latest")
 async def get_latest_simulation_packet():
     """Retrieve the latest finalized 60-second simulation packet."""
-    packet = await db_manager.get_latest_packet()
+    session = get_session()
+    packet = session.packet_aggregator.get_latest_packet()
     if packet is not None:
         return packet
 
-    session = get_session()
-    packet = session.packet_aggregator.get_latest_packet()
+    packet = await db_manager.get_latest_packet()
     if packet is not None:
         return packet
 

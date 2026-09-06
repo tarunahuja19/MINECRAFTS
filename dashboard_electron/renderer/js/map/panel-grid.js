@@ -6,8 +6,8 @@
  * Prepared for 3D terrain window launching per individual grid sector.
  */
 var panelGrid = (function () {
-  // Feature flag: set to false to flag off the 8x8 sector grid overlay
-  var ENABLE_GRID_FEATURE = false;
+  // Feature flag: set to true to enable the 8x8 sector grid overlay
+  var ENABLE_GRID_FEATURE = true;
 
   var map = null;
   var gridGroup = null;
@@ -94,8 +94,8 @@ var panelGrid = (function () {
   ];
   var SURFACE_FILL_OPACITY = 0.42;
   var surfaceOn = false;
-  var gridOn = ENABLE_GRID_FEATURE;
-  var labelsOn = ENABLE_GRID_FEATURE;
+  var gridOn = true;
+  var labelsOn = true;
 
   // Cell geometry in the physics frame. Row 0 is the NORTH-most row, so y runs
   // downward with r; col 0 is the WEST-most, so x runs rightward with c.
@@ -223,13 +223,6 @@ var panelGrid = (function () {
     buildGrid();
     setupToggleUI();
 
-    if (!ENABLE_GRID_FEATURE) {
-      gridOn = false;
-      labelsOn = false;
-      applyVisibility();
-      hideBanner();
-    }
-
     if (typeof bus !== 'undefined') {
       bus.on('nodes-loaded', function (nodes) {
         refreshNodeDistribution(nodes);
@@ -258,8 +251,8 @@ var panelGrid = (function () {
     bannerEl.className = 'grid-hud-banner';
     bannerEl.innerHTML = 
       '<span class="grid-hud-badge" id="grid-hud-badge">3D SECTOR --</span>' +
-      '<span class="grid-hud-text" id="grid-hud-text">Select an 8x8 sector to launch 3D terrain view</span>' +
-      '<button class="grid-hud-btn" id="btn-grid-3d-launch">3D VIEW HOOK</button>' +
+      '<span class="grid-hud-text" id="grid-hud-text">Select an 8x8 sector to inspect or launch 3D</span>' +
+      '<button class="grid-hud-btn" id="btn-grid-3d-launch">OPEN IN 3D</button>' +
       '<span class="grid-hud-close" id="btn-grid-hud-close" title="Dismiss">×</span>';
 
     mapContainer.appendChild(bannerEl);
@@ -393,7 +386,18 @@ var panelGrid = (function () {
 
         polygon.on('click', function (e) {
           L.DomEvent.stopPropagation(e);
+          if (typeof areaSelect3D !== 'undefined' && typeof areaSelect3D.isCursorModeActive === 'function' && areaSelect3D.isCursorModeActive()) {
+            return;
+          }
           selectSector(this._cellId);
+        });
+
+        polygon.on('dblclick', function (e) {
+          L.DomEvent.stopPropagation(e);
+          if (typeof areaSelect3D !== 'undefined' && typeof areaSelect3D.isCursorModeActive === 'function' && areaSelect3D.isCursorModeActive()) {
+            return;
+          }
+          trigger3DView(this._cellId);
         });
 
         polygon.addTo(cellGroup);
@@ -520,17 +524,16 @@ var panelGrid = (function () {
 
     showBanner(cellData);
 
-    // Emit event across app bus
+    // Emit event across app bus for selection
     if (typeof bus !== 'undefined') {
       bus.emit('grid-selected', cellData);
-      bus.emit('3d-view-requested', cellData);
     }
 
-    // Open 3D Tab immediately
-    if (typeof mapTabs !== 'undefined' && typeof mapTabs.open3DTab === 'function') {
-      mapTabs.open3DTab(cellData);
-    } else if (typeof terrain3DWindow !== 'undefined' && typeof terrain3DWindow.openSector === 'function') {
-      terrain3DWindow.openSector(cellData);
+    // In multi-split mode, update secondary 3D pane seamlessly without leaving 2D map
+    if (typeof mapTabs !== 'undefined' && typeof mapTabs.getCurrentLayout === 'function') {
+      if (mapTabs.getCurrentLayout() !== 'single' && typeof mapTabs.assignTabToSlot === 'function') {
+        mapTabs.assignTabToSlot(2, null, cellData);
+      }
     }
 
     console.log('[PANEL_GRID] 8x8 Sector selected:', cellData);
@@ -540,7 +543,9 @@ var panelGrid = (function () {
     var cellData = cellsData[cellId];
     if (!cellData) return;
 
-    if (typeof terrain3DWindow !== 'undefined' && typeof terrain3DWindow.openSector === 'function') {
+    if (typeof mapTabs !== 'undefined' && typeof mapTabs.open3DTab === 'function') {
+      mapTabs.open3DTab(cellData);
+    } else if (typeof terrain3DWindow !== 'undefined' && typeof terrain3DWindow.openSector === 'function') {
       terrain3DWindow.openSector(cellData);
     } else if (typeof bus !== 'undefined') {
       bus.emit('3d-view-requested', cellData);

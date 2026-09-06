@@ -167,10 +167,10 @@
                             </svg>
                           </button>
                         </div>
-                        <!-- Grid controls (flagged off for now) -->
-                        <div class="map-btn-group" id="grid-controls-group" style="display:none;">
-                          <button class="hud-btn" id="btn-grid-toggle" title="Show or hide the 8x8 sector grid">GRID</button>
-                          <button class="hud-btn" id="btn-grid-labels" title="Show or hide the sector labels (A1..H8)">LABELS</button>
+                        <!-- Grid controls (toggleable 8x8 sector grid and labels) -->
+                        <div class="map-btn-group" id="grid-controls-group">
+                          <button class="hud-btn active" id="btn-grid-toggle" title="Show or hide the 8x8 sector grid">GRID</button>
+                          <button class="hud-btn active" id="btn-grid-labels" title="Show or hide the sector labels (A1..H8)">LABELS</button>
                           <button class="hud-btn" id="btn-grid-surface" title="Shade each sector by its subsidence surface value, independent of the grid line colour">SURFACE</button>
                         </div>
                       </div>
@@ -183,7 +183,7 @@
                         <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #00E676;"></span>3D SELECTION</span>
                         <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #FFD700;"></span>DEFENSE RING</span>
                         <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #5A8FA8;"></span>PANEL A</span>
-                        <span class="hud-item" id="hud-legend-sectors" style="display:none;"><span class="hud-line" style="border-top:1.5px dashed #FF00E5;"></span>SECTORS (8x8)</span>
+                        <span class="hud-item" id="hud-legend-sectors"><span class="hud-line" style="border-top:1.5px dashed #FF00E5;"></span>SECTORS (8x8)</span>
                         <span class="hud-item"><span class="hud-dot" style="background:#2E7D32;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE STABLE</span>
                         <span class="hud-item"><span class="hud-dot" style="background:#FFC107;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE SUBSIDING</span>
                         <span class="hud-item"><span class="hud-dot" style="background:#B71C1C;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE TROUGH</span>

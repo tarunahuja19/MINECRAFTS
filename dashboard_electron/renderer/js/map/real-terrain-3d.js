@@ -73,12 +73,14 @@ var realTerrain3D = (function () {
     var minLng, maxLng, minLat, maxLat;
 
     if (sector.lngRange && sector.latRange) {
-      var lats = [sector.latRange[0], sector.latRange[1]];
-      var lngs = [sector.lngRange[0], sector.lngRange[1]];
-      minLat = Math.min(lats[0], lats[1]);
-      maxLat = Math.max(lats[0], lats[1]);
-      minLng = Math.min(lngs[0], lngs[1]);
-      maxLng = Math.max(lngs[0], lngs[1]);
+      var normA = normalizeLatLon(sector.latRange[0], sector.lngRange[0]);
+      var normB = normalizeLatLon(sector.latRange[1], sector.lngRange[1]);
+      if (normA && normB) {
+        minLat = Math.min(normA.lat, normB.lat);
+        maxLat = Math.max(normA.lat, normB.lat);
+        minLng = Math.min(normA.lng, normB.lng);
+        maxLng = Math.max(normA.lng, normB.lng);
+      }
     } else if (sector.bounds && Array.isArray(sector.bounds) && sector.bounds.length >= 2) {
       var pt1 = sector.bounds[0];
       var pt2 = sector.bounds[1];
