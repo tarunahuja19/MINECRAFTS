@@ -22,21 +22,44 @@ var alarmHistory = (function () {
     });
 
     bus.on('alarm', function (alarm) {
-      var exists = false;
+      if (!alarm || !alarm.alarm_id) return;
+      var foundIndex = -1;
       for (var i = 0; i < allAlarms.length; i++) {
-        if (allAlarms[i].alarm_id === alarm.alarm_id) { exists = true; break; }
+        if (allAlarms[i].alarm_id === alarm.alarm_id) {
+          foundIndex = i;
+          break;
+        }
       }
-      if (!exists) {
+      if (foundIndex !== -1) {
+        allAlarms[foundIndex] = Object.assign({}, allAlarms[foundIndex], alarm);
+      } else {
         allAlarms.unshift(alarm);
       }
-      alarmBanner.updateBadge(allAlarms.length);
+      if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
+        alarmBanner.updateBadge(allAlarms.length);
+      }
       render();
     });
 
     bus.on('alarm-selected', function (alarm) {
       if (alarm && alarm.alarm_id) {
         selectedAlarmId = alarm.alarm_id;
-        updateSelectedHighlight();
+        var exists = false;
+        for (var i = 0; i < allAlarms.length; i++) {
+          if (allAlarms[i].alarm_id === alarm.alarm_id) {
+            exists = true;
+            break;
+          }
+        }
+        if (!exists) {
+          allAlarms.unshift(alarm);
+          if (typeof alarmBanner !== 'undefined' && alarmBanner.updateBadge) {
+            alarmBanner.updateBadge(allAlarms.length);
+          }
+          render();
+        } else {
+          updateSelectedHighlight();
+        }
       }
     });
   }
@@ -83,7 +106,16 @@ var alarmHistory = (function () {
     for (var i = 0; i < slice.length; i++) {
       var a = slice[i];
       var timeStr = formatShortTime(a.t_utc);
-      var nodesStr = a.affected_nodes ? a.affected_nodes.length : 0;
+      var nodesStr = '--';
+      var nodesTooltip = '';
+      if (a.affected_nodes && a.affected_nodes.length > 0) {
+        nodesTooltip = 'Nodes: ' + a.affected_nodes.join(', ');
+        if (a.affected_nodes.length <= 2) {
+          nodesStr = a.affected_nodes.join(', ');
+        } else {
+          nodesStr = a.affected_nodes[0] + ' (+' + (a.affected_nodes.length - 1) + ')';
+        }
+      }
       var isSelected = (a.alarm_id === selectedAlarmId);
 
       html +=
@@ -91,7 +123,7 @@ var alarmHistory = (function () {
           '<td>' + a.alarm_id + '</td>' +
           '<td>' + timeStr + '</td>' +
           '<td><span class="level-badge level-' + a.level + '" style="font-size:10px;padding:1px 4px;">' + a.level + '</span></td>' +
-          '<td>' + nodesStr + '</td>' +
+          '<td title="' + nodesTooltip + '" style="font-family:\'Courier New\', monospace; font-size:10px;">' + nodesStr + '</td>' +
           '<td>' + (typeof a.trough_fit_r2 === 'number' ? a.trough_fit_r2.toFixed(2) : '--') + '</td>' +
         '</tr>';
     }
@@ -149,7 +181,12 @@ var alarmHistory = (function () {
     return mm + '-' + dd + ' ' + hh + ':' + mi;
   }
 
+  function getAlarms() {
+    return allAlarms.slice();
+  }
+
   return {
-    init: init
+    init: init,
+    getAlarms: getAlarms
   };
 })();

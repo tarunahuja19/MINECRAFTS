@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Terrain Workstation — Sector Elevation & Satellite View</title>
+  <title>3D Terrain View — Sector Elevation & Satellite View</title>
   <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/hmi.css">
@@ -25,33 +25,40 @@
       flex-direction: column;
     }
     .standalone-header {
-      height: 38px;
-      background: #0F1F2A;
-      border-bottom: 1.5px solid #00E5FF;
+      height: 28px;
+      background: #243040;
+      border-bottom: 1px solid #2E3E4A;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
-      color: #FFF;
-      font-size: 12px;
+      padding: 0 12px;
+      color: #D4D8DC;
+      font-size: 11px;
       font-weight: bold;
       letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
     }
     .standalone-status-dot {
       display: inline-block;
-      width: 9px;
-      height: 9px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      background: #00E5FF;
-      box-shadow: 0 0 10px #00E5FF;
+      background: #00CC44;
+      border: 1px solid rgba(0, 0, 0, 0.4);
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
       margin-right: 8px;
     }
     .standalone-tag {
-      background: #00E5FF;
-      color: #0A161E;
-      padding: 2px 8px;
+      background: #14222A;
+      border: 1px solid #284452;
+      color: #00E676;
+      padding: 1px 6px;
       border-radius: 2px;
       margin-left: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -59,10 +66,7 @@
   <div class="standalone-container">
     <div class="standalone-header">
       <div style="display:flex; align-items:center;">
-        <span class="standalone-status-dot"></span>
-        <span>R4 MINE SUBSIDENCE — 3D TERRAIN WORKSTATION</span>
-        <span class="standalone-tag" id="standalone-sector-tag">SECTOR E5</span>
-        <span style="color:#78909C; font-size:10px; margin-left:14px;" id="standalone-coords">Lat: 18.6435°N, Lng: 79.5725°E</span>
+        <span style="color:#7A9BAA; font-size:10px; font-family:'Courier New',monospace;" id="standalone-coords">Lat: 18.6435°N, Lng: 79.5725°E</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-size:10px; color:#78909C;">GOOGLE EARTH:</span>
@@ -107,7 +111,6 @@
         </div>
 
         <div class="terrain-hud-legend-box" style="bottom:14px; left:14px;">
-          <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00E5FF;"></span>SECTOR BOUNDS</div>
           <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00CC44;"></span>ACTIVE</div>
           <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FFA500;"></span>WARNING</div>
           <div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FF2222;"></span>CRITICAL</div>
@@ -161,7 +164,8 @@
           nodeCount: cellNodes.length
         };
 
-        document.getElementById('standalone-sector-tag').textContent = 'SECTOR ' + sectorId;
+        var stdTag = document.getElementById('standalone-sector-tag');
+        if (stdTag) stdTag.textContent = 'SECTOR ' + sectorId;
         document.getElementById('std-stat-sector').textContent = sectorId;
         document.getElementById('std-stat-sensors').textContent = cellNodes.length + ' Detected';
         document.getElementById('standalone-coords').textContent = 'Lat: ' + minLat.toFixed(4) + '°-' + maxLat.toFixed(4) + '°N | Lng: ' + minLng.toFixed(4) + '°-' + maxLng.toFixed(4) + '°E';

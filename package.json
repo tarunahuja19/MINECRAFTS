@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "description": "R4 Mine Subsidence Monitoring & Early Warning System (SIH 2026)",
   "scripts": {
-    "start": "bash scripts/start_all.sh",
-    "start:all": "bash scripts/start_all.sh",
+    "start": "node scripts/start_all.js",
+    "start:all": "node scripts/start_all.js",
     "broker": "node scripts/broker.js",
     "mqtt:tap": "node scripts/mqtt_tap.js",
     "backend": "cd backend && node server.js",
     "frontend": "cd dashboard_electron && node serve.js",
+    "electron": "cd dashboard_electron && npx electron .",
     "tiles:prefetch": "node scripts/prefetch_tiles.js",
-    "sim": "cd simulation && .venv/bin/uvicorn sandbox.server:app --host 0.0.0.0 --port 8000",
-    "sim:ui": "cd simulation/frontend && node_modules/.bin/vite --host --port 5173 --strictPort",
+    "sim": "cd simulation && python -m uvicorn sandbox.server:app --host 0.0.0.0 --port 8000",
+    "sim:ui": "cd simulation/frontend && npx vite --host 127.0.0.1 --port 5173 --strictPort",
     "test:pipeline": "node backend/test/test_integration.js"
   },
   "keywords": [

@@ -6,6 +6,9 @@
  * Prepared for 3D terrain window launching per individual grid sector.
  */
 var panelGrid = (function () {
+  // Feature flag: set to false to flag off the 8x8 sector grid overlay
+  var ENABLE_GRID_FEATURE = false;
+
   var map = null;
   var gridGroup = null;
   // Cells and labels live in separate groups so LABELS can be turned off while
@@ -91,8 +94,8 @@ var panelGrid = (function () {
   ];
   var SURFACE_FILL_OPACITY = 0.42;
   var surfaceOn = false;
-  var gridOn = true;
-  var labelsOn = true;
+  var gridOn = ENABLE_GRID_FEATURE;
+  var labelsOn = ENABLE_GRID_FEATURE;
 
   // Cell geometry in the physics frame. Row 0 is the NORTH-most row, so y runs
   // downward with r; col 0 is the WEST-most, so x runs rightward with c.
@@ -220,6 +223,13 @@ var panelGrid = (function () {
     buildGrid();
     setupToggleUI();
 
+    if (!ENABLE_GRID_FEATURE) {
+      gridOn = false;
+      labelsOn = false;
+      applyVisibility();
+      hideBanner();
+    }
+
     if (typeof bus !== 'undefined') {
       bus.on('nodes-loaded', function (nodes) {
         refreshNodeDistribution(nodes);
@@ -272,6 +282,7 @@ var panelGrid = (function () {
   }
 
   function showBanner(cellData) {
+    if (!ENABLE_GRID_FEATURE) return;
     if (!bannerEl) return;
     var badge = bannerEl.querySelector('#grid-hud-badge');
     var text = bannerEl.querySelector('#grid-hud-text');
@@ -515,8 +526,10 @@ var panelGrid = (function () {
       bus.emit('3d-view-requested', cellData);
     }
 
-    // Open in-app 3D workstation window immediately
-    if (typeof terrain3DWindow !== 'undefined' && typeof terrain3DWindow.openSector === 'function') {
+    // Open 3D Tab immediately
+    if (typeof mapTabs !== 'undefined' && typeof mapTabs.open3DTab === 'function') {
+      mapTabs.open3DTab(cellData);
+    } else if (typeof terrain3DWindow !== 'undefined' && typeof terrain3DWindow.openSector === 'function') {
       terrain3DWindow.openSector(cellData);
     }
 
@@ -582,6 +595,16 @@ var panelGrid = (function () {
     trigger3DView: trigger3DView,
     setGridVisible: function (on) { gridOn = !!on; applyVisibility(); },
     setLabelsVisible: function (on) { labelsOn = !!on; applyVisibility(); },
-    setSurfaceVisible: function (on) { surfaceOn = !!on; restyleAllCells(); }
+    setSurfaceVisible: function (on) { surfaceOn = !!on; restyleAllCells(); },
+    setFeatureEnabled: function (enabled) {
+      ENABLE_GRID_FEATURE = Boolean(enabled);
+      gridOn = ENABLE_GRID_FEATURE;
+      labelsOn = ENABLE_GRID_FEATURE;
+      applyVisibility();
+      if (!ENABLE_GRID_FEATURE) hideBanner();
+    },
+    isFeatureEnabled: function () {
+      return ENABLE_GRID_FEATURE;
+    }
   };
 })();

@@ -88,11 +88,19 @@ var nodeMarkers = (function () {
     var nd = nodeData[nodeId];
     if (!nd) return null;
 
-    // getAlarms() returns null in live mode until alarms have loaded, so guard
-    // on the RESULT being an array, not just on the function existing. Without
-    // this the click handler throws before Leaflet can open the node popup.
-    var alarms = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms)
-      ? fixtureProvider.getAlarms() : [];
+    // Normal green/active nodes do not have active alarms
+    if (nd.state !== 'critical' && nd.state !== 'warning' && nd.state !== 'lastgasp') {
+      return null;
+    }
+
+    // Check alarmHistory first, then fallback to fixtureProvider
+    var alarms = [];
+    if (typeof alarmHistory !== 'undefined' && alarmHistory.getAlarms) {
+      alarms = alarmHistory.getAlarms();
+    }
+    if ((!alarms || alarms.length === 0) && typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) {
+      alarms = fixtureProvider.getAlarms() || [];
+    }
     if (!alarms || typeof alarms.length !== 'number') alarms = [];
 
     // 1. Check for an alarm specifically titled for this node: ALM-<nodeId>
@@ -120,16 +128,18 @@ var nodeMarkers = (function () {
     if (nd.state === 'critical' || nd.state === 'warning' || nd.state === 'lastgasp') {
       var isCrit = (nd.state === 'critical' || nd.state === 'lastgasp');
       var t = nd.lastTelemetry;
-      var strainVal = t ? t.strain_ustrain : (isCrit ? 850 : 490);
+      var strainVal = t ? ((t.strain_ue !== undefined ? t.strain_ue : t.strain_ustrain) || 0) : (isCrit ? 850 : 490);
       var r2Val = isCrit ? 0.96 : 0.85;
 
-      return {
+      var synAlarm = {
         alarm_id: 'ALM-' + nodeId,
         t_utc: new Date().toISOString(),
-        panel_id: 'PNL-A-' + (nd.ring || 'SECTOR').toUpperCase(),
+        panel_id: 'adriyala_panel_1',
         level: isCrit ? 3 : 2,
+        state: isCrit ? 'CRITICAL' : 'TENSION',
         centroid: { lat: nd.lat, lng: nd.lng },
         affected_nodes: [nodeId],
+        max_strain_ue: strainVal,
         trough_fit_r2: r2Val,
         projection: { days_to_level_3: isCrit ? 0 : 4.5, confidence: isCrit ? 0.95 : 0.83 },
         blast_correlated: false,
@@ -137,8 +147,10 @@ var nodeMarkers = (function () {
         explanation: (isCrit ? 'CRITICAL LEVEL 3' : 'LEVEL 2 WARNING') +
           ': Sensor ' + nodeId + ' in ' + (nd.ring || 'inner') +
           ' ring indicates acute subsidence deviation (strain: ' + strainVal +
-          ' ustrain). Local displacement exceeds safety threshold for this sector.'
+          ' µε). Local displacement exceeds safety threshold for this sector.'
       };
+      bus.emit('alarm', synAlarm);
+      return synAlarm;
     }
 
     return null;
@@ -247,13 +259,17 @@ var nodeMarkers = (function () {
       marker._nodeId = n.node_id;
       marker.on('click', function () {
         var nodeId = this._nodeId;
-        var alarm = findAlarmForNode(nodeId);
-        if (alarm) {
-          // Show BOTH alarm details AND node details!
-          bus.emit('alarm-selected', alarm);
+        var nd = nodeData[nodeId];
+        var isAlarming = nd && (nd.state === 'critical' || nd.state === 'warning' || nd.state === 'lastgasp');
+
+        if (isAlarming) {
+          var alarm = findAlarmForNode(nodeId);
+          if (alarm) {
+            bus.emit('alarm-selected', alarm);
+          }
           bus.emit('node-selected', nodeId);
         } else {
-          // Normal node: close alarm details, show node details
+          // Normal green node: ensure alarm details panel is closed, show only node sensor details
           if (typeof alarmDetail !== 'undefined' && alarmDetail.hide) {
             alarmDetail.hide();
           }
@@ -299,10 +315,12 @@ var nodeMarkers = (function () {
       if (nodeData[nodeId]) {
         nodeData[nodeId].lastTelemetry = t;
 
-        var strain = t.strain_ustrain || 0;
-        var tiltMag = Math.max(Math.abs(t.tilt_x_mdeg || 0), Math.abs(t.tilt_y_mdeg || 0));
+        var strain = (t.strain_ue !== undefined ? t.strain_ue : t.strain_ustrain) || 0;
+        var tiltX = t.tilt_x_urad !== undefined ? Math.round(t.tilt_x_urad / 17.4533) : (t.tilt_x_mdeg || 0);
+        var tiltY = t.tilt_y_urad !== undefined ? Math.round(t.tilt_y_urad / 17.4533) : (t.tilt_y_mdeg || 0);
+        var tiltMag = Math.max(Math.abs(tiltX), Math.abs(tiltY));
 
-        if (t.flags & 1) {
+        if ((t.flags & 1) || (t.crack_flags && (t.crack_flags & 1))) {
           updateState(nodeId, 'lastgasp');
         } else if (strain >= 600 || tiltMag >= 200) {
           updateState(nodeId, 'critical');
@@ -360,6 +378,43 @@ var nodeMarkers = (function () {
     var role = nodeData[nodeId] ? roleOf(nodeData[nodeId]) : 'scout';
     markers[nodeId].setIcon(createIcon(state, role));
     updateNodeCount();
+
+    if (state === 'critical' || state === 'warning' || state === 'lastgasp') {
+      var isCrit = (state === 'critical' || state === 'lastgasp');
+      var nd = nodeData[nodeId];
+      var t = nd ? nd.lastTelemetry : null;
+      var strainVal = t ? ((t.strain_ue !== undefined ? t.strain_ue : t.strain_ustrain) || 0) : (isCrit ? 850 : 490);
+      var latVal = nd && typeof nd.lat === 'number' ? nd.lat : 18.636;
+      var lngVal = nd && typeof nd.lng === 'number' ? nd.lng : 79.544;
+
+      var nodeAlarm = {
+        alarm_id: 'ALM-' + nodeId,
+        t_utc: new Date().toISOString(),
+        panel_id: 'adriyala_panel_1',
+        level: isCrit ? 3 : 2,
+        state: isCrit ? 'CRITICAL' : 'TENSION',
+        centroid: { lat: latVal, lng: lngVal },
+        affected_nodes: [nodeId],
+        max_strain_ue: strainVal,
+        trough_fit_r2: isCrit ? 0.96 : 0.86,
+        confidence_zone: isCrit ? 'high_confidence' : 'medium_warning',
+        blast_correlated: false,
+        projection: { days_to_level_3: isCrit ? 0 : 4.5, confidence: isCrit ? 0.95 : 0.83 },
+        explanation: (isCrit ? 'CRITICAL LEVEL 3' : 'LEVEL 2 WARNING') +
+          ': Sensor ' + nodeId + ' entered ' + state.toUpperCase() +
+          ' status (strain: ' + strainVal + ' µε).'
+      };
+
+      bus.emit('alarm', nodeAlarm);
+
+      if (typeof fetch === 'function') {
+        fetch('http://localhost:8080/api/alarms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nodeAlarm)
+        }).catch(function () {});
+      }
+    }
   }
 
   function updateNodeCount() {
@@ -374,11 +429,15 @@ var nodeMarkers = (function () {
 
   function getMarker(nodeId) { return markers[nodeId]; }
   function getNodeData(nodeId) { return nodeData[nodeId]; }
+  function getAllNodes() {
+    return Object.keys(nodeData).map(function (k) { return nodeData[k]; });
+  }
 
   return {
     init: init,
     updateState: updateState,
     getMarker: getMarker,
-    getNodeData: getNodeData
+    getNodeData: getNodeData,
+    getAllNodes: getAllNodes
   };
 })();

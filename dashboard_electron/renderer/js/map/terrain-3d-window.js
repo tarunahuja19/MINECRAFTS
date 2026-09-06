@@ -11,6 +11,10 @@ var terrain3DWindow = (function () {
   // holds the live set (with x/y and lat/lon) once nodes-loaded has fired.
   function liveNodeRecords() {
     var out = [];
+    if (typeof nodeMarkers !== 'undefined' && typeof nodeMarkers.getAllNodes === 'function') {
+      var all = nodeMarkers.getAllNodes();
+      if (all && all.length) return all;
+    }
     if (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData &&
         typeof panelGrid !== 'undefined' && panelGrid.getAllSectors) {
       var sectors = panelGrid.getAllSectors() || {};
@@ -40,14 +44,15 @@ var terrain3DWindow = (function () {
   var dragOffsetY = 0;
 
   function init() {
+    if (document.getElementById('pane-3d-view')) {
+      console.log('[TERRAIN_3D_WINDOW] Integrated into Map Workspace Tabs');
+      return;
+    }
     createWindowDOM();
     setupEventHandlers();
 
-    // Listen to sector selection events from panel-grid
+    // Listen to sector selection events from panel-grid or area-select-3d
     if (typeof bus !== 'undefined') {
-      bus.on('grid-selected', function (sectorData) {
-        openSector(sectorData);
-      });
       bus.on('3d-view-requested', function (sectorData) {
         openSector(sectorData);
       });
@@ -68,10 +73,7 @@ var terrain3DWindow = (function () {
       '<!-- Window Header Bar -->' +
       '<div class="terrain-win-header" id="terrain-win-header">' +
         '<div class="terrain-win-title">' +
-          '<span class="terrain-win-status-dot"></span>' +
-          '<span>3D TERRAIN WORKSTATION</span>' +
-          '<span class="terrain-sector-tag" id="terrain-win-sector-tag">SECTOR --</span>' +
-          '<span class="terrain-coords-text" id="terrain-win-coords">Lat: --, Lng: --</span>' +
+          '<span class="terrain-coords-text" id="terrain-win-coords" style="margin-left:0;">Lat: --, Lng: --</span>' +
         '</div>' +
         '<div class="terrain-win-actions">' +
           '<button class="terrain-win-btn" id="btn-win-minimize" title="Minimize to dock">_</button>' +
@@ -126,7 +128,6 @@ var terrain3DWindow = (function () {
           '</div>' +
 
           '<div class="terrain-hud-legend-box">' +
-            '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00E5FF;"></span>SECTOR BOUNDS</div>' +
             '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#00CC44;"></span>ACTIVE</div>' +
             '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FFA500;"></span>WARNING</div>' +
             '<div class="terrain-legend-item"><span class="terrain-legend-color" style="background:#FF2222;"></span>CRITICAL</div>' +
@@ -135,7 +136,7 @@ var terrain3DWindow = (function () {
 
         '<!-- Right Node List Sidebar -->' +
         '<div class="terrain-nodes-sidebar" id="terrain-nodes-sidebar">' +
-          '<div class="terrain-sidebar-header">SECTOR SENSORS (8x8)</div>' +
+          '<div class="terrain-sidebar-header" id="terrain-sidebar-header">REGION SENSORS</div>' +
           '<div id="terrain-node-list-container" style="flex:1; overflow-y:auto;"></div>' +
         '</div>' +
       '</div>';
@@ -235,7 +236,26 @@ var terrain3DWindow = (function () {
     }
   }
 
+  var openSectorDebounceTimer = null;
   function openSector(sectorData) {
+    if (!sectorData) return;
+    currentSector = sectorData;
+
+    if (typeof mapTabs !== 'undefined' && typeof mapTabs.open3DTab === 'function') {
+      mapTabs.open3DTab(sectorData);
+      return;
+    }
+
+    if (openSectorDebounceTimer) {
+      clearTimeout(openSectorDebounceTimer);
+    }
+    openSectorDebounceTimer = setTimeout(function () {
+      openSectorDebounceTimer = null;
+      doOpenSector(sectorData);
+    }, 16);
+  }
+
+  function doOpenSector(sectorData) {
     if (!sectorData) return;
     currentSector = sectorData;
 
@@ -243,34 +263,42 @@ var terrain3DWindow = (function () {
     windowEl.style.display = 'flex';
     if (isMinimized) toggleMinimize();
 
-    // Update Header
-    var tag = windowEl.querySelector('#terrain-win-sector-tag');
+    // Update Header coordinates
     var coords = windowEl.querySelector('#terrain-win-coords');
-    tag.textContent = 'SECTOR ' + sectorData.id;
-
-    var latStr = sectorData.latRange[0].toFixed(4) + '° - ' + sectorData.latRange[1].toFixed(4) + '°N';
-    var lngStr = sectorData.lngRange[0].toFixed(4) + '° - ' + sectorData.lngRange[1].toFixed(4) + '°E';
-    coords.textContent = latStr + ' | ' + lngStr;
+    var latStr = '--';
+    var lngStr = '--';
+    if (sectorData.latRange && sectorData.lngRange) {
+      latStr = sectorData.latRange[0].toFixed(4) + '° - ' + sectorData.latRange[1].toFixed(4) + '°N';
+      lngStr = sectorData.lngRange[0].toFixed(4) + '° - ' + sectorData.lngRange[1].toFixed(4) + '°E';
+    } else if (sectorData.center) {
+      latStr = sectorData.center[0].toFixed(4) + '°N';
+      lngStr = sectorData.center[1].toFixed(4) + '°E';
+    }
+    if (coords) coords.textContent = latStr + ' | ' + lngStr;
 
     // Update HUD stats
     var hudSector = windowEl.querySelector('#hud-stat-sector');
+    if (hudSector) hudSector.textContent = (sectorData.id === 'CUSTOM') ? 'CUSTOM AREA' : sectorData.id;
+
+    // Update Node Sidebar list and get detected count
+    var count = populateNodeSidebar(sectorData);
+
     var hudCount = windowEl.querySelector('#hud-stat-sensor-count');
+    if (hudCount) hudCount.textContent = count + ' Sensors Detected';
 
-    if (hudSector) hudSector.textContent = sectorData.id;
-    if (hudCount) hudCount.textContent = (sectorData.nodeCount || 0) + ' Sensors Detected';
-
-    // Update Node Sidebar list
-    populateNodeSidebar(sectorData);
-
-    // Initialize or load into Real 3D Satellite Terrain Map
-    if (!realTerrainInitialized) {
-      realTerrainInitialized = realTerrain3D.init('real-terrain-3d-map', sectorData);
-    } else {
-      realTerrain3D.loadSector(sectorData);
+    var sidebarHeader = windowEl.querySelector('#terrain-sidebar-header');
+    if (sidebarHeader) {
+      sidebarHeader.textContent = 'REGION SENSORS (' + count + ')';
     }
 
-    realTerrain3D.onResize();
+    // Settle layout then initialize or load into Real 3D Satellite Terrain Map
     requestAnimationFrame(function () {
+      if (!realTerrainInitialized || !realTerrain3D.getMap()) {
+        realTerrainInitialized = realTerrain3D.init('real-terrain-3d-map', sectorData);
+      } else {
+        realTerrain3D.loadSector(sectorData);
+      }
+
       realTerrain3D.onResize();
       setTimeout(function () { realTerrain3D.onResize(); }, 80);
       setTimeout(function () { realTerrain3D.onResize(); }, 250);
@@ -289,55 +317,93 @@ var terrain3DWindow = (function () {
 
   function populateNodeSidebar(sector) {
     var container = windowEl.querySelector('#terrain-node-list-container');
-    if (!container) return;
+    if (!container) return 0;
     container.innerHTML = '';
 
-    if (!sector.nodes || sector.nodes.length === 0) {
-      container.innerHTML = '<div style="padding:16px 8px; color:#64748B; text-align:center;">No sensor nodes in this peripheral block.</div>';
-      return;
-    }
-
-    // In LIVE mode fixtureProvider is loaded but never populated, so getNodes()
-    // returns null and the guard above (function exists) is not enough - the
-    // .length below then throws. Prefer the live node records the markers are
-    // already holding, and fall back to the fixtures only if those are absent.
     var allNodes = liveNodeRecords();
     var nodeMap = {};
-    for (var i = 0; i < allNodes.length; i++) nodeMap[allNodes[i].node_id] = allNodes[i];
+    for (var i = 0; i < allNodes.length; i++) {
+      if (allNodes[i] && allNodes[i].node_id) {
+        nodeMap[allNodes[i].node_id] = allNodes[i];
+      }
+    }
 
-    sector.nodes.forEach(function (nodeId) {
-      var n = nodeMap[nodeId];
-      if (!n) return;
+    var targetNodes = [];
+    if (sector.nodes && sector.nodes.length > 0) {
+      sector.nodes.forEach(function (nodeItem) {
+        var nodeId = (typeof nodeItem === 'object' && nodeItem !== null) ? nodeItem.node_id : nodeItem;
+        var n = nodeMap[nodeId] || (typeof nodeItem === 'object' ? nodeItem : null);
+        if (n) targetNodes.push(n);
+      });
+    }
 
+    // Fallback: If sector.nodes was empty or missed nodes, check if any nodes fall within bounds
+    if (targetNodes.length === 0 && sector.latRange && sector.lngRange) {
+      var minLat = Math.min(sector.latRange[0], sector.latRange[1]);
+      var maxLat = Math.max(sector.latRange[0], sector.latRange[1]);
+      var minLng = Math.min(sector.lngRange[0], sector.lngRange[1]);
+      var maxLng = Math.max(sector.lngRange[0], sector.lngRange[1]);
+      allNodes.forEach(function (n) {
+        var lat = n.lat;
+        var lng = n.lng;
+        if (typeof lat !== 'number' && typeof n.x === 'number' && typeof mapView !== 'undefined' && mapView.xyToLatLon) {
+          var p = mapView.xyToLatLon(n.x, n.y);
+          lat = p[0]; lng = p[1];
+        }
+        if (typeof lat === 'number' && typeof lng === 'number' && lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
+          targetNodes.push(n);
+        }
+      });
+    }
+
+    if (targetNodes.length === 0) {
+      container.innerHTML = '<div style="padding:16px 8px; color:#64748B; text-align:center;">No sensor nodes in this peripheral block.</div>';
+      return 0;
+    }
+
+    targetNodes.forEach(function (n) {
       var card = document.createElement('div');
       card.className = 'terrain-node-card';
 
+      var state = n.state || 'active';
       var color = '#00CC44';
-      if (n.state === 'warning') color = '#FFA500';
-      if (n.state === 'critical') color = '#FF2222';
-      if (n.state === 'lastgasp') color = '#FF4400';
-      if (n.state === 'dead') color = '#78909C';
+      if (state === 'warning') color = '#FFA500';
+      if (state === 'critical') color = '#FF2222';
+      if (state === 'lastgasp') color = '#FF4400';
+      if (state === 'dead') color = '#5A6A72';
 
       var t = n.lastTelemetry;
-      var strainStr = t ? t.strain_ustrain + ' µε' : (n.state === 'critical' ? '890 µε' : '142 µε');
-      var tiltStr = t ? t.tilt_x_mdeg + ' mdeg' : '-32 mdeg';
+      var strainVal = t ? (t.strain_ustrain || t.strain_ue || 142) : (state === 'critical' ? 890 : 142);
+      var strainStr = strainVal + ' µε';
+      var tiltStr = t ? (t.tilt_x_mdeg || 0) + ' mdeg' : '-32 mdeg';
 
       card.innerHTML = 
         '<div class="terrain-node-card-title">' +
-          '<span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + color + ';margin-right:5px;"></span>' + n.node_id + '</span>' +
-          '<span style="color:' + color + ';font-size:8.5px;font-weight:bold;">' + n.state.toUpperCase() + '</span>' +
+          '<div style="display:flex; align-items:center; gap:6px;">' +
+            '<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:' + color + '; border:1px solid rgba(0,0,0,0.5); flex-shrink:0;"></span>' +
+            '<span style="color:#D4D8DC; font-weight:bold;">' + n.node_id + '</span>' +
+          '</div>' +
+          '<span class="state-badge ' + state + '">' + state.toUpperCase() + '</span>' +
         '</div>' +
-        '<div class="terrain-node-card-sub">Ring: ' + (n.ring || 'core') + ' | Strain: ' + strainStr + '</div>' +
-        '<div class="terrain-node-card-sub">Tilt: ' + tiltStr + '</div>';
+        '<div class="terrain-node-card-sub">' +
+          '<span>Role: <b style="color:#D4D8DC;">' + (n.role || n.node_type || (n.node_id === 'N31' ? 'gateway' : 'scout')) + '</b></span>' +
+          '<span>Strain: <b style="color:#A8D8A8;">' + strainStr + '</b></span>' +
+        '</div>' +
+        '<div class="terrain-node-card-sub" style="margin-top:2px;">' +
+          '<span>Ring: <b style="color:#D4D8DC;">' + (n.ring || 'core') + '</b></span>' +
+          '<span>Tilt: <b style="color:#A8D8A8;">' + tiltStr + '</b></span>' +
+        '</div>';
 
       card.addEventListener('click', function () {
         if (typeof bus !== 'undefined') {
-          bus.emit('node-selected', nodeId);
+          bus.emit('node-selected', n.node_id);
         }
       });
 
       container.appendChild(card);
     });
+
+    return targetNodes.length;
   }
 
   function toggleMinimize() {

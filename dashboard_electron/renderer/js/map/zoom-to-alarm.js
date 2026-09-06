@@ -1,15 +1,25 @@
 'use strict';
 
 var zoomToAlarm = (function () {
+  var lastAutoZoomTime = 0;
+  var AUTO_ZOOM_COOLDOWN_MS = 12000; // 12-second cooldown on unprompted auto-pans
+
   function init() {
+    // Explicit selection by operator always pans immediately
     bus.on('alarm-selected', function (alarm) {
       zoomTo(alarm, true);
     });
 
+    // Background incoming alarms: only auto-pan for major events (Level 3 collapse or regional zone)
+    // with a generous cooldown so the operator's view never violently jerks between nodes.
     bus.on('alarm', function (alarm) {
-      // Level 2 = CRITICAL (limit exceeded), Level 3 = FAILED (collapse).
-      // Both warrant pulling the operator's eye to the location.
-      if (alarm.level >= 2) {
+      if (!alarm) return;
+      var isMajorRegional = (alarm.level >= 3) || (alarm.level >= 2 && Boolean(alarm.zone_id));
+      if (!isMajorRegional) return;
+
+      var now = Date.now();
+      if (now - lastAutoZoomTime >= AUTO_ZOOM_COOLDOWN_MS) {
+        lastAutoZoomTime = now;
         var mapTab = document.querySelector('.tab-btn[data-tab="map"]');
         var isMapActive = mapTab && mapTab.classList.contains('active');
         zoomTo(alarm, isMapActive);

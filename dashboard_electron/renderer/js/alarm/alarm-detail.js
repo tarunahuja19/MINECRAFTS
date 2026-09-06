@@ -36,6 +36,16 @@ var alarmDetail = (function () {
     var blastText = alarm.blast_correlated ? 'YES' : 'NO';
     var zoneText = (alarm.confidence_zone || '--').replace(/_/g, ' ').toUpperCase();
 
+    var centroidText = '--';
+    if (alarm.centroid && typeof alarm.centroid.lat === 'number' && typeof alarm.centroid.lng === 'number') {
+      centroidText = alarm.centroid.lat.toFixed(4) + ', ' + alarm.centroid.lng.toFixed(4);
+    }
+
+    var troughFitText = '--';
+    if (typeof alarm.trough_fit_r2 === 'number') {
+      troughFitText = 'R² = ' + alarm.trough_fit_r2.toFixed(2);
+    }
+
     var affectedHtml = '';
     if (alarm.affected_nodes) {
       for (var i = 0; i < alarm.affected_nodes.length; i++) {
@@ -62,7 +72,7 @@ var alarmDetail = (function () {
         '<div class="section-sep"></div>' +
 
         '<div class="readout-label">CENTROID</div>' +
-        '<div class="readout mono">' + alarm.centroid.lat.toFixed(4) + ', ' + alarm.centroid.lng.toFixed(4) + '</div>' +
+        '<div class="readout mono">' + centroidText + '</div>' +
         '<div class="section-sep"></div>' +
 
         '<div class="readout-label">AFFECTED NODES</div>' +
@@ -70,7 +80,7 @@ var alarmDetail = (function () {
         '<div class="section-sep"></div>' +
 
         '<div class="readout-label">TROUGH FIT</div>' +
-        '<div class="readout mono">R² = ' + alarm.trough_fit_r2.toFixed(2) + '</div>' +
+        '<div class="readout mono">' + troughFitText + '</div>' +
         '<div class="section-sep"></div>' +
 
         '<div class="readout-label">PROJECTION</div>' +

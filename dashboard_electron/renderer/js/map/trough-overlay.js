@@ -1,6 +1,9 @@
 'use strict';
 
 var troughOverlay = (function () {
+  // Feature flag: set to false to disable subsidence bowl overlay rendering
+  var ENABLE_SUBSIDENCE_BOWL = false;
+
   var overlays = {};
   var map = null;
 
@@ -10,11 +13,26 @@ var troughOverlay = (function () {
     3: { stroke: '#FF2222', fill: 'rgba(255, 34, 34, 0.12)' }
   };
 
+  var activeAlarmId = null;
+
   function init(mapInstance) {
     map = mapInstance;
 
+    // Explicit operator selection in Alarm History or on map always redraws the contour
+    bus.on('alarm-selected', function (alarm) {
+      drawContour(alarm, true);
+    });
+
+    // Incoming alarms only auto-update the subsidence bowl for regional/zone events
+    // or if no contour is active yet. Isolated single-node alarms do not displace the bowl.
     bus.on('alarm', function (alarm) {
-      drawContour(alarm);
+      if (!alarm) return;
+      var isRegional = Boolean(alarm.zone_id || (alarm.affected_nodes && alarm.affected_nodes.length > 1));
+      var hasActiveContour = Boolean(activeAlarmId && overlays[activeAlarmId]);
+
+      if (isRegional || !hasActiveContour) {
+        drawContour(alarm, false);
+      }
     });
 
     bus.on('alarm-ack', function (data) {
@@ -36,23 +54,39 @@ var troughOverlay = (function () {
 
   var centroidMarkers = {};
 
-  function drawContour(alarm) {
-    if (!map || !alarm.centroid || !alarm.affected_nodes) return;
+  function drawContour(alarm, force) {
+    if (!ENABLE_SUBSIDENCE_BOWL) {
+      removeAll();
+      return;
+    }
+    if (!map || !alarm || !alarm.centroid) return;
+    if (typeof alarm.centroid.lat !== 'number' || typeof alarm.centroid.lng !== 'number') return;
+
+    // If already showing this alarm and not forced, keep existing contour
+    if (!force && activeAlarmId === alarm.alarm_id && overlays[alarm.alarm_id]) {
+      return;
+    }
 
     // Clear previous active contours
     removeAll();
+    activeAlarmId = alarm.alarm_id;
 
     var points = [];
     var cx = alarm.centroid.lat;
     var cy = alarm.centroid.lng;
 
-    for (var i = 0; i < alarm.affected_nodes.length; i++) {
-      var nd = nodeMarkers.getNodeData(alarm.affected_nodes[i]);
-      if (nd) points.push([nd.lat, nd.lng]);
+    if (alarm.affected_nodes) {
+      for (var i = 0; i < alarm.affected_nodes.length; i++) {
+        var nd = nodeMarkers.getNodeData(alarm.affected_nodes[i]);
+        if (nd && typeof nd.lat === 'number' && typeof nd.lng === 'number') {
+          points.push([nd.lat, nd.lng]);
+        }
+      }
     }
 
+    // If fewer than 2 nodes, draw a realistic ~120m radius subsidence trough (~0.0011 degrees)
     if (points.length < 2) {
-      points = [[cx - 0.0005, cy - 0.0005], [cx + 0.0005, cy + 0.0005]];
+      points = [[cx - 0.0011, cy - 0.0011], [cx + 0.0011, cy + 0.0011]];
     }
 
     var colors = LEVEL_COLORS[alarm.level] || LEVEL_COLORS[1];
@@ -162,12 +196,20 @@ var troughOverlay = (function () {
       }
     }
     overlays = {};
+    activeAlarmId = null;
   }
 
   return {
     init: init,
     drawContour: drawContour,
     removeContour: removeContour,
-    removeAll: removeAll
+    removeAll: removeAll,
+    setFeatureEnabled: function (enabled) {
+      ENABLE_SUBSIDENCE_BOWL = Boolean(enabled);
+      if (!ENABLE_SUBSIDENCE_BOWL) removeAll();
+    },
+    isFeatureEnabled: function () {
+      return ENABLE_SUBSIDENCE_BOWL;
+    }
   };
 })();

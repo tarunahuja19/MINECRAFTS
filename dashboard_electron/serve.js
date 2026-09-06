@@ -50,7 +50,7 @@ const TILE_UPSTREAMS = {
 
 function fetchUpstream(url, redirectsLeft = 3) {
   return new Promise((resolve, reject) => {
-    https
+    const req = https
       .get(url, { headers: { 'User-Agent': 'r4-dashboard-tile-proxy' } }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           res.resume();
@@ -69,6 +69,10 @@ function fetchUpstream(url, redirectsLeft = 3) {
         res.on('error', reject);
       })
       .on('error', reject);
+
+    req.setTimeout(8000, () => {
+      req.destroy(new Error('upstream timeout'));
+    });
   });
 }
 
@@ -103,7 +107,15 @@ async function handleTile(req, res, layer, z, x, y) {
   // Reject anything non-numeric so the path cannot escape the cache directory.
   if (![z, x, y].every((v) => /^\d+$/.test(v))) {
     res.statusCode = 400;
+    res.setHeader('Access-Control-Allow-Origin', '*');
     return res.end('Bad tile coordinates');
+  }
+
+  // Terrarium DEM stops at z15; higher zooms 404 immediately so MapLibre can overzoom without network delays
+  if (layer === 'dem' && Number(z) > 15) {
+    res.statusCode = 404;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.end('DEM max zoom is 15');
   }
 
   const cachePath = path.join(TILE_CACHE_DIR, layer, z, x, `${y}.png`);
@@ -130,6 +142,7 @@ async function handleTile(req, res, layer, z, x, y) {
       console.warn(`[tiles] ${layer}/${z}/${x}/${y} failed: ${err.message}`);
     }
     res.statusCode = code;
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.end('Tile unavailable');
   }
 }

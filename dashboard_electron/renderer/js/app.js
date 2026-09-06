@@ -35,6 +35,8 @@ document.getElementById('tab-map').style.display = 'flex';
   mapLayers.loadRiskZones(map, '../fixtures/risk_zones.geojson');
   panelGrid.init(map);
   terrain3DWindow.init();
+  mapTabs.init();
+  areaSelect3D.init(map);
 
   nodeDetail.init();
 

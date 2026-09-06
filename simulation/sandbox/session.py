@@ -293,11 +293,18 @@ class SimulationSession:
         # returns immediately and a broker outage cannot stall the tick loop.
         self.mqtt_bridge.publish_tick(readings, iso_ts)
 
-        # A zone entering TENSION/CRITICAL/FAILED is an alarm. MQTT carries it
+        # A zone or node entering TENSION/CRITICAL/FAILED is an alarm. MQTT carries it
         # to the live banner; the backend gives it a row in `alarms` so it also
         # survives into the operator's history panel. Fire-and-forget for the
         # same reason the readings batch is: the tick loop never waits on I/O.
-        for alarm in self.mqtt_bridge.publish_zone_alarms(self.zone_manager.zones, iso_ts):
+        sensor_nodes = getattr(self.sensor_array, "nodes", None)
+        zone_alarms = self.mqtt_bridge.publish_zone_alarms(
+            self.zone_manager.zones, iso_ts, sensor_nodes
+        )
+        node_alarms = self.mqtt_bridge.publish_node_alarms(
+            readings, iso_ts, sensor_nodes
+        )
+        for alarm in zone_alarms + node_alarms:
             try:
                 asyncio.get_running_loop().create_task(
                     db_manager.post_alarm_to_backend(alarm)
@@ -312,7 +319,7 @@ class SimulationSession:
             print(
                 f"[SIM TICK #{self.tick_index:05d}] {iso_ts} (+{t_sim_days:5.2f}d) | "
                 f"+{len(readings)} rows -> out/nodes.csv (total {self.tick_index * len(readings)} rows) | "
-                f"S_max={s_peak:.3f}m | ε_max={eps_max:+.2f}mm/m | "
+                f"S_max={s_peak:.3f}m | eps_max={eps_max:+.2f}mm/m | "
                 f"PPV={current_vib:.1f}mm/s | speed={int(self.speed_multiplier)}x"
             )
 

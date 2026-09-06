@@ -58,6 +58,29 @@ var modeSwitch = (function () {
         .catch(function (err) {
           console.warn('[mode-switch] Failed to fetch nodes from live backend:', err.message);
         });
+
+      // Load initial alarms from live PostgreSQL backend
+      fetch('http://localhost:8080/api/alarms')
+        .then(function (r) { return r.json(); })
+        .then(function (alarms) {
+          if (Array.isArray(alarms) && alarms.length > 0) {
+            bus.emit('alarms-loaded', alarms);
+          } else if (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) {
+            var fallback = fixtureProvider.getAlarms();
+            if (fallback && fallback.length) {
+              bus.emit('alarms-loaded', fallback);
+            }
+          }
+        })
+        .catch(function (err) {
+          console.warn('[mode-switch] Failed to fetch alarms from live backend:', err.message);
+          if (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) {
+            var fallback = fixtureProvider.getAlarms();
+            if (fallback && fallback.length) {
+              bus.emit('alarms-loaded', fallback);
+            }
+          }
+        });
     }
   }
 

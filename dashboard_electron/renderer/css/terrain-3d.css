@@ -1,6 +1,733 @@
 /* ==========================================================================
-   3D Terrain Workstation Window Styles
+   3D Terrain Workstation Window Styles (R4 HMI Design System)
+   Industrial SCADA console theme matching hmi.css
    ========================================================================== */
+
+/* ============================================================
+   Map Workspace Tabbed Interface & Split View
+   ============================================================ */
+.map-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: #111C22;
+  border-left: 1px solid #14222A;
+  border-right: 1px solid #14222A;
+}
+
+/* Tab Bar */
+.map-tabs-bar {
+  height: 28px;
+  min-height: 28px;
+  background: #121B22;
+  border-bottom: 1px solid #0E1618;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 6px 0 0;
+  user-select: none;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.map-tabs-track {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  height: 100%;
+}
+
+.map-tabs-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual Chrome-Style Tab */
+.map-tab {
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: #18242C;
+  border: 1px solid #283C48;
+  border-bottom: none;
+  color: #7A9BAA;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 10.5px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  position: relative;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.map-tab:hover {
+  background: #202F3A;
+  color: #D4D8DC;
+}
+
+.map-tab.active {
+  background: #1E2830;
+  border-color: #385060;
+  border-top: 2px solid #00E676;
+  border-bottom: 1px solid #1E2830;
+  color: #FFFFFF;
+  z-index: 2;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.map-tab-icon {
+  flex-shrink: 0;
+  color: #00E676;
+}
+
+.map-tab-title {
+  display: inline-block;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border: none;
+  background: transparent;
+  color: #7A9BAA;
+  font-size: 13px;
+  line-height: 1;
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.1s ease;
+}
+
+.map-tab-close:hover {
+  background: #5A1010;
+  color: #FFF;
+}
+
+/* Actions in Tab Bar */
+.map-tabs-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 2px;
+}
+
+.map-tab-action-btn {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  background: #14222A;
+  border: 1px solid #284050;
+  color: #A0B4C0;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 9.5px;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.map-tab-action-btn:hover {
+  background: #1E3442;
+  border-color: #385B72;
+  color: #D4E0E8;
+}
+
+.map-tab-action-btn.active {
+  background: #00E676 !important;
+  color: #061A12 !important;
+  border-color: #00E676 !important;
+  box-shadow: 0 0 6px rgba(0, 230, 118, 0.4);
+}
+
+/* ============================================================
+   Windows 11 Snap Layouts Flyout Menu (Visual Boxes - No numbers)
+   ============================================================ */
+.snap-layouts-flyout {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  background: rgba(20, 30, 38, 0.97);
+  backdrop-filter: blur(12px);
+  border: 1px solid #2B4252;
+  border-radius: 4px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.9), 0 2px 8px rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  padding: 6px 8px 8px 8px;
+  width: auto;
+  user-select: none;
+  animation: snapFlyoutIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes snapFlyoutIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.snap-layouts-header {
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7A9BAA;
+  padding: 2px 4px 6px 4px;
+  border-bottom: 1px solid #1F3240;
+  margin-bottom: 6px;
+}
+
+.snap-layouts-grid {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Visual Layout Diagram Cards */
+.snap-layout-card {
+  width: 58px;
+  height: 42px;
+  background: #101920;
+  border: 1px solid #233746;
+  border-radius: 3px;
+  padding: 3px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  position: relative;
+}
+
+.snap-layout-card:hover {
+  background: #182834;
+  border-color: #3B5E76;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+.snap-layout-card.active {
+  border-color: #00E676;
+}
+
+.snap-preview-grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  gap: 2px;
+}
+
+/* The visual boxes inside diagrams */
+.snap-box {
+  background: #1E2D38;
+  border: 1px solid #2B4252;
+  border-radius: 1.5px;
+  transition: all 0.12s ease;
+}
+
+/* Hovering any box in Windows 11 highlights it in accent color */
+.snap-box:hover {
+  background: #00E676 !important;
+  border-color: #00E676 !important;
+  box-shadow: 0 0 6px rgba(0, 230, 118, 0.7) !important;
+}
+
+/* Diagram 1: Single Screen (Large Box) */
+.preview-single {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+.preview-single .snap-box {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+/* Diagram 2: 2-Split 50-50 (Two Vertical Columns) */
+.preview-2-col {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* Diagram 3: 3-Split (2 Above / 1 Below) */
+.preview-3-top2-bottom1 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.preview-3-top2-bottom1 .snap-box:nth-child(1) { grid-column: 1; grid-row: 1; }
+.preview-3-top2-bottom1 .snap-box:nth-child(2) { grid-column: 2; grid-row: 1; }
+.preview-3-top2-bottom1 .snap-box:nth-child(3) { grid-column: 1 / span 2; grid-row: 2; }
+
+/* Diagram 4: 3-Split Vice Versa (1 Above / 2 Below) */
+.preview-3-top1-bottom2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.preview-3-top1-bottom2 .snap-box:nth-child(1) { grid-column: 1 / span 2; grid-row: 1; }
+.preview-3-top1-bottom2 .snap-box:nth-child(2) { grid-column: 1; grid-row: 2; }
+.preview-3-top1-bottom2 .snap-box:nth-child(3) { grid-column: 2; grid-row: 2; }
+
+/* Diagram 5: 4-Split Quadrants (2x2 Grid) */
+.preview-4-quad {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+/* ============================================================
+   Workspace Multi-Pane Viewport Grid (1, 2, 3, 4 Panes)
+   ============================================================ */
+.map-workspace-viewport {
+  flex: 1;
+  display: grid;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: #0B1218;
+  gap: 2px;
+}
+
+.pane-slot {
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #0D161D;
+}
+
+/* Compact SCADA Pane Header (Shown in Multi-Split View) */
+.pane-header {
+  height: 22px;
+  min-height: 22px;
+  background: #182632;
+  border-bottom: 1px solid #233948;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.pane-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  color: #D4D8DC;
+  letter-spacing: 0.04em;
+}
+
+.pane-status-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00E676;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 4px rgba(0, 230, 118, 0.6);
+  flex-shrink: 0;
+}
+
+.pane-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pane-btn {
+  height: 16px;
+  min-width: 18px;
+  background: #14222A;
+  border: 1px solid #284050;
+  color: #8EA1A8;
+  font-size: 9px;
+  font-weight: bold;
+  border-radius: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+  transition: all 0.12s ease;
+}
+
+.pane-btn:hover {
+  background: #1F3646;
+  color: #FFFFFF;
+  border-color: #385E76;
+}
+
+/* --- The 5 Viewport Layouts --- */
+
+/* 1. Layout: Single Screen (100% Full View) */
+.map-workspace-viewport.layout-single {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  gap: 0;
+}
+.map-workspace-viewport.layout-single .pane-slot:not(.active-single) {
+  display: none !important;
+}
+.map-workspace-viewport.layout-single .pane-slot.active-single {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  grid-column: 1;
+  grid-row: 1;
+}
+.map-workspace-viewport.layout-single .pane-header {
+  display: none !important;
+}
+
+/* 2. Layout: 2-Split 50-50 (Two Vertical Columns) */
+.map-workspace-viewport.layout-2-split {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+.map-workspace-viewport.layout-2-split #pane-slot-1 {
+  display: flex !important;
+  grid-column: 1;
+  grid-row: 1;
+  border-right: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-2-split #pane-slot-2 {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 1;
+}
+.map-workspace-viewport.layout-2-split #pane-slot-3,
+.map-workspace-viewport.layout-2-split #pane-slot-4 {
+  display: none !important;
+}
+.map-workspace-viewport.layout-2-split .pane-header {
+  display: flex !important;
+}
+
+/* 3. Layout: 3-Split (2 Above / 1 Below) */
+.map-workspace-viewport.layout-3-top2-bottom1 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.map-workspace-viewport.layout-3-top2-bottom1 #pane-slot-1 {
+  display: flex !important;
+  grid-column: 1;
+  grid-row: 1;
+  border-right: 1px solid #0E1618;
+  border-bottom: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-3-top2-bottom1 #pane-slot-2 {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 1;
+  border-bottom: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-3-top2-bottom1 #pane-slot-3 {
+  display: flex !important;
+  grid-column: 1 / span 2;
+  grid-row: 2;
+}
+.map-workspace-viewport.layout-3-top2-bottom1 #pane-slot-4 {
+  display: none !important;
+}
+.map-workspace-viewport.layout-3-top2-bottom1 .pane-header {
+  display: flex !important;
+}
+
+/* 4. Layout: 3-Split Vice Versa (1 Above / 2 Below) */
+.map-workspace-viewport.layout-3-top1-bottom2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.map-workspace-viewport.layout-3-top1-bottom2 #pane-slot-1 {
+  display: flex !important;
+  grid-column: 1 / span 2;
+  grid-row: 1;
+  border-bottom: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-3-top1-bottom2 #pane-slot-2 {
+  display: flex !important;
+  grid-column: 1;
+  grid-row: 2;
+  border-right: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-3-top1-bottom2 #pane-slot-3 {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 2;
+}
+.map-workspace-viewport.layout-3-top1-bottom2 #pane-slot-4 {
+  display: none !important;
+}
+.map-workspace-viewport.layout-3-top1-bottom2 .pane-header {
+  display: flex !important;
+}
+
+/* 5. Layout: 4-Split Quadrants (2x2 Grid) */
+.map-workspace-viewport.layout-4-quad {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.map-workspace-viewport.layout-4-quad #pane-slot-1 {
+  display: flex !important;
+  grid-column: 1;
+  grid-row: 1;
+  border-right: 1px solid #0E1618;
+  border-bottom: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-4-quad #pane-slot-2 {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 1;
+  border-bottom: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-4-quad #pane-slot-3 {
+  display: flex !important;
+  grid-column: 1;
+  grid-row: 2;
+  border-right: 1px solid #0E1618;
+}
+.map-workspace-viewport.layout-4-quad #pane-slot-4 {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 2;
+}
+.map-workspace-viewport.layout-4-quad .pane-header {
+  display: flex !important;
+}
+
+#map-container {
+  border-left: none !important;
+  border-right: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1;
+}
+
+/* In multi-split layouts, hide the 230px right node list sidebar so the 3D map gets the full pane width */
+.map-workspace-viewport:not(.layout-single) #terrain-nodes-sidebar {
+  display: none !important;
+}
+
+
+/* ============================================================
+   Snap Assist Interactive Tab Picker Overlay
+   (Windows Task View / Snap Assist miniature window cards)
+   ============================================================ */
+.snap-assist-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.snap-assist-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(8, 14, 18, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.snap-assist-modal {
+  position: relative;
+  z-index: 2;
+  background: #142028;
+  border: 1px solid #283E4C;
+  border-radius: 4px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.92);
+  padding: 14px 18px;
+  width: 580px;
+  max-width: 90%;
+  max-height: 85%;
+  display: flex;
+  flex-direction: column;
+  animation: snapModalIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes snapModalIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.snap-assist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #233746;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+.snap-assist-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #D4D8DC;
+}
+
+.snap-assist-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00E676;
+  box-shadow: 0 0 6px #00E676;
+}
+
+.snap-assist-close {
+  background: transparent;
+  border: none;
+  color: #7A9BAA;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 2px;
+  transition: all 0.12s ease;
+}
+
+.snap-assist-close:hover {
+  background: #5A1010;
+  color: #FFFFFF;
+}
+
+.snap-assist-subtitle {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: #7A9BAA;
+  margin-bottom: 12px;
+}
+
+.snap-assist-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  max-height: 320px;
+  padding: 2px;
+}
+
+/* Miniature Window Preview Cards */
+.snap-assist-card {
+  background: #0E171E;
+  border: 1px solid #223746;
+  border-radius: 3px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.snap-assist-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: #00E676;
+  box-shadow: 0 6px 18px rgba(0, 230, 118, 0.25);
+}
+
+.snap-card-header {
+  height: 20px;
+  background: #182732;
+  border-bottom: 1px solid #233746;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  gap: 5px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9.5px;
+  font-weight: bold;
+  color: #D4D8DC;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snap-card-preview {
+  height: 80px;
+  background: #081016;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.snap-card-preview-thumb {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.65;
+}
+
+.snap-card-icon-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #00E676;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.snap-card-details {
+  padding: 5px 6px;
+  background: #111A22;
+  border-top: 1px solid #1C2D3A;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9px;
+  color: #7A9BAA;
+  display: flex;
+  justify-content: space-between;
+}
+  background: #162028;
+  border-bottom: 1px solid #2E3E4A;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
 
 .terrain-3d-window {
   display: none;
@@ -11,25 +738,24 @@
   height: 640px;
   min-width: 680px;
   min-height: 480px;
-  background: rgba(11, 20, 28, 0.97);
-  border: 1.5px solid #00E5FF;
-  border-radius: 4px;
-  box-shadow: 0 14px 45px rgba(0, 0, 0, 0.85), 0 0 25px rgba(0, 229, 255, 0.25);
+  background: #1A242C;
+  border-top: 1px solid #4A5C68;
+  border-left: 1px solid #4A5C68;
+  border-bottom: 1px solid #0E1618;
+  border-right: 1px solid #0E1618;
+  border-radius: 2px;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.88), 0 2px 6px rgba(0, 0, 0, 0.6);
   z-index: 10000;
   flex-direction: column;
   overflow: hidden;
-  font-family: 'Courier New', monospace;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
   box-sizing: border-box;
-  animation: terrainWinFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: terrainWinFade 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes terrainWinFade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; transform: scale(0.99); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 .terrain-3d-window.maximized {
@@ -41,26 +767,26 @@
 }
 
 .terrain-3d-window.minimized {
-  height: 38px !important;
-  min-height: 38px !important;
+  height: 32px !important;
+  min-height: 32px !important;
   width: 360px !important;
   min-width: 360px !important;
   bottom: 12px !important;
   right: 16px !important;
   top: auto !important;
   left: auto !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 229, 255, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.9);
 }
 
-/* Window Header Bar */
+/* Window Header Bar (Matches .panel-header in hmi.css) */
 .terrain-win-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 36px;
-  background: linear-gradient(90deg, #102430 0%, #0D1C24 100%);
-  border-bottom: 1px solid #1E3A47;
-  padding: 0 10px;
+  height: 28px;
+  background: #243040;
+  border-bottom: 1px solid #2E3E4A;
+  padding: 0 8px;
   cursor: grab;
   user-select: none;
   flex-shrink: 0;
@@ -76,159 +802,153 @@
   gap: 8px;
   font-size: 11px;
   font-weight: bold;
-  color: #E2E8F0;
+  color: #D4D8DC;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .terrain-win-status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #00E5FF;
-  box-shadow: 0 0 8px #00E5FF;
-  animation: pulseCyan 1.8s infinite;
-}
-
-@keyframes pulseCyan {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+  background: #00CC44;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
 }
 
 .terrain-sector-tag {
-  color: #0A161E;
-  background: #00E5FF;
+  color: #00E676;
+  background: #14222A;
+  border: 1px solid #284452;
   font-weight: bold;
   padding: 1px 6px;
   border-radius: 2px;
   font-size: 10px;
-  letter-spacing: 0.08em;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
 }
 
 .terrain-coords-text {
-  font-size: 9.5px;
-  color: #78909C;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: #7A9BAA;
   margin-left: 6px;
 }
 
 .terrain-win-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .terrain-win-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: #94A3B8;
-  font-family: inherit;
-  font-size: 12px;
-  width: 24px;
-  height: 24px;
+  background: #18242C;
+  border: 1px solid #283C48;
+  color: #8EA1A8;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 2px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
+  outline: none;
 }
 
 .terrain-win-btn:hover {
-  background: rgba(56, 189, 248, 0.2);
-  color: #00E5FF;
-  border-color: rgba(56, 189, 248, 0.4);
+  background: #243642;
+  color: #D4D8DC;
+  border-color: #4A5C68;
 }
 
 .terrain-win-btn.close-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
-  color: #FF5252;
-  border-color: rgba(239, 68, 68, 0.5);
+  background: #5A1010;
+  color: #FFFFFF;
+  border-color: #FF2222;
 }
 
-/* Workstation Toolbar */
+/* Workstation Toolbar (Matches SCADA inset controls) */
 .terrain-win-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #0D1820;
-  border-bottom: 1px solid #1A2E38;
-  padding: 4px 10px;
+  height: 28px;
+  background: #162028;
+  border-bottom: 1px solid #2E3E4A;
+  padding: 2px 8px;
   font-size: 10px;
   flex-shrink: 0;
   gap: 8px;
 }
 
-.terrain-tabs-group {
-  display: flex;
-  gap: 4px;
-}
-
-.terrain-tab-btn {
-  background: #14242E;
-  border: 1px solid #233C4A;
-  color: #90A4AE;
-  font-family: inherit;
-  font-size: 9.5px;
-  font-weight: bold;
-  padding: 3px 8px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  letter-spacing: 0.05em;
-}
-
-.terrain-tab-btn:hover {
-  color: #FFF;
-  border-color: #38BDF8;
-}
-
-.terrain-tab-btn.active {
-  background: #00838F;
-  color: #FFF;
-  border-color: #00E5FF;
-  box-shadow: 0 0 8px rgba(0, 229, 255, 0.35);
-}
-
 .terrain-controls-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
-.terrain-tool-btn {
-  background: rgba(20, 36, 46, 0.8);
-  border: 1px solid #254050;
-  color: #B0BEC5;
-  font-family: inherit;
-  font-size: 9px;
+.terrain-controls-group > span {
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 10px;
   font-weight: bold;
-  padding: 2px 6px;
+  text-transform: uppercase;
+  color: #7A9BAA;
+  letter-spacing: 0.05em;
+}
+
+/* Tool Buttons (Matches .hud-btn in hmi.css) */
+.terrain-tool-btn {
+  background: #14222A;
+  border: 1px solid #233842;
+  color: #8EA1A8;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9.5px;
+  font-weight: bold;
+  padding: 2px 7px;
   border-radius: 2px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
   white-space: nowrap;
+  outline: none;
+  letter-spacing: 0.04em;
 }
 
 .terrain-tool-btn:hover {
-  color: #00E5FF;
-  border-color: #00E5FF;
+  background: #1C303B;
+  color: #C5D6DC;
+  border-color: #385564;
 }
 
 .terrain-tool-btn.active {
-  background: rgba(0, 229, 255, 0.2);
-  color: #00E5FF;
-  border-color: #00E5FF;
+  background: #00E676;
+  color: #061A12;
+  border-color: #00E676;
+  font-weight: bold;
 }
 
-.terrain-select {
-  background: #101F28;
-  border: 1px solid #254050;
-  color: #00E5FF;
-  font-family: inherit;
-  font-size: 9px;
-  padding: 2px 4px;
+.terrain-redirect-btn {
+  background: #14222A;
+  border: 1px solid #233842;
+  color: #8EA1A8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
   border-radius: 2px;
-  outline: none;
   cursor: pointer;
+  transition: all 0.12s ease;
+  outline: none;
+}
+
+.terrain-redirect-btn:hover {
+  background: #1C303B;
+  color: #00E676;
+  border-color: #00E676;
 }
 
 /* Body / Main Viewport */
@@ -236,7 +956,7 @@
   position: relative;
   flex: 1;
   display: flex;
-  background: #070D12;
+  background: #0E161C;
   overflow: hidden;
   min-height: 0;
 }
@@ -249,195 +969,6 @@
   overflow: hidden;
 }
 
-#terrain-3d-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* Google Maps 3D View Iframe Container */
-.terrain-google-container {
-  display: none;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  background: #000;
-}
-
-.terrain-google-iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-}
-
-/* HUD Overlay Panels on top of 3D Canvas */
-.terrain-hud-stats {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: rgba(10, 20, 28, 0.85);
-  border: 1px solid rgba(43, 66, 76, 0.8);
-  border-radius: 3px;
-  padding: 6px 10px;
-  pointer-events: none;
-  z-index: 10;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-}
-
-.terrain-hud-line {
-  font-size: 9.5px;
-  color: #94A3B8;
-  margin-bottom: 2px;
-}
-
-.terrain-hud-val {
-  color: #00E5FF;
-  font-weight: bold;
-}
-
-.terrain-hud-compass {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(10, 20, 28, 0.85);
-  border: 1px solid #00E5FF;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  font-weight: bold;
-  color: #00E5FF;
-  pointer-events: none;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
-  z-index: 10;
-}
-
-.terrain-hud-legend-box {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  background: rgba(10, 20, 28, 0.85);
-  border: 1px solid rgba(43, 66, 76, 0.8);
-  border-radius: 3px;
-  padding: 4px 8px;
-  font-size: 9px;
-  color: #CBD5E1;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.terrain-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.terrain-legend-color {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-/* Node list sidebar in 3D window */
-.terrain-nodes-sidebar {
-  width: 200px;
-  background: rgba(13, 23, 32, 0.95);
-  border-left: 1px solid #1E3442;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  overflow-y: auto;
-  font-size: 9.5px;
-}
-
-.terrain-sidebar-header {
-  padding: 6px 8px;
-  background: #11202A;
-  border-bottom: 1px solid #1E3442;
-  font-weight: bold;
-  color: #38BDF8;
-  letter-spacing: 0.06em;
-}
-
-.terrain-node-card {
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(30, 52, 66, 0.6);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.terrain-node-card:hover {
-  background: rgba(56, 189, 248, 0.12);
-}
-
-.terrain-node-card-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  color: #E2E8F0;
-  margin-bottom: 2px;
-}
-
-.terrain-node-card-sub {
-  color: #78909C;
-  font-size: 8.5px;
-}
-
-/* Real MapLibre 3D Terrain & Launch Button Styles */
-.terrain-launch-btn {
-  background: linear-gradient(180deg, #163646 0%, #0E2430 100%);
-  border: 1px solid #00E5FF;
-  color: #00E5FF;
-  font-family: inherit;
-  font-size: 9px;
-  font-weight: bold;
-  padding: 3px 8px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  letter-spacing: 0.04em;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.terrain-launch-btn:hover {
-  background: #00E5FF;
-  color: #0A161E;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.45);
-}
-
-.terrain-redirect-btn {
-  background: linear-gradient(180deg, #163646 0%, #0E2430 100%);
-  border: 1px solid #00E5FF;
-  color: #00E5FF;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 22px;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.terrain-redirect-btn:hover {
-  background: #00E5FF;
-  color: #0A161E;
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.45);
-}
-
 #real-terrain-container {
   position: relative;
   flex: 1;
@@ -446,35 +977,265 @@
   overflow: hidden;
 }
 
-#real-terrain-3d-map {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
+#real-terrain-3d-map,
+#real-terrain-3d-map-3,
+#real-terrain-3d-map-4 {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
-/* 3D Pin Markers on Satellite Terrain */
-.real-3d-marker-pin {
+/* HUD Overlay Panels on top of 3D Canvas */
+.terrain-hud-stats {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(16, 26, 32, 0.92);
+  border: 1px solid #243844;
+  border-radius: 2px;
+  padding: 6px 10px;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.terrain-hud-line {
+  font-size: 10px;
+  color: #7A9BAA;
+  margin-bottom: 2px;
+}
+
+.terrain-hud-val {
+  color: #A8D8A8;
+  font-weight: bold;
+}
+
+.terrain-hud-legend-box {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(16, 26, 32, 0.92);
+  border: 1px solid #243844;
+  border-radius: 2px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-family: 'Courier New', Courier, monospace;
+  color: #7A9BAA;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.terrain-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+}
+
+.terrain-legend-color {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+/* Node list sidebar in 3D window */
+.terrain-nodes-sidebar {
+  width: 230px;
+  background: #1A242C;
+  border-left: 1px solid #0E1618;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  font-size: 10px;
+}
+
+.terrain-sidebar-header {
+  height: 24px;
+  padding: 0 8px;
+  background: #243040;
+  border-bottom: 1px solid #2E3E4A;
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-weight: bold;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7A9BAA;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.terrain-node-card {
+  padding: 6px 8px;
+  border-bottom: 1px solid #1E2E38;
+  background: #141F27;
   cursor: pointer;
-  transform: translate(-50%, -100%);
-  transition: transform 0.15s ease;
+  transition: background 0.12s ease;
+}
+
+.terrain-node-card:hover {
+  background: #1C2C37;
+}
+
+.terrain-node-card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  font-weight: bold;
+  color: #D4D8DC;
+  margin-bottom: 3px;
+}
+
+.terrain-node-card-sub {
+  color: #7A9BAA;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9.5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* 3D Pin Markers on Satellite Terrain (Authentic SCADA LED Markers) */
+.real-3d-marker-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.real-3d-marker-pin {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  z-index: 50;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .real-3d-marker-pin:hover {
-  transform: translate(-50%, -105%) scale(1.15);
-  z-index: 99;
+  z-index: 999 !important;
+  transform: translateY(-2px) scale(1.06);
+}
+
+.real-3d-marker-tag {
+  background: rgba(14, 22, 28, 0.95);
+  border: 1.5px solid #00E676;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+}
+
+.real-3d-marker-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.real-3d-marker-stem {
+  width: 2px;
+  height: 12px;
+  margin-top: 1px;
+}
+
+/* Radar ping ground ring */
+.real-3d-marker-ground-radar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  margin-left: -9px;
+  border: 1.5px solid #00E676;
+  opacity: 0.8;
+  transform: rotateX(65deg);
+  animation: radarPing3D 2s infinite ease-out;
+  pointer-events: none;
+}
+
+@keyframes radarPing3D {
+  0% { transform: rotateX(65deg) scale(0.6); opacity: 0.9; }
+  60% { transform: rotateX(65deg) scale(1.6); opacity: 0.3; }
+  100% { transform: rotateX(65deg) scale(2.2); opacity: 0; }
+}
+
+/* 3D Center Region Badge */
+.real-3d-sector-badge-pin {
+  display: inline-block;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* Tactical Corner Brackets for Demonstrated Region in 3D */
+.real-3d-corner-bracket {
+  pointer-events: none;
+  width: 24px;
+  height: 24px;
+  border-color: #00E676;
+  border-style: solid;
+  border-width: 0;
+  filter: drop-shadow(0 0 6px rgba(0, 230, 118, 0.9)) drop-shadow(0 0 2px #000);
+  box-sizing: border-box;
+  z-index: 25;
+}
+.real-3d-corner-bracket.tl {
+  border-top-width: 3.5px;
+  border-left-width: 3.5px;
+  transform: translate(-12px, -12px);
+}
+.real-3d-corner-bracket.tr {
+  border-top-width: 3.5px;
+  border-right-width: 3.5px;
+  transform: translate(-12px, -12px);
+}
+.real-3d-corner-bracket.br {
+  border-bottom-width: 3.5px;
+  border-right-width: 3.5px;
+  transform: translate(-12px, -12px);
+}
+.real-3d-corner-bracket.bl {
+  border-bottom-width: 3.5px;
+  border-left-width: 3.5px;
+  transform: translate(-12px, -12px);
 }
 
 /* MapLibre Controls & Popups Dark HMI Theme */
 .maplibregl-ctrl-group {
-  background: rgba(13, 27, 36, 0.9) !important;
-  border: 1px solid #1E3B4B !important;
-  border-radius: 3px !important;
+  background: #111A20 !important;
+  border: 1px solid #2A3841 !important;
+  border-radius: 2px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
 }
 
 .maplibregl-ctrl-group button {
-  border-bottom: 1px solid #1E3B4B !important;
+  background: #14222A !important;
+  border-bottom: 1px solid #233842 !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: #1C303B !important;
 }
 
 .maplibregl-ctrl-group button:last-child {
@@ -486,15 +1247,14 @@
 }
 
 .maplibregl-popup-content {
-  background: #0B1922 !important;
-  color: #E2E8F0 !important;
-  border: 1px solid #00E5FF !important;
-  border-radius: 3px !important;
-  padding: 6px 10px !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8) !important;
+  background: #111A20 !important;
+  color: #E6EDF2 !important;
+  border: 1px solid #2A3841 !important;
+  border-radius: 2px !important;
+  padding: 0 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
 }
 
 .maplibregl-popup-tip {
-  border-top-color: #00E5FF !important;
+  border-top-color: #2A3841 !important;
 }
-
