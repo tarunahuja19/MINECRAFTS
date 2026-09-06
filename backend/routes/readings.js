@@ -102,4 +102,7 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Exposed so other routes (e.g. /api/nodes/:id) can format a raw reading
+// row into the same shape the telemetry endpoints return.
+router.formatReading = formatReading;
 module.exports = router;

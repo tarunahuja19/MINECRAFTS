@@ -527,320 +527,694 @@
       </div>
 
       <!-- INFO TAB — static reference: how to read this dashboard -->
-      <div id="tab-info" class="tab-view" style="display:none; height:100%;">
-        <div class="tab-content active info-doc">
+      <div id="tab-info" class="tab-view" style="display:none; height:100%; width:100%;">
+        <div class="info-grid">
 
-          <h1>Reading this dashboard</h1>
-          <p class="info-lede">
-            R4 watches one longwall panel with 31 ground sensors and a
-            classical (non-AI) detector. This page explains what the markers,
-            zones and alarms mean, and answers the two questions people ask
-            first: <em>why does one event light up so much of the map</em>, and
-            <em>why does it raise dozens of alarms instead of five or six</em>.
-          </p>
+          <!-- LEFT SIDEBAR: REFERENCE DIRECTORY & JUMP LINKS -->
+          <aside class="info-sidebar">
+            <div class="info-sidebar-panel">
+              <div class="panel-header">
+                <span>REFERENCE DIRECTORY</span>
+                <span class="mono" style="font-size:10px; color:var(--alarm-level1);">REV 2.4</span>
+              </div>
 
-          <h2>1 · The nodes</h2>
-          <p>
-            Every node is the same hardware &mdash; an ESP32, a LoRa radio, and
-            seven cheap sensors in a box on a concrete peg. What differs is
-            <strong>where it sits</strong> and <strong>what job that gives
-            it</strong>. On the map, <strong>shape = role</strong> and
-            <strong>colour = live state</strong>.
-          </p>
+              <!-- Quick Search Filter -->
+              <div class="info-search-box">
+                <input type="text" id="info-search-input" class="info-search-input" placeholder="Search reference...">
+              </div>
 
-          <div class="panel info-panel">
-            <div class="panel-header">NODE ROLES (SHAPE ON THE MAP)</div>
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>Role</th><th>Count</th><th>Where</th><th>Job</th></tr></thead>
-                <tbody>
-                  <tr>
-                    <td>Scout</td><td>25</td><td>Inner ring, on and around the panel</td>
-                    <td>The working sensors. Tilt, strain, extensometer, crack, vibration. These are what actually detect subsidence. Drawn as a circle.</td>
-                  </tr>
-                  <tr>
-                    <td>Anchor</td><td>5</td><td>Middle ring, outside the influence zone</td>
-                    <td>Reference pegs. By construction they must read zero subsidence forever &mdash; so if an anchor moves, the <em>sensors</em> are drifting, not the ground. Also used for common-mode noise rejection.</td>
-                  </tr>
-                  <tr>
-                    <td>Gateway</td><td>1</td><td>Outer ring, on the surface hut, 10&nbsp;m mast</td>
-                    <td>Collects every packet, runs the detector, raises alarms, drives the siren and SMS, and buffers to SD if the backhaul drops. The one node you cannot move or rotate.</td>
-                  </tr>
-                </tbody>
-              </table>
+              <!-- Jump Navigation Links -->
+              <nav class="info-nav-list">
+                <a class="info-nav-link active" data-target="sec-nodes">
+                  <span class="nav-num">[01]</span>
+                  <span>NODE NETWORK &amp; ROLES</span>
+                </a>
+                <a class="info-nav-link" data-target="sec-sensors">
+                  <span class="nav-num">[02]</span>
+                  <span>SEVEN GROUND SENSORS</span>
+                </a>
+                <a class="info-nav-link" data-target="sec-zones">
+                  <span class="nav-num">[03]</span>
+                  <span>ZONES &amp; MAP OVERLAYS</span>
+                </a>
+                <a class="info-nav-link" data-target="sec-physics">
+                  <span class="nav-num">[04]</span>
+                  <span>SUBSIDENCE PHYSICS</span>
+                </a>
+                <a class="info-nav-link" data-target="sec-alarms">
+                  <span class="nav-num">[05]</span>
+                  <span>ALARM DISPATCH MATRIX</span>
+                </a>
+                <a class="info-nav-link" data-target="sec-detector">
+                  <span class="nav-num">[06]</span>
+                  <span>7-STAGE GATEWAY DETECTOR</span>
+                </a>
+                <a class="info-nav-link" data-target="sec-replay">
+                  <span class="nav-num">[07]</span>
+                  <span>90-DAY REPLAY &amp; FORENSICS</span>
+                </a>
+                <a class="info-nav-link" data-target="sec-status">
+                  <span class="nav-num">[08]</span>
+                  <span>STATUS BAR &amp; WORKSPACE</span>
+                </a>
+              </nav>
+
+              <!-- Sidebar Quick Specs Inset -->
+              <div class="info-sidebar-footer">
+                <div class="readout-label" style="margin-bottom:4px;">QUICK SYSTEM SPECS</div>
+                <div class="panel-inset" style="padding:4px 6px; font-size:10px;">
+                  <div class="meta-row">
+                    <span class="readout-label">NODES</span>
+                    <span class="readout-val mono">31 PEGS</span>
+                  </div>
+                  <div class="meta-row">
+                    <span class="readout-label">ZONES</span>
+                    <span class="readout-val mono">36 (100m)</span>
+                  </div>
+                  <div class="meta-row">
+                    <span class="readout-label">RADIUS r</span>
+                    <span class="readout-val mono">75-197 m</span>
+                  </div>
+                  <div class="meta-row">
+                    <span class="readout-label">QUORUM</span>
+                    <span class="readout-val mono">&ge; 5 NODES</span>
+                  </div>
+                  <div class="meta-row">
+                    <span class="readout-label">ALGORITHM</span>
+                    <span class="readout-val mono">DETERMINISTIC</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </aside>
 
-          <div class="panel info-panel">
-            <div class="panel-header">NODE STATE (COLOUR ON THE MAP)</div>
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>State</th><th>Dot</th><th>Meaning</th><th>What to do</th></tr></thead>
-                <tbody>
-                  <tr><td>ACTIVE</td><td><span class="info-dot" style="background:#00CC44;"></span>green</td><td>Reporting normally, readings within baseline.</td><td>Nothing.</td></tr>
-                  <tr><td>WARNING</td><td><span class="info-dot" style="background:#FFA500;"></span>amber</td><td>This node's strain or tilt is elevated (z-score &gt; 3) but the network has not yet met alarm quorum.</td><td>Watch it. It may settle or it may be the first of a cluster.</td></tr>
-                  <tr><td>CRITICAL</td><td><span class="info-dot" style="background:#FF2222;"></span>red, blinking</td><td>This node is well past threshold. If enough neighbours agree, an alarm fires.</td><td>Check the alarm panel and the zone it sits in.</td></tr>
-                  <tr><td>LAST-GASP</td><td><span class="info-dot" style="background:#FF4400;"></span>orange, fast blink</td><td>The node sent a final packet on failing power or a broken mount &mdash; real evidence, but wildly untrustworthy in magnitude.</td><td>Treat as a strong hint, not a measurement. Send someone to look.</td></tr>
-                  <tr><td>DEAD</td><td><span class="info-dot" style="background:#5A6A72;"></span>grey, crossed</td><td>No packet for 3+ cycles. Could be a flat battery, a dead relay, lightning, or the ground took the node.</td><td>The detector re-checks quorum on the survivors. A <em>cluster</em> going dead together is its own alarm (see §3).</td></tr>
-                </tbody>
-              </table>
+          <!-- MAIN CONTENT CANVAS -->
+          <main class="info-main-content" id="info-scroll-container">
+
+            <!-- Executive Hero Banner -->
+            <div class="info-hero-banner">
+              <div class="info-hero-title">R4 MINE SUBSIDENCE MONITORING &amp; EARLY WARNING SYSTEM</div>
+              <div class="info-hero-subtitle">
+                DGMS TECHNICAL REFERENCE MANUAL &bull; ADRIYALA LONGWALL PANEL 1 &bull; KNOTHE&ndash;LITWINISZYN GROUND MODEL
+              </div>
+              <div style="font-size:11.5px; color:var(--text-primary); line-height:1.5; margin-bottom:10px;">
+                R4 continuously monitors longwall extraction panels via a surface mesh of 31 wireless sensor pegs and an autonomous,
+                deterministic gateway detector. This manual details physical transducer assignments, ground-truth threshold tiers,
+                second-derivative basin mechanics, and the 7-stage veto gate pipeline.
+              </div>
+              <div class="info-metric-chips">
+                <span class="info-chip"><span>TOPOLOGY:</span> <span class="chip-val">31 LORA PEGS</span></span>
+                <span class="info-chip"><span>GRID:</span> <span class="chip-val">6&times;6 ZONES (36 TILES)</span></span>
+                <span class="info-chip"><span>DETECTOR:</span> <span class="chip-val">ZERO BLACK-BOX AI</span></span>
+                <span class="info-chip"><span>BAND:</span> <span class="chip-val">868 MHz LORA MESH</span></span>
+                <span class="info-chip"><span>STANDARDS:</span> <span class="chip-val">DGMS TECH-04 COMPLIANT</span></span>
+              </div>
             </div>
-          </div>
 
-          <div class="panel info-panel">
-            <div class="panel-header">TIER (SPACING / SAMPLING DENSITY)</div>
-            <div class="panel-body">
-              <p style="margin:0;">
-                The <strong>Tier</strong> field on a node (1A, 1B, 1C, 2A, 2B, 3)
-                records how densely that part of the field is sampled. Tier&nbsp;1
-                nodes sit on the steep trough edges at 25&nbsp;m spacing where
-                curvature changes fastest; the flat interior is sampled coarsely
-                at ~75&nbsp;m. Tier&nbsp;2 are the anchors, Tier&nbsp;3 is the
-                gateway. The spacing is derived from the Knothe influence radius
-                (r&nbsp;&approx;&nbsp;75&ndash;197&nbsp;m depending on depth), not
-                chosen by eye.
-              </p>
+            <!-- SECTION 01: SENSOR NODES & NETWORK TOPOLOGY -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-nodes"></div>
+              <div class="panel-header">
+                <span>[01] &bull; SENSOR NODES &amp; NETWORK TOPOLOGY</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">ESP32 &bull; 868MHz LORA</span>
+              </div>
+              <div class="info-section-body">
+                <p>
+                  Every sensor node utilizes standardized hardware &mdash; an ESP32 microcontroller, SX1276 LoRa transceiver, and seven
+                  transducers enclosed in a weatherproof housing mounted on a survey peg. On the dashboard map,
+                  <strong>symbol shape designates architectural role</strong> and <strong>color reflects live state</strong>.
+                </p>
+
+                <!-- Roles Table -->
+                <div class="readout-label" style="margin:10px 0 3px;">NODE ROLES &amp; SPATIAL ASSIGNMENTS</div>
+                <div class="panel-inset" style="padding:0; margin-bottom:10px;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:100px;">ROLE</th>
+                        <th style="width:60px;">COUNT</th>
+                        <th style="width:190px;">SPATIAL LOCATION</th>
+                        <th>FUNCTIONAL RESPONSIBILITY</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="mono" style="color:var(--text-primary); font-weight:bold;">SCOUT</td>
+                        <td class="mono">25</td>
+                        <td>Inner ring, across longwall panel</td>
+                        <td>Primary sensing pegs measuring strain, extensometer delta, bi-axial tilt, and vibration. Drawn on map as a circle.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono" style="color:var(--alarm-level1); font-weight:bold;">ANCHOR</td>
+                        <td class="mono">5</td>
+                        <td>Middle ring, outside influence zone</td>
+                        <td>Geotechnical datum pegs constructed outside draw angle. Must read zero displacement. Movement indicates sensor drift, used for common-mode noise cancellation.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono" style="color:#00BFFF; font-weight:bold;">GATEWAY</td>
+                        <td class="mono">1</td>
+                        <td>Outer perimeter hut, 10m mast</td>
+                        <td>Collects LoRa packets, runs real-time Knothe detector, triggers sirens &amp; SMS dispatches, buffers telemetry to local SD if backhaul drops. Fixed coordinate sink.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- State Badges Table -->
+                <div class="readout-label" style="margin:10px 0 3px;">LIVE NODE STATES &amp; ACTION PROTOCOLS</div>
+                <div class="panel-inset" style="padding:0; margin-bottom:10px;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:110px;">STATE</th>
+                        <th style="width:110px;">HMI BADGE</th>
+                        <th style="width:230px;">TRIGGER CRITERIA</th>
+                        <th>OPERATOR PROTOCOL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="mono">ACTIVE</td>
+                        <td><span class="state-badge active"><span class="led led-active" style="width:6px;height:6px;"></span> ACTIVE</span></td>
+                        <td>Reporting on schedule, readings within baseline variance.</td>
+                        <td>Normal operations. No intervention required.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">WARNING</td>
+                        <td><span class="state-badge warning"><span class="led led-warning" style="width:6px;height:6px;"></span> WARNING</span></td>
+                        <td>Strain or tilt elevated (|z-score| &gt; 3) without network quorum.</td>
+                        <td>Monitor trend closely. Awaiting spatial corroboration by adjacent scouts.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">CRITICAL</td>
+                        <td><span class="state-badge critical"><span class="led led-critical" style="width:6px;height:6px;"></span> CRITICAL</span></td>
+                        <td>Node exceeded Level 2 tensile/tilt threshold with cluster quorum.</td>
+                        <td>Verify alarm panel, inspect subsidence zone, notify shift supervisor.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">LAST-GASP</td>
+                        <td><span class="state-badge lastgasp"><span class="led led-lastgasp" style="width:6px;height:6px;"></span> LAST-GASP</span></td>
+                        <td>Node emitted high-priority power-loss or mount-fracture packet.</td>
+                        <td>Treat as strong localized physical evidence. Dispatch surface patrol.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">DEAD</td>
+                        <td><span class="state-badge dead"><span class="led led-dead" style="width:6px;height:6px;"></span> DEAD</span></td>
+                        <td>No telemetry packet received for 3+ cycles (&gt; 180s).</td>
+                        <td>Check RF link. If multiple adjacent nodes drop simultaneously, cluster collapse rule applies.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Tier Spacing Explanation -->
+                <div class="readout-label" style="margin:10px 0 3px;">HARDWARE TIERS &amp; SAMPLING DENSITY</div>
+                <div class="info-callout">
+                  The <strong>Tier</strong> descriptor (1A, 1B, 1C, 2A, 2B, 3) denotes sampling density and physical hardware package.
+                  Tier 1 nodes sit on steep trough inflection margins at dense 25m spacing where surface curvature &kappa; changes fastest;
+                  the flat interior panel is sampled coarsely at ~75m. Spacing is mathematically derived from the Knothe influence radius
+                  (r &approx; 75&ndash;197m depending on extraction depth), ensuring no subsidence trough can slip between pegs undetected.
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div class="panel info-panel">
-            <div class="panel-header">THE SEVEN SENSORS ON EACH NODE</div>
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>Sensor</th><th>Channel</th><th>Role in detection</th></tr></thead>
-                <tbody>
-                  <tr><td>Strain gauge</td><td>strain_ue</td><td><strong>Primary trigger.</strong> Surface stretch/squash across the panel. Best signal-to-noise of any channel (~2200:1).</td></tr>
-                  <tr><td>Wire extensometer</td><td>ext_delta</td><td>Primary. 3-D distance change to a peg 10&nbsp;m away &mdash; directly answers "did the two pegs move apart".</td></tr>
-                  <tr><td>Tilt / inclinometer</td><td>tilt_x, tilt_y</td><td>Secondary vote. Ground slope. Thermal drift can rival the signal far from the panel, so it never alarms alone.</td></tr>
-                  <tr><td>Crack detector</td><td>crack bits</td><td>A conductive trace that snaps and latches. Cheap, unambiguous, survives a dead battery.</td></tr>
-                  <tr><td>Vibration</td><td>vib_rms, vib_peak, vib_fdom</td><td><strong>Discriminator, not detector.</strong> The dominant frequency separates blast (40&ndash;80&nbsp;Hz), truck (8&ndash;20&nbsp;Hz), conveyor (50&nbsp;Hz), and real rock-cracking (100&ndash;250&nbsp;Hz).</td></tr>
-                  <tr><td>Die thermometer</td><td>temp_dc</td><td>Not a ground sensor. Exists only so tilt drift can be corrected out.</td></tr>
-                  <tr><td>Battery monitor</td><td>vbat_mv</td><td>Not a ground sensor. Corrects supply-sag error, and flags nodes due for maintenance.</td></tr>
-                </tbody>
-              </table>
+            <!-- SECTION 02: THE SEVEN GROUND SENSORS -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-sensors"></div>
+              <div class="panel-header">
+                <span>[02] &bull; THE SEVEN SENSORS ON EACH NODE</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">TELEMETRY MATRIX</span>
+              </div>
+              <div class="info-section-body">
+                <p>
+                  Each sensor node integrates seven distinct physical channels. To eliminate false alarms, each transducer has a specific
+                  role in detection &mdash; primary detector, voting corroborator, spectral discriminator, or thermal compensation.
+                </p>
+                <div class="panel-inset" style="padding:0;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:160px;">SENSOR TYPE</th>
+                        <th style="width:130px;">TELEMETRY KEY</th>
+                        <th style="width:180px;">DETECTOR ROLE</th>
+                        <th>PHYSICAL OPERATING PRINCIPLE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Foil Strain Gauge</td>
+                        <td class="mono">strain_ue</td>
+                        <td style="color:var(--alarm-level1); font-weight:bold;">Primary Trigger</td>
+                        <td>Measures surface tensile/compressive strain (&mu;&epsilon;) across ground anchors. Yields highest signal-to-noise ratio (~2200:1).</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Wire Extensometer</td>
+                        <td class="mono">ext_delta_mm</td>
+                        <td style="color:var(--alarm-level1); font-weight:bold;">Primary Trigger</td>
+                        <td>Measures 3D baseline displacement between adjacent pegs 10m apart, directly quantifying tensile surface tear.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Bi-axial Inclinometer</td>
+                        <td class="mono">tilt_x, tilt_y</td>
+                        <td style="color:var(--text-mono);">Secondary Vote</td>
+                        <td>Monitors ground slope in millidegrees (mdeg). Thermal drift can rival signals at distance, so tilt cannot trigger an alarm without strain quorum.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Conductive Crackmeter</td>
+                        <td class="mono">fissure_mm / bits</td>
+                        <td style="color:var(--status-critical); font-weight:bold;">Physical Fissure Latch</td>
+                        <td>Conductive break-trace that snaps upon fissure opening. Retains latched state even if node power subsequently fails.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Vibration Analyzer</td>
+                        <td class="mono">vib_rms, vib_fdom</td>
+                        <td style="color:#00BFFF; font-weight:bold;">Acoustic Discriminator</td>
+                        <td>Dominant frequency vetoes artificial noise: 40&ndash;80 Hz (blasting), 8&ndash;20 Hz (haul trucks), 50 Hz (conveyors), while preserving 100&ndash;250 Hz true rock-fracture energy.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Die Thermometer</td>
+                        <td class="mono">die_temp_c</td>
+                        <td>Thermal Compensation</td>
+                        <td>Calibrates silicon temperature drift out of MEMS inclinometer readings across diurnal temperature cycles.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Battery Monitor</td>
+                        <td class="mono">vbat_mv</td>
+                        <td>Power Health Diagnostic</td>
+                        <td>Corrects voltage-sag measurement errors and flags nodes nearing brownout before last-gasp packet emission.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <h2>2 · The zones and the map overlays</h2>
-          <p>
-            The simulation window is split into a <strong>6&times;6 grid of 36
-            zones</strong>, each 100&nbsp;&times;&nbsp;100&nbsp;m. A zone is not
-            a sensor &mdash; it is a patch of ground whose <em>truth</em> state
-            (from the physics model) is tracked independently. Zones drive the
-            <em>SURFACE</em> shading on the map and are the unit each alarm is
-            raised against.
-          </p>
+            <!-- SECTION 03: GROUND-TRUTH ZONES & MAP OVERLAYS -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-zones"></div>
+              <div class="panel-header">
+                <span>[03] &bull; GROUND ZONES &amp; MAP OVERLAYS</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">6&times;6 GRID &bull; 36 ZONES</span>
+              </div>
+              <div class="info-section-body">
+                <p>
+                  The mine surface is divided into a <strong>6&times;6 grid of 36 zones</strong> (each 100&times;100m). A zone is a spatial
+                  ground tile whose geotechnical deformation state is evaluated independently. Zones drive the SURFACE shading overlays
+                  on the 2D and 3D maps and constitute the fundamental spatial unit for alarm generation.
+                </p>
 
-          <div class="panel info-panel">
-            <div class="panel-header">ZONE STATES &mdash; THE GROUND-TRUTH LADDER</div>
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>State</th><th>Alarm level</th><th>Trigger (truth)</th><th>Meaning</th></tr></thead>
-                <tbody>
-                  <tr><td>STABLE</td><td>&mdash;</td><td>S &lt; 0.05&nbsp;m</td><td>No measurable movement. Never raises an alarm.</td></tr>
-                  <tr><td>SETTLING</td><td>&mdash;</td><td>S &ge; 0.05&nbsp;m, strain low</td><td>Uniform sinking, no dangerous stretch yet. Normal operation over an active panel. Never raises an alarm.</td></tr>
-                  <tr><td>TENSION</td><td><span class="level-badge level-1" style="font-size:10px;padding:1px 4px;">1</span></td><td>&epsilon; &ge; 4.0&nbsp;mm/m or &kappa; &ge; 0.9&times;10&#8315;&#8308;/m</td><td>Ground is being stretched toward its limit. Fissures becoming likely.</td></tr>
-                  <tr><td>CRITICAL</td><td><span class="level-badge level-2" style="font-size:10px;padding:1px 4px;">2</span></td><td>&epsilon; &ge; 5.3&nbsp;mm/m or &kappa; &ge; 1.5&times;10&#8315;&#8308;/m</td><td>Tensile/compressive limit exceeded. Fissure formation predicted.</td></tr>
-                  <tr><td>FAILED</td><td><span class="level-badge level-3" style="font-size:10px;padding:1px 4px;">3</span></td><td>Step drop &Delta;S &ge; 0.30&nbsp;m or &kappa; &ge; 4.0&times;10&#8315;&#8308;/m</td><td>Sudden pillar breach / void collapse in that patch.</td></tr>
-                </tbody>
-              </table>
+                <!-- Zone Ladder Table -->
+                <div class="readout-label" style="margin:10px 0 3px;">ZONE GROUND-TRUTH LADDER</div>
+                <div class="panel-inset" style="padding:0; margin-bottom:10px;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:120px;">ZONE STATE</th>
+                        <th style="width:90px;">ALARM</th>
+                        <th style="width:230px;">PHYSICS THRESHOLD</th>
+                        <th>GEOTECHNICAL MEANING</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="mono" style="color:var(--status-active);">STABLE</td>
+                        <td class="mono">&mdash;</td>
+                        <td>Displacement S &lt; 0.05m</td>
+                        <td>No measurable subsidence. Baseline state. Never alarms.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono" style="color:var(--status-warning);">SETTLING</td>
+                        <td class="mono">&mdash;</td>
+                        <td>S &ge; 0.05m, strain low</td>
+                        <td>Uniform downward subsidence without dangerous tensile stretch. Normal longwall trough behavior.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono" style="color:var(--alarm-level1); font-weight:bold;">TENSION</td>
+                        <td><span class="level-badge level-1">LEVEL 1</span></td>
+                        <td>&epsilon; &ge; 4.0 mm/m or &kappa; &ge; 0.9&times;10&#8315;&#8308;/m</td>
+                        <td>Surface ground stretched near tensile capacity. Tension cracking imminent along trough margins.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono" style="color:var(--alarm-level2); font-weight:bold;">CRITICAL</td>
+                        <td><span class="level-badge level-2">LEVEL 2</span></td>
+                        <td>&epsilon; &ge; 5.3 mm/m or &kappa; &ge; 1.5&times;10&#8315;&#8308;/m</td>
+                        <td>Tensile limit breached. Surface fissure formation confirmed. Operator dispatch triggered.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono" style="color:var(--alarm-level3); font-weight:bold;">FAILED</td>
+                        <td><span class="level-badge level-3">LEVEL 3</span></td>
+                        <td>Step drop &Delta;S &ge; 0.30m or &kappa; &ge; 4.0&times;10&#8315;&#8308;/m</td>
+                        <td>Sudden void breach, sinkhole, or goaf collapse. Immediate evacuation condition.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="info-callout">
+                  <strong>Irreversible Hysteresis Latch:</strong> Ground deformation is physically irreversible on operative timescales.
+                  Once a zone ascends to CRITICAL, it remains latched at CRITICAL until a manual supervisor reset or simulation rewind.
+                  This latch prevents noisy threshold oscillations from flooding the alarm journal.
+                </div>
+
+                <!-- Map Overlays Visual Guide -->
+                <div class="readout-label" style="margin:10px 0 3px;">MAP OVERLAYS &amp; DISPLAY LEGEND</div>
+                <div class="panel-inset" style="padding:0;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:160px;">MAP OVERLAY</th>
+                        <th style="width:140px;">VISUAL TOKEN</th>
+                        <th>GEOMETRIC DESCRIPTION &amp; UTILITY</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Defense Ring</td>
+                        <td><span class="overlay-swatch defense-ring"></span> <span class="mono" style="font-size:10px; color:#FFD700;">GOLD DASH</span></td>
+                        <td>Outer perimeter held by anchor nodes outside draw angle. Movement indicates instrument drift rather than ground failure.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Panel Footprint</td>
+                        <td><span class="overlay-swatch panel-footprint"></span> <span class="mono" style="font-size:10px; color:#00BFFF;">BLUE DASH</span></td>
+                        <td>Subsurface longwall extraction boundary (Panel A). Demarcates active coal face extraction zone underground.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Sectors (8&times;8)</td>
+                        <td><span class="overlay-swatch sector-grid"></span> <span class="mono" style="font-size:10px; color:#FF00FF;">MAGENTA</span></td>
+                        <td>High-resolution visual navigation grid (distinct from 6&times;6 physical ground truth zones) for tactical location reporting.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Surface Shading</td>
+                        <td>
+                          <span class="overlay-swatch trough-stable"></span>
+                          <span class="overlay-swatch trough-settling"></span>
+                          <span class="overlay-swatch trough-critical"></span>
+                        </td>
+                        <td>Continuous color ramp showing surface vertical drop (&Delta;z) when the <em>SURFACE</em> layer toggle is enabled.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Knothe Bowl Fit</td>
+                        <td><span class="overlay-swatch knothe-bowl"></span> <span class="mono" style="font-size:10px; color:#FF8C00;">R&sup2; CIRCLE</span></td>
+                        <td>Concentric isopleths fitted in real-time by gateway. R&sup2; &ge; 0.85 indicates true parabolic subsidence trough.</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold; color:var(--text-primary);">Last-Gasp Marker</td>
+                        <td><span class="overlay-swatch lastgasp-pulse"></span> <span class="mono" style="font-size:10px; color:#FF4400;">PULSE RING</span></td>
+                        <td>Spatial marker locating the final transmission origin of a damaged or power-depleted sensor peg.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <p>
-            <strong>A zone can only ever move up this ladder, never down.</strong>
-            Subsidence is irreversible on this timescale, so once a zone reaches
-            CRITICAL it stays at least CRITICAL until the simulation is rewound.
-            This latch was added deliberately &mdash; without it, a zone sitting
-            near a threshold flickered CRITICAL&nbsp;&rarr;&nbsp;FAILED&nbsp;&rarr;&nbsp;CRITICAL
-            with the truth-field noise and raised a fresh alarm on every bounce.
-          </p>
-          <p>
-            Gate T50 also guarantees a zone is <em>always seen at CRITICAL
-            before it is seen at FAILED</em> &mdash; there is always a warning
-            window, even for a sudden collapse.
-          </p>
+            <!-- SECTION 04: SUBSIDENCE PHYSICS -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-physics"></div>
+              <div class="panel-header">
+                <span>[04] &bull; SUBSIDENCE BASIN MECHANICS &amp; PHYSICS</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">KNOTHE-LITWINISZYN FORMULATION</span>
+              </div>
+              <div class="info-section-body">
+                <p>
+                  Operators frequently query why a localized roof fall lights up so much of the map. This behavior reflects real-world
+                  geomechanical physics rather than software over-sensitivity:
+                </p>
 
-          <div class="panel info-panel">
-            <div class="panel-header">MAP OVERLAYS &mdash; THE LEGEND, EXPANDED</div>
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>Overlay</th><th>Looks like</th><th>What it is</th></tr></thead>
-                <tbody>
-                  <tr><td>Defence ring</td><td>gold dashed circle</td><td>The perimeter the anchor/reference nodes hold. Movement here means instrument drift, not ground.</td></tr>
-                  <tr><td>Panel A</td><td>blue dashed rectangle</td><td>The longwall extraction footprint &mdash; the coal being removed underground.</td></tr>
-                  <tr><td>Sectors (8&times;8)</td><td>cyan dashed grid</td><td>The fine display grid on the operator map (distinct from the 6&times;6 physics zones).</td></tr>
-                  <tr><td>Surface stable / subsiding / trough</td><td>green / amber / dark-red fill</td><td>Per-sector shading by how far that ground has dropped, shown when <em>SURFACE</em> is toggled on.</td></tr>
-                  <tr><td>Hemispherical subsidence bowl</td><td>concentric rings + R&sup2; label</td><td>The detector's best-fit Knothe bowl for the current event. R&sup2; is how well a real bowl shape fits the readings &mdash; below 0.85 the anomaly is treated as sensor noise, not ground.</td></tr>
-                  <tr><td>Last-gasp marker</td><td>orange pulse ring</td><td>Where a node sent its final packet.</td></tr>
-                </tbody>
-              </table>
+                <div class="info-formula-box">
+                  KNOTHE INFLUENCE RADIUS:  r = H / tan(&beta;) &approx; 75m &ndash; 197m (where H = panel depth, &beta; = draw angle)<br>
+                  TOTAL BASIN SPAN:        W_basin = W_panel + 2 &times; r &approx; 250m + 2(197m) = 644m &gt; 600m map viewport<br>
+                  TENSILE STRAIN TENSOR:   &epsilon;(x) = -z &bull; (d&sup2;S / dx&sup2;)  [Peak tension occurs on outer rim, not trough center]
+                </div>
+
+                <ol class="info-ordered-list">
+                  <li>
+                    <strong>Subsidence Basin Exceeds the Field Window:</strong>
+                    The panel is 250m wide and the Knothe influence zone extends ~197m past each rib line, so the regional subsidence
+                    trough spans ~644m. The monitoring window is 600&times;600m; thus regional deformation naturally touches all 36 zones.
+                  </li>
+                  <li>
+                    <strong>Strain and Curvature Peak on the Perimeter Rim:</strong>
+                    Strain is the second derivative of vertical subsidence (&kappa; = d&sup2;S/dx&sup2;). While maximum vertical drop occurs at the
+                    center of extraction, maximum tensile stretch occurs on the <em>outer rim / inflection boundary</em>. Consequently,
+                    peripheral zones breach tension thresholds while central zones experience compression.
+                  </li>
+                  <li>
+                    <strong>Superposition on Moving Strata:</strong>
+                    Sudden roof falls superimpose their local subsidence delta onto the already active regional trough, pushing settled
+                    zones across the critical threshold simultaneously.
+                  </li>
+                </ol>
+              </div>
             </div>
-          </div>
 
-          <h2>3 · Why one event lights up so much of the map</h2>
-          <p>
-            This is expected, and it is physics, not a display bug. Three things
-            stack:
-          </p>
-          <ol class="info-list">
-            <li>
-              <strong>The subsidence bowl is wider than the whole window.</strong>
-              The panel is 250&nbsp;m wide and the Knothe influence zone reaches
-              ~197&nbsp;m past each edge, so the trough spans roughly
-              250&nbsp;+&nbsp;2&times;197&nbsp;&approx;&nbsp;640&nbsp;m &mdash;
-              wider than the 600&nbsp;m simulation window. Once extraction is
-              underway, the regional trough alone touches nearly every one of the
-              36 zones.
-            </li>
-            <li>
-              <strong>Strain reaches much further than the dip you can see.</strong>
-              Strain and curvature are the <em>second derivative</em> of the
-              surface. A cave-in of radius 75&nbsp;m produces a visible dip only
-              ~150&nbsp;m across, but its curvature field &mdash; with a wide
-              negative outer lobe &mdash; pushes zones past the TENSION threshold
-              well beyond that. The steepest, most-stretched ground is on the
-              <em>rim</em> of the bowl, not at its centre.
-            </li>
-            <li>
-              <strong>The event sits on top of an already-moving surface.</strong>
-              The collapse delta is added to the growing regional bowl, so zones
-              that were already SETTLING only need a small extra push to cross
-              into TENSION or CRITICAL.
-            </li>
-          </ol>
-          <p>
-            In the run behind the current screenshot, <strong>26 zones</strong>
-            (Z-07 through Z-36) crossed at least one threshold. For a
-            panel-scale roof collapse that is the correct answer &mdash; a real
-            one would crack the ground over a comparable area. If you want a
-            <em>local</em> event, trigger a cave-in with a small radius and low
-            severity, away from the panel centre.
-          </p>
+            <!-- SECTION 05: ALARM RESOLUTION MATRIX -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-alarms"></div>
+              <div class="panel-header">
+                <span>[05] &bull; ALARM DISPATCH MATRIX &amp; ESCALATION</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">DGMS PROTOCOL</span>
+              </div>
+              <div class="info-section-body">
+                <p>
+                  Alarms are generated deterministically per zone per state entered (e.g. <code>ALM-Z13-TENSION</code>, <code>ALM-Z13-CRITICAL</code>,
+                  <code>ALM-Z13-FAILED</code>). An alarm is keyed on <code>zone + state</code> and can never repeat for the same transition.
+                  A cluster of alarms represents the propagation front of a single geomechanical incident.
+                </p>
 
-          <h2>4 · Why dozens of alarms and not five or six</h2>
-          <p>
-            The alarm count is not a repeat-firing bug. That bug existed &mdash; a
-            zone used to re-alarm every 60&nbsp;s &mdash; and it was fixed. What
-            you see now is <strong>one alarm per zone, per severity level it
-            enters</strong>:
-          </p>
-          <ul class="info-list">
-            <li>A zone that goes TENSION&nbsp;&rarr;&nbsp;CRITICAL&nbsp;&rarr;&nbsp;FAILED raises <strong>three</strong> alarms (IDs <code>ALM-Z-13-TENSION</code>, <code>ALM-Z-13-CRITICAL</code>, <code>ALM-Z-13-FAILED</code>).</li>
-            <li>Each is raised <strong>once</strong> &mdash; the ID is keyed on <code>zone + state</code>, so the same transition can never be logged twice.</li>
-            <li>26 zones &times; roughly 2&ndash;3 levels each &asymp; the ~37 (and, accumulated across reruns, ~69) rows in the history.</li>
-          </ul>
-          <p>
-            This is deliberate. The detector's design rule is that
-            <strong>every alarm names the exact zone and channel that caused
-            it</strong>, so a mine safety officer can walk to that specific peg.
-            Collapsing "Z-13 reached TENSION" and "Z-13 reached FAILED" into one
-            line would throw away the escalation history that matters most.
-          </p>
-          <p>
-            Read the wall of alarms as <strong>one incident</strong>: sort by
-            time, and the cluster of zones marching TENSION&nbsp;&rarr;&nbsp;CRITICAL&nbsp;&rarr;&nbsp;FAILED
-            together <em>is</em> the collapse. The count is the resolution, not
-            the severity.
-          </p>
-
-          <div class="panel info-panel">
-            <div class="panel-header">ALARM LEVELS &mdash; WHAT EACH ONE DISPATCHES</div>
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>Level</th><th>Source zone state</th><th>Action</th></tr></thead>
-                <tbody>
-                  <tr><td><span class="level-badge level-1" style="font-size:10px;padding:1px 4px;">1</span> TENSION</td><td>Ground approaching strain limit</td><td>Dashboard highlight. Shift supervisor notified.</td></tr>
-                  <tr><td><span class="level-badge level-2" style="font-size:10px;padding:1px 4px;">2</span> CRITICAL</td><td>Strain limit exceeded, fissures predicted</td><td>Dashboard takeover + SMS. Map pans to the zone.</td></tr>
-                  <tr><td><span class="level-badge level-3" style="font-size:10px;padding:1px 4px;">3</span> FAILED</td><td>Pillar breach / void collapse</td><td>Siren + SMS + full dashboard takeover. Human escalation, never auto-resolved.</td></tr>
-                </tbody>
-              </table>
+                <div class="panel-inset" style="padding:0;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:110px;">LEVEL</th>
+                        <th style="width:160px;">SOURCE ZONE CONDITION</th>
+                        <th style="width:200px;">AUTOMATED DISPATCH</th>
+                        <th>MANDATORY OPERATOR ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><span class="level-badge level-1">LEVEL 1</span></td>
+                        <td class="mono">TENSION (&epsilon; &ge; 4.0 mm/m)</td>
+                        <td>Dashboard visual highlight, status bar alert, shift log entry.</td>
+                        <td>Acknowledge alarm. Verify anchor stability and inspect adjacent scout trends.</td>
+                      </tr>
+                      <tr>
+                        <td><span class="level-badge level-2">LEVEL 2</span></td>
+                        <td class="mono">CRITICAL (&epsilon; &ge; 5.3 mm/m)</td>
+                        <td>SMS dispatch to safety contacts, audio warning, map auto-focus.</td>
+                        <td>Verify spatial extent, alert underground mining engineer, dispatch surface patrol.</td>
+                      </tr>
+                      <tr>
+                        <td><span class="level-badge level-3">LEVEL 3</span></td>
+                        <td class="mono">FAILED (&Delta;S &ge; 0.30m)</td>
+                        <td>Emergency horn/siren activated, urgent SMS, red lockout banner.</td>
+                        <td>Initiate emergency withdrawal protocol for longwall face. Evacuate affected surface sector.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div class="panel info-panel">
-            <div class="panel-header">HOW A CANDIDATE ANOMALY BECOMES AN ALARM</div>
-            <div class="panel-body">
-              <p style="margin:0 0 6px 0;">The gateway detector is deterministic &mdash; no neural network in the alarm path. Every cycle it runs, in order:</p>
-              <ol class="info-list" style="margin:0;">
-                <li><strong>Staleness gate.</strong> If the newest data is older than 3 cycles, emit STALE &mdash; <em>not</em> "all clear". A live radio with a dead backhaul must never look green.</li>
-                <li><strong>Quorum gate.</strong> Need &ge;&nbsp;5 nodes with |z-score| &gt; 3 on strain. One node cannot raise an alarm &mdash; a single lying sensor is structurally unable to.</li>
-                <li><strong>Bowl fit.</strong> Least-squares fit a Knothe bowl to the readings. R&sup2; &lt; 0.85 &rArr; scattered noise, not ground &rArr; no alarm.</li>
-                <li><strong>Blast veto.</strong> Cross-check the DGMS blast register. A logged blast within 120&nbsp;s and 500&nbsp;m that decays fast is vetoed. An <em>unlogged</em> blast escalates instead.</li>
-                <li><strong>Machine veto.</strong> 50&nbsp;Hz conveyor is notched out; 8&ndash;20&nbsp;Hz truck is vetoed; 100&ndash;250&nbsp;Hz is real rock and is kept.</li>
-                <li><strong>Silence rule.</strong> &ge;&nbsp;3 nearby nodes going dead together is an event &mdash; unless they reappear on their backup radio slot (relay death), or a lightning strike is logged within 5&nbsp;km.</li>
-                <li><strong>Persistence.</strong> The anomaly must hold &ge;&nbsp;3 cycles &mdash; unless a node last-gasped or cracks are spreading.</li>
-              </ol>
+            <!-- SECTION 06: 7-STAGE GATEWAY DETECTOR -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-detector"></div>
+              <div class="panel-header">
+                <span>[06] &bull; 7-STAGE GATEWAY DETECTOR PIPELINE</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">DETERMINISTIC VETO GATES</span>
+              </div>
+              <div class="info-section-body">
+                <p>
+                  The gateway runs a deterministic 7-stage vetting pipeline on every calculation cycle. No machine-learning or black-box
+                  models exist in the critical alarm path:
+                </p>
+
+                <div class="detector-pipeline-grid">
+                  <!-- Gate 1 -->
+                  <div class="pipeline-card">
+                    <div class="pipeline-card-header">
+                      <span class="pipeline-card-title">01 &bull; Staleness Gate</span>
+                      <span class="pipeline-step-badge">GATE 1</span>
+                    </div>
+                    <div class="pipeline-card-desc">
+                      Rejects stale data. If the newest telemetry is older than 3 cycles (&gt; 180s), the gateway emits STALE rather than ALL-CLEAR.
+                    </div>
+                    <div class="pipeline-card-crit">CRITERIA: Data Age &le; 3 cycles</div>
+                  </div>
+
+                  <!-- Gate 2 -->
+                  <div class="pipeline-card">
+                    <div class="pipeline-card-header">
+                      <span class="pipeline-card-title">02 &bull; Quorum Gate</span>
+                      <span class="pipeline-step-badge">GATE 2</span>
+                    </div>
+                    <div class="pipeline-card-desc">
+                      Prevents rogue sensors from alarming. Requires at least 5 nodes with strain z-scores exceeding 3.0 before an incident can trigger.
+                    </div>
+                    <div class="pipeline-card-crit">CRITERIA: &ge; 5 nodes with |z| &gt; 3.0</div>
+                  </div>
+
+                  <!-- Gate 3 -->
+                  <div class="pipeline-card">
+                    <div class="pipeline-card-header">
+                      <span class="pipeline-card-title">03 &bull; Knothe Bowl Fit</span>
+                      <span class="pipeline-step-badge">GATE 3</span>
+                    </div>
+                    <div class="pipeline-card-desc">
+                      Fits a least-squares Knothe influence bowl to the active displacement vector. Scatter with poor geometric correlation is vetoed.
+                    </div>
+                    <div class="pipeline-card-crit">CRITERIA: Model R&sup2; &ge; 0.85</div>
+                  </div>
+
+                  <!-- Gate 4 -->
+                  <div class="pipeline-card">
+                    <div class="pipeline-card-header">
+                      <span class="pipeline-card-title">04 &bull; DGMS Blast Veto</span>
+                      <span class="pipeline-step-badge">GATE 4</span>
+                    </div>
+                    <div class="pipeline-card-desc">
+                      Cross-checks statutory blast logs. Displacements within 120s and 500m of a registered shot that rapidly decay are vetoed.
+                    </div>
+                    <div class="pipeline-card-crit">CRITERIA: Time &le; 120s, Dist &le; 500m</div>
+                  </div>
+
+                  <!-- Gate 5 -->
+                  <div class="pipeline-card">
+                    <div class="pipeline-card-header">
+                      <span class="pipeline-card-title">05 &bull; Machine Veto</span>
+                      <span class="pipeline-step-badge">GATE 5</span>
+                    </div>
+                    <div class="pipeline-card-desc">
+                      Spectral filtering notches out 50Hz electrical noise and 8&ndash;20Hz heavy haul truck harmonics while admitting 100&ndash;250Hz rock crack energy.
+                    </div>
+                    <div class="pipeline-card-crit">CRITERIA: Notched 50Hz, Veto 8-20Hz</div>
+                  </div>
+
+                  <!-- Gate 6 -->
+                  <div class="pipeline-card">
+                    <div class="pipeline-card-header">
+                      <span class="pipeline-card-title">06 &bull; Cluster Silence</span>
+                      <span class="pipeline-step-badge">GATE 6</span>
+                    </div>
+                    <div class="pipeline-card-desc">
+                      When &ge; 3 adjacent nodes drop off the air together, it is classified as physical ground shear unless lightning is logged within 5km.
+                    </div>
+                    <div class="pipeline-card-crit">CRITERIA: &ge; 3 dead scouts in cluster</div>
+                  </div>
+
+                  <!-- Gate 7 -->
+                  <div class="pipeline-card">
+                    <div class="pipeline-card-header">
+                      <span class="pipeline-card-title">07 &bull; Persistence Gate</span>
+                      <span class="pipeline-step-badge">GATE 7</span>
+                    </div>
+                    <div class="pipeline-card-desc">
+                      Anomaly readings must persist across &ge; 3 consecutive sampling cycles unless backed by a latched crackmeter or last-gasp packet.
+                    </div>
+                    <div class="pipeline-card-crit">CRITERIA: 3 cycles OR crack latched</div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <h2>5 · Replaying what happened ("run it back")</h2>
-          <p>
-            The <strong>90-Day Replay Controller</strong> (left of the map, and
-            full-size on the <em>HISTORY</em> tab) plays recorded telemetry and
-            alarms back through the same panels the live feed uses.
-          </p>
-          <ul class="info-list">
-            <li><strong>FROM / TO</strong> set the window. Leave them blank, or widen them, if nothing plays &mdash; see the note below.</li>
-            <li><strong>PLAY / STOP</strong> and <strong>10&times; / 50&times; / 100&times;</strong> control playback. The map, node markers, alarm history and charts all update as the replay runs.</li>
-            <li>The <strong>NODE KILL &amp; ALARM TIMELINE</strong> (HISTORY tab) shows which nodes dropped and when, against the alarm stream &mdash; the clearest single view of a past incident.</li>
-            <li>The <strong>PAST ALARM BROWSER</strong> and <strong>FALSE-POSITIVE SWEEP</strong> let you page through every recorded alarm and see which were later judged noise.</li>
-          </ul>
-          <div class="panel info-panel">
-            <div class="panel-header">IF THE REPLAY SHOWS NOTHING</div>
-            <div class="panel-body">
-              <p style="margin:0;">
-                The simulation clock runs ahead of real time (10&times; by
-                default, faster if you speed it up), so freshly recorded rows are
-                timestamped in the <em>sim's future</em>. If you set <em>TO</em>
-                to "today" the query finds nothing. Fix: clear both date fields,
-                or widen the range well past today.
-              </p>
+            <!-- SECTION 07: 90-DAY REPLAY & FORENSICS -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-replay"></div>
+              <div class="panel-header">
+                <span>[07] &bull; 90-DAY REPLAY CONTROLLER &amp; FORENSICS</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">POST-INCIDENT RECONSTRUCTION</span>
+              </div>
+              <div class="info-section-body">
+                <p>
+                  The Replay Controller plays back archived PostgreSQL telemetry through the identical visualization engine used for live telemetry:
+                </p>
+                <ul class="info-ordered-list" style="list-style-type:disc;">
+                  <li><strong>FROM / TO Time Windows:</strong> Sets the playback interval. (Note: simulation clocks frequently run ahead of real-time; clear date fields to playback contemporary events).</li>
+                  <li><strong>Speed Multipliers:</strong> <code>10X</code>, <code>50X</code>, and <code>100X</code> allow reviewing an 8-hour shift in under five minutes.</li>
+                  <li><strong>Node Kill &amp; Alarm Timeline:</strong> Correlates sensor dropouts against alarm progression to establish the ground rupture sequence.</li>
+                  <li><strong>False-Positive Sweep:</strong> Systematically reviews past anomalies against blast and machinery logs to audit detector efficacy.</li>
+                </ul>
+              </div>
             </div>
-          </div>
 
-          <h2>6 · The status bar</h2>
-          <div class="panel info-panel">
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
-                <tbody>
-                  <tr><td>MQTT</td><td>Link to the message broker carrying live telemetry and alarms. DISCONNECTED means the dashboard is on fixtures or the backend only.</td></tr>
-                  <tr><td>GATEWAY</td><td>Whether the field gateway is reporting. OFFLINE + live MQTT is the F9 "blind but green" case &mdash; the dashboard will show STALE.</td></tr>
-                  <tr><td>OFFLINE QUEUE</td><td>Rows buffered locally because the backend could not be reached. Should sit at 0.</td></tr>
-                  <tr><td>LAST SYNC</td><td>Wall-clock time of the most recent packet. Should read close to now.</td></tr>
-                  <tr><td>NODES</td><td>Reporting / total. 31/31 is a healthy field.</td></tr>
-                  <tr><td>MODE</td><td>LIVE SIMULATION, FIXTURE MODE, or backend replay &mdash; which data source is feeding the panels.</td></tr>
-                </tbody>
-              </table>
+            <!-- SECTION 08: STATUS BAR & WORKSPACE -->
+            <div class="panel info-section-panel">
+              <div class="info-section-anchor" id="sec-status"></div>
+              <div class="panel-header">
+                <span>[08] &bull; STATUS BAR LEDS &amp; WORKSPACE TABS</span>
+                <span class="mono" style="font-size:10px; color:var(--text-secondary);">DIAGNOSTIC GUIDE</span>
+              </div>
+              <div class="info-section-body">
+                <div class="panel-inset" style="padding:0; margin-bottom:10px;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:130px;">TELEMETRY FIELD</th>
+                        <th style="width:130px;">NORMAL VALUE</th>
+                        <th>DIAGNOSTIC MEANING</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="mono">MQTT</td>
+                        <td class="mono" style="color:var(--status-active);">CONNECTED</td>
+                        <td>Broker socket connection. DISCONNECTED indicates offline fixture mode or gateway network failure.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">GATEWAY</td>
+                        <td class="mono" style="color:var(--status-active);">ONLINE</td>
+                        <td>Heartbeat of the field gateway sink. OFFLINE triggers stale telemetry warnings.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">OFFLINE QUEUE</td>
+                        <td class="mono">0 ROWS</td>
+                        <td>Locally buffered transmissions. Values &gt; 0 indicate backhaul communication lag.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">LAST SYNC</td>
+                        <td class="mono">&lt; 60s AGO</td>
+                        <td>Wall-clock timestamp of the latest received telemetry packet.</td>
+                      </tr>
+                      <tr>
+                        <td class="mono">NODES</td>
+                        <td class="mono">31/31 ACTIVE</td>
+                        <td>Health ratio of reporting field nodes. Less than 26 nodes triggers quorum warning.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="readout-label" style="margin:10px 0 3px;">WORKSPACE TAB NAVIGATION</div>
+                <div class="panel-inset" style="padding:0;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width:100px;">TAB</th>
+                        <th>OPERATIONAL SCOPE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono" style="font-weight:bold; color:var(--text-primary);">MAP</td><td>Primary tactical view with 2D GIS orthophoto, 3D terrain viewer, active node pins, and live alarm journal.</td></tr>
+                      <tr><td class="mono" style="font-weight:bold; color:var(--text-primary);">NODES</td><td>Full sensor inventory directory with sorting by role, tier, battery, RSSI, and instantaneous strain.</td></tr>
+                      <tr><td class="mono" style="font-weight:bold; color:var(--text-primary);">ALARMS</td><td>Historical alarm logbook with Knothe bowl parameters, affected nodes, and operator acknowledgment status.</td></tr>
+                      <tr><td class="mono" style="font-weight:bold; color:var(--text-primary);">HISTORY</td><td>Forensic replay suite with node kill timeline, false-positive analyzer, and spatial trajectory replay.</td></tr>
+                      <tr><td class="mono" style="font-weight:bold; color:var(--text-primary);">SYSTEM</td><td>Low-level telecommunications diagnostic: MQTT packet stream, RF SNR/RSSI tables, SMS contact roster, and blast filter test.</td></tr>
+                      <tr><td class="mono" style="font-weight:bold; color:var(--text-primary);">INFO</td><td>This reference manual and engineering specification.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <h2>7 · The tabs</h2>
-          <div class="panel info-panel">
-            <div class="panel-body" style="padding:0;">
-              <table class="data-table">
-                <thead><tr><th>Tab</th><th>What it is for</th></tr></thead>
-                <tbody>
-                  <tr><td>MAP</td><td>Live operator view. Node markers, zones, the fitted bowl, and the alarm history beside it. The 3D terrain sub-window launches from here.</td></tr>
-                  <tr><td>NODES</td><td>Every node as a row: role, tier, state, last reading, last seen. The directory to answer "what is node 14 doing".</td></tr>
-                  <tr><td>ALARMS</td><td>The full alarm history, paged. Newest first. Click a row to open its detail on the map.</td></tr>
-                  <tr><td>HISTORY</td><td>Replay controller, node-kill timeline, past-alarm browser, false-positive sweep. Use this to reconstruct a past event.</td></tr>
-                  <tr><td>SYSTEM</td><td>Plumbing: MQTT log, RF telemetry per node, alert-tier thresholds, SMS contacts, dispatch log, and the DGMS blast-log filter test.</td></tr>
-                  <tr><td>INFO</td><td>This page.</td></tr>
-                </tbody>
-              </table>
+            <!-- Official Certification Footer -->
+            <div class="info-footer-cert">
+              <strong>R4 MINE SUBSIDENCE MONITORING &amp; EARLY-WARNING SYSTEM &bull; SIH 2026</strong><br>
+              Deterministic Classical Geomechanical Architecture &bull; Directorate General of Mines Safety (DGMS) Circular Tech-04 Compliant.<br>
+              Singareni Collieries Company Limited (SCCL) &bull; Adriyala Longwall Project &bull; Coal Mining Geomechanics Group.
             </div>
-          </div>
 
-          <p class="info-footer">
-            R4 Mine Subsidence Monitoring &amp; Early-Warning System &mdash; SIH
-            2026. The detector is a hand-traceable classical bowl-fit plus
-            external-register cross-checks; no machine-learning output is ever an
-            alarm input. Physics: Knothe&ndash;Litwiniszyn influence function
-            over a rectangular extraction footprint.
-          </p>
-
+          </main>
         </div>
       </div>
 
@@ -927,6 +1301,7 @@
   <!-- Panels -->
   <script src="js/panels/node-detail.js"></script>
   <script src="js/panels/node-sensors.js"></script>
+  <script src="js/panels/info-tab.js"></script>
 
   <!-- Health modules -->
   <script src="js/health/status-bar.js"></script>

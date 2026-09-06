@@ -3,6 +3,42 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../db/db');
+const { formatReading } = require('./readings');
+
+// What hardware each tier actually carries. The Node Detail panel shows this
+// so an operator can tell which channels a node is capable of reporting.
+const TIER_SENSOR_MAP = {
+  '1A': {
+    name: 'MPU-6050 6-DoF IMU & Vibration Analyzer',
+    desc: 'Tier 1A Scout (Baseline / Interior)',
+    channels: ['tilt_x_urad', 'tilt_y_urad', 'accel_xyz', 'gyro_xyz', 'vib_rms', 'die_temp']
+  },
+  '1B': {
+    name: 'MPU-6050 IMU + Foil Strain Gauge & Crackmeter',
+    desc: 'Tier 1B Scout (Tension / Shear Band)',
+    channels: ['strain_ue', 'fissure_mm', 'tilt_x_urad', 'tilt_y_urad', 'accel_xyz', 'vib_rms', 'die_temp']
+  },
+  '1C': {
+    name: 'MPU-6050 IMU + Multipoint Extensometer & Moisture',
+    desc: 'Tier 1C Scout (Fault / Water Corridor)',
+    channels: ['ext_delta_mm', 'moisture_pct', 'tilt_x_urad', 'tilt_y_urad', 'vib_rms', 'die_temp']
+  },
+  '2A': {
+    name: 'ADXL355 Ultra-Low-Noise Triaxial Inclinometer',
+    desc: 'Tier 2A Anchor (Mesh Router)',
+    channels: ['tilt_x_urad (ADXL355)', 'tilt_y_urad (ADXL355)', 'die_temp']
+  },
+  '2B': {
+    name: 'Vibrating Wire Piezometer & Borehole IPI String',
+    desc: 'Tier 2B Anchor (Geotech Borehole)',
+    channels: ['pore_pressure_kpa', 'borehole_tilt_d1..d4', 'die_temp']
+  },
+  '3': {
+    name: 'High-Precision GNSS / RTK Receiver',
+    desc: 'Tier 3 Gateway (Master Sink)',
+    channels: ['gps_dx_mm', 'gps_dy_mm', 'gps_dz_mm', 'die_temp']
+  }
+};
 
 function enrichNode(row) {
   // lat/lon are written by the simulation (sandbox.geo) alongside x/y and are the
@@ -13,11 +49,19 @@ function enrichNode(row) {
   const lat = (row.lat != null) ? row.lat : null;
   const lon = (row.lon != null) ? row.lon : null;
   const ring = row.node_type === 'gateway' ? 'outer' : (row.node_type === 'anchor' ? 'middle' : 'inner');
+  const sensorMeta = TIER_SENSOR_MAP[row.tier] || {
+    name: 'MPU-6050 IMU Sensor Node',
+    desc: `Tier ${row.tier || '1A'} (${row.node_type || 'scout'})`,
+    channels: ['tilt_x', 'tilt_y', 'die_temp']
+  };
 
   return {
     ...row,
     // Frontend map & table display fields
     label: row.node_id,
+    sensor_name: sensorMeta.name,
+    hardware_tier_desc: sensorMeta.desc,
+    channels: sensorMeta.channels,
     lat: lat,
     lon: lon,
     // `lng` is the name the existing map code reads; keep it as an alias of lon.
@@ -73,7 +117,7 @@ router.get('/:nodeId', async (req, res) => {
     );
 
     const profile = enrichNode(nodeRes.rows[0]);
-    profile.latest_reading = readingRes.rows[0] || null;
+    profile.latest_reading = readingRes.rows[0] ? formatReading(readingRes.rows[0]) : null;
 
     res.json(profile);
   } catch (err) {

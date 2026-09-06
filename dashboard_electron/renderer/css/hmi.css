@@ -1713,3 +1713,426 @@ html, body {
   vertical-align: baseline;
 }
 
+/* ============================================================
+   INFO TAB — SCADA REFERENCE MANUAL & OPERATOR GUIDE
+   Full 2-column master-detail engineering documentation layout
+   ============================================================ */
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  gap: 8px;
+  padding: 8px;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+  .info-grid {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+}
+
+/* --- Left Sidebar / Directory Rail --- */
+.info-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.info-sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-bevel-light);
+  border-left: 1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right: 1px solid var(--border-bevel-dark);
+}
+
+.info-search-box {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-rule);
+  background: var(--bg-inset);
+}
+
+.info-search-input {
+  width: 100%;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-bevel-dark);
+  border-left: 1px solid var(--border-bevel-dark);
+  border-bottom: 1px solid var(--border-bevel-light);
+  border-right: 1px solid var(--border-bevel-light);
+  color: var(--text-primary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  padding: 4px 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.info-search-input:focus {
+  border-color: var(--alarm-level1);
+}
+
+.info-nav-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.info-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s, color 0.1s;
+}
+
+.info-nav-link:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.info-nav-link.active {
+  background: var(--bg-inset);
+  color: #FFFFFF;
+  border-left-color: var(--status-active);
+}
+
+.info-nav-link .nav-num {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: var(--alarm-level1);
+}
+
+.info-sidebar-footer {
+  padding: 8px;
+  border-top: 1px solid var(--border-rule);
+  background: var(--bg-inset);
+  font-size: 10.5px;
+}
+
+/* --- Main Scrollable Engineering Canvas --- */
+.info-main-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 12px;
+  padding-right: 4px;
+}
+
+/* --- Hero Banner --- */
+.info-hero-banner {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-bevel-light);
+  border-left: 1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right: 1px solid var(--border-bevel-dark);
+  padding: 12px 14px;
+}
+
+.info-hero-title {
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.info-hero-subtitle {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.info-metric-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-inset);
+  border-top: 1px solid var(--border-bevel-dark);
+  border-left: 1px solid var(--border-bevel-dark);
+  border-bottom: 1px solid var(--border-bevel-light);
+  border-right: 1px solid var(--border-bevel-light);
+  padding: 3px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10.5px;
+  color: var(--text-mono);
+}
+
+.info-chip .chip-val {
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+/* --- Section Panels --- */
+.info-section-panel {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-bevel-light);
+  border-left: 1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right: 1px solid var(--border-bevel-dark);
+}
+
+.info-section-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-section-body {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.info-section-body p {
+  margin-bottom: 8px;
+}
+
+.info-section-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Swatch / Visual Overlay Indicators --- */
+.overlay-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 14px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.overlay-swatch.defense-ring {
+  border: 1.5px dashed #FFD700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.overlay-swatch.panel-footprint {
+  border: 1.5px dashed #00BFFF;
+  background: rgba(0, 191, 255, 0.1);
+}
+
+.overlay-swatch.sector-grid {
+  border: 1px dashed #FF00FF;
+  background: rgba(255, 0, 255, 0.08);
+}
+
+.overlay-swatch.trough-stable {
+  background: var(--status-active);
+  opacity: 0.75;
+}
+
+.overlay-swatch.trough-settling {
+  background: var(--status-warning);
+  opacity: 0.75;
+}
+
+.overlay-swatch.trough-critical {
+  background: var(--status-critical);
+  opacity: 0.75;
+}
+
+.overlay-swatch.knothe-bowl {
+  border: 1.5px solid #FF8C00;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+}
+
+.overlay-swatch.lastgasp-pulse {
+  border: 2px solid #FF4400;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 68, 0, 0.2);
+}
+
+/* --- 7-Stage Stepper Cards --- */
+.detector-pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pipeline-card {
+  background: var(--bg-inset);
+  border-top: 1px solid var(--border-bevel-dark);
+  border-left: 1px solid var(--border-bevel-dark);
+  border-bottom: 1px solid var(--border-bevel-light);
+  border-right: 1px solid var(--border-bevel-light);
+  padding: 8px 10px;
+}
+
+.pipeline-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--border-rule);
+}
+
+.pipeline-step-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--alarm-level1);
+}
+
+.pipeline-card-title {
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.pipeline-card-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.pipeline-card-crit {
+  margin-top: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: var(--text-mono);
+}
+
+/* --- Doc Callouts & Lists --- */
+.info-callout {
+  border-left: 3px solid var(--alarm-level1);
+  background: var(--bg-inset);
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+
+.info-formula-box {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-rule);
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11.5px;
+  color: var(--text-mono);
+  line-height: 1.5;
+}
+
+.info-ordered-list {
+  margin: 6px 0 6px 18px;
+  padding: 0;
+  font-size: 11.5px;
+}
+
+.info-ordered-list li {
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+.info-footer-cert {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-rule);
+  padding: 12px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+
+/* ============================================================
+   Node Detail & Sensor Specs (SCADA Theme)
+   ============================================================ */
+
+.sensor-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text-primary);
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+
+.sensor-tier-desc {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: var(--alarm-level1);
+  margin-bottom: 4px;
+}
+
+.sensor-channels-list {
+  font-size: 10px;
+  color: var(--text-mono);
+  line-height: 1.35;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-rule);
+}
+
+.meta-row:last-child {
+  border-bottom: none;
+}
+
+.meta-row .readout-label {
+  margin-bottom: 0;
+}
+
+.meta-row .readout-val {
+  font-size: 10px;
+  color: var(--text-mono);
+  text-align: right;
+}
+
+
+
+
+/* Scroll-spy target marker: zero-height so it never adds stray space
+   inside a section panel, while still reporting a usable offsetTop. */
+.info-section-anchor {
+  height: 0;
+  overflow: hidden;
+}

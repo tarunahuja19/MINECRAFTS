@@ -70,6 +70,11 @@ document.getElementById('tab-map').style.display = 'flex';
   // Phase 5 — Export report
   exportReport.init();
 
+  // Phase 6 — Info Tab Interactive Reference
+  if (typeof infoTab !== 'undefined' && infoTab.init) {
+    infoTab.init();
+  }
+
   var viewSwitcher = document.getElementById('panel-view-switcher');
   var btnViewBoth = document.getElementById('btn-view-both');
   var btnViewAlarm = document.getElementById('btn-view-alarm');
