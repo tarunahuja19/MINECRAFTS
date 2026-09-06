@@ -12,7 +12,10 @@
     "tiles:prefetch": "node scripts/prefetch_tiles.js",
     "sim": "cd simulation && .venv/bin/uvicorn sandbox.server:app --host 0.0.0.0 --port 8000",
     "sim:ui": "cd simulation/frontend && node_modules/.bin/vite --host --port 5173 --strictPort",
-    "test:pipeline": "node backend/test/test_integration.js"
+    "test:pipeline": "node scripts/verify_data_loop.js",
+    "verify": "node scripts/verify_data_loop.js",
+    "db:reset": "bash scripts/reset_demo_state.sh",
+    "checklist:audit": "bash scripts/audit_demo_readiness.sh"
   },
   "keywords": [
     "mine-subsidence",

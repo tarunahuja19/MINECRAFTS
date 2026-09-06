@@ -85,17 +85,22 @@ fi
 PGHOST="${PGHOST:-localhost}"; PGPORT="${PGPORT:-5432}"
 PGUSER="${PGUSER:-postgres}"; PGDATABASE="${PGDATABASE:-mine_subsidence}"
 
-if command -v pg_isready >/dev/null; then
-  pg_isready -h "$PGHOST" -p "$PGPORT" -q \
-    || die "PostgreSQL is not accepting connections on $PGHOST:$PGPORT (start it, e.g. 'brew services start postgresql')"
-  ok "PostgreSQL up on $PGHOST:$PGPORT"
-fi
+# Bring PostgreSQL up if it is down (Homebrew service / LaunchDaemon / pg_ctl).
+. "$ROOT_DIR/scripts/ensure_postgres.sh"
+ensure_postgres
 
 if command -v psql >/dev/null; then
   NODE_COUNT=$(PGPASSWORD="${PGPASSWORD:-}" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
                  -tAc "select count(*) from nodes;" 2>/dev/null)
   if [ -z "$NODE_COUNT" ]; then
-    die "cannot query database '$PGDATABASE' - run: npm --prefix backend run migrate"
+    # Empty or missing schema - run migrations once, then re-check.
+    warn "database '$PGDATABASE' has no schema - running migrations"
+    npm --prefix backend run migrate >"$ROOT_DIR/.migrate.log" 2>&1 \
+      || { sed 's/^/       /' "$ROOT_DIR/.migrate.log" | tail -15; die "migration failed (see .migrate.log)"; }
+    NODE_COUNT=$(PGPASSWORD="${PGPASSWORD:-}" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
+                   -tAc "select count(*) from nodes;" 2>/dev/null)
+    [ -z "$NODE_COUNT" ] && die "database still unreachable after migration"
+    ok "migrations applied"
   fi
   ok "database '$PGDATABASE' reachable ($NODE_COUNT nodes)"
   OFFSITE=$(PGPASSWORD="${PGPASSWORD:-}" psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" \
@@ -188,7 +193,7 @@ ok "dashboard at http://127.0.0.1:8085/"
 # ---------------------------------------------------------------- simulation --
 if [ "$RUN_SIM" = 1 ]; then
   say "[4] Sandbox simulation server (port 8000)"
-  (cd simulation && .venv/bin/uvicorn sandbox.server:app --host 0.0.0.0 --port 8000 --log-level warning) &
+  (cd simulation && PYTHONUNBUFFERED=1 .venv/bin/uvicorn sandbox.server:app --host 0.0.0.0 --port 8000 --log-level warning) &
   SIM_PID=$!
 
   for i in $(seq 1 40); do
@@ -245,6 +250,18 @@ if [ "$RUN_CHROME" = 1 ] && [ "$RUN_SIM" = 1 ]; then
     || warn "could not open Chrome - browse to http://localhost:5173/ manually"
 else
   say "[7] Chrome tab - skipped"
+fi
+
+# ------------------------------------------------------- verify the loop ---
+# Prove the actual goal: a value the sim produces this run reaches Postgres
+# and then the dashboard. Skipped without the sim (nothing produces data).
+if [ "$RUN_SIM" = 1 ] && [ "${SKIP_VERIFY:-0}" != 1 ]; then
+  say "[8] Verifying the data loop end to end"
+  if node scripts/verify_data_loop.js; then
+    ok "data loop proven: sim -> Postgres -> dashboard"
+  else
+    warn "data loop verification FAILED - the stack is up but data is not flowing end to end"
+  fi
 fi
 
 echo "-----------------------------------------------------------------"
