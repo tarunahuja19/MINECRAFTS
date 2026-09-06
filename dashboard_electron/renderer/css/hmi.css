@@ -287,22 +287,6 @@ html, body {
   letter-spacing: 0.5px;
 }
 
-.panel-transparent .replay-input {
-  background: var(--bg-inset);
-  border: 1px solid var(--border-bevel-dark);
-  color: var(--text-primary);
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 11px;
-  padding: 3px 6px;
-  outline: none;
-  flex: 1;
-  min-width: 0;
-}
-
-.panel-transparent .replay-input:focus {
-  border-color: var(--border-bevel-light);
-}
-
 .panel-transparent .replay-btn {
   min-width: 52px;
   font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
@@ -350,6 +334,49 @@ html, body {
 .panel-transparent .replay-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* PAUSE sits between PLAY and STOP: amber, so a paused replay reads as
+   "held", distinct from both the green running state and the red stop. */
+.panel-transparent .replay-btn#replay-pause,
+.panel-transparent .replay-btn.replay-btn-pause {
+  background: #332B14;
+  border-top: 1px solid #58492A;
+  border-left: 1px solid #58492A;
+  border-bottom: 1px solid #1A1509;
+  border-right: 1px solid #1A1509;
+  color: #FFB300;
+}
+
+.panel-transparent .replay-btn#replay-pause:hover:not(:disabled),
+.panel-transparent .replay-btn.replay-btn-pause:hover:not(:disabled) {
+  background: #42371B;
+}
+
+/* Held state gets the same amber, pulsing, so an operator glancing at the
+   panel can tell a paused replay from a finished one without reading text. */
+.panel-transparent .replay-btn.replay-btn-pause.is-paused {
+  background: #4A3A12;
+  color: #FFD24D;
+  animation: replay-pause-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes replay-pause-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+.panel-transparent .replay-row-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-transparent .replay-db-source {
+  font-family: 'Courier New', monospace;
+  font-size: 9.5px;
+  color: #00CC88;
+  letter-spacing: 0.5px;
 }
 
 .panel-transparent .replay-speed-btn {
@@ -1302,14 +1329,6 @@ html, body {
   color: #00CC44;
 }
 
-.sort-asc::after {
-  content: ' \25B2';
-}
-
-.sort-desc::after {
-  content: ' \25BC';
-}
-
 /* ============================================================
    SYSTEM TAB 2-COLUMN SCADA LAYOUT
    ============================================================ */
@@ -1379,20 +1398,6 @@ html, body {
   letter-spacing: 0.5px;
 }
 
-.replay-input {
-  background: var(--bg-input);
-  border: 1px solid var(--border-bevel-dark);
-  color: var(--text-primary);
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  padding: 3px 6px;
-  outline: none;
-}
-
-.replay-input:focus {
-  border-color: var(--accent-blue);
-}
-
 .replay-btn {
   min-width: 52px;
   font-size: 10px;
@@ -1436,6 +1441,27 @@ html, body {
   font-size: 11px;
   color: var(--status-warning);
   letter-spacing: 1px;
+}
+
+.replay-btn-pause {
+  color: var(--status-warning, #FFB300);
+}
+
+.replay-btn-pause.is-paused {
+  animation: replay-pause-pulse 1.4s ease-in-out infinite;
+}
+
+.replay-row-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.replay-db-source {
+  font-family: 'Courier New', monospace;
+  font-size: 9.5px;
+  color: var(--status-active, #00CC88);
+  letter-spacing: 0.5px;
 }
 
 .fp-summary-table tr.fp-row-good td {
@@ -1494,223 +1520,9 @@ html, body {
   box-shadow: 0 0 6px rgba(0, 229, 255, 0.4);
 }
 
-.grid-sector-tooltip {
-  background: rgba(11, 20, 26, 0.95) !important;
-  border: 1px solid #38BDF8 !important;
-  border-radius: 3px !important;
-  color: #E2E8F0 !important;
-  padding: 6px 10px !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7) !important;
-}
-
-.grid-sector-tooltip .grid-tooltip-title {
-  font-family: 'Courier New', monospace;
-  font-size: 10.5px;
-  font-weight: bold;
-  color: #38BDF8;
-  letter-spacing: 0.08em;
-  margin-bottom: 3px;
-}
-
-.grid-sector-tooltip .grid-tooltip-info {
-  font-family: 'Courier New', monospace;
-  font-size: 9px;
-  color: #94A3B8;
-  margin-bottom: 4px;
-}
-
-.grid-sector-tooltip .grid-tooltip-hint {
-  font-family: 'Courier New', monospace;
-  font-size: 9px;
-  font-weight: bold;
-  color: #00E5FF;
-  letter-spacing: 0.05em;
-}
-
-.grid-hud-banner {
-  display: none;
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  padding: 4px 12px;
-  background: rgba(10, 22, 30, 0.92);
-  border: 1px solid #00E5FF;
-  border-radius: 3px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 229, 255, 0.25);
-  align-items: center;
-  gap: 10px;
-  font-family: 'Courier New', monospace;
-  animation: gridFadeIn 0.25s ease-out;
-}
-
 @keyframes gridFadeIn {
   from { opacity: 0; transform: translate(-50%, -6px); }
   to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-.grid-hud-badge {
-  font-size: 10px;
-  font-weight: bold;
-  color: #00E5FF;
-  background: rgba(0, 229, 255, 0.15);
-  padding: 2px 6px;
-  border-radius: 2px;
-  border: 1px solid rgba(0, 229, 255, 0.4);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.grid-hud-text {
-  font-size: 10px;
-  color: #C8D6DB;
-  white-space: nowrap;
-}
-
-.grid-hud-btn {
-  background: #164E63;
-  color: #00E5FF;
-  border: 1px solid #00E5FF;
-  border-radius: 2px;
-  font-family: 'Courier New', monospace;
-  font-size: 9.5px;
-  font-weight: bold;
-  padding: 2px 8px;
-  cursor: pointer;
-  letter-spacing: 0.05em;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.grid-hud-btn:hover {
-  background: #00E5FF;
-  color: #0A161E;
-  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
-}
-
-.grid-hud-close {
-  color: #64748B;
-  font-size: 14px;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.grid-hud-close:hover {
-  color: #FFF;
-}
-
-/* ============================================================
-   INFO TAB — static reference prose
-   Reuses the existing design tokens and the two existing font
-   families; adds only layout for readable long-form text.
-   ============================================================ */
-.info-doc {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 20px 28px 48px;
-  line-height: 1.55;
-  color: var(--text-primary);
-}
-
-.info-doc h1 {
-  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.info-doc h2 {
-  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
-  font-size: 14px;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  margin: 28px 0 10px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border-rule);
-}
-
-.info-doc p {
-  margin-bottom: 10px;
-  font-size: 12.5px;
-}
-
-.info-doc .info-lede {
-  font-size: 13px;
-  color: var(--text-secondary);
-  border-left: 2px solid var(--border-bevel-light);
-  padding-left: 12px;
-  margin-bottom: 4px;
-}
-
-.info-doc .info-footer {
-  margin-top: 32px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-rule);
-  font-size: 11.5px;
-  color: var(--text-secondary);
-}
-
-.info-doc em {
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-.info-doc strong {
-  color: var(--text-primary);
-  font-weight: bold;
-}
-
-.info-doc code {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 11.5px;
-  color: var(--text-mono);
-  background: var(--bg-inset);
-  border: 1px solid var(--border-bevel-dark);
-  border-radius: 2px;
-  padding: 0 3px;
-}
-
-.info-doc .info-list {
-  margin: 0 0 12px 20px;
-  font-size: 12.5px;
-}
-
-.info-doc .info-list li {
-  margin-bottom: 6px;
-}
-
-.info-doc .info-panel {
-  margin: 12px 0 16px;
-}
-
-.info-doc .info-panel .panel-body p {
-  color: var(--text-primary);
-}
-
-.info-doc .info-panel .data-table td {
-  color: var(--text-primary);
-  vertical-align: top;
-  line-height: 1.45;
-}
-
-.info-doc .info-panel .data-table td:first-child {
-  color: var(--text-mono);
-  white-space: nowrap;
-}
-
-.info-doc .info-dot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.5);
-  margin-right: 5px;
-  vertical-align: baseline;
 }
 
 /* ============================================================
@@ -2079,7 +1891,6 @@ html, body {
   margin-top: 8px;
 }
 
-
 /* ============================================================
    Node Detail & Sensor Specs (SCADA Theme)
    ============================================================ */
@@ -2126,9 +1937,6 @@ html, body {
   color: var(--text-mono);
   text-align: right;
 }
-
-
-
 
 /* Scroll-spy target marker: zero-height so it never adds stray space
    inside a section panel, while still reporting a usable offsetTop. */

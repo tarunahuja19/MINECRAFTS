@@ -67,7 +67,15 @@ router.get('/', async (req, res) => {
     const sortOrder = String(order).toLowerCase() === 'desc' ? 'DESC' : 'ASC';
     sql += ` ORDER BY ts ${sortOrder}, node_id ASC`;
 
-    const maxLimit = Math.min(Math.max(1, parseInt(limit, 10) || 10000), 50000);
+    // `limit=all` (also '0'/'none') is what the replay controller sends: it
+    // wants every row from the first reading to now, not a page. Keep a hard
+    // ceiling anyway - an unbounded query against a grown readings table is a
+    // way to hang the dashboard mid-demo, and 200k rows is far more than the
+    // 31-node run ever produces.
+    const isAll = limit === 'all' || limit === '0' || limit === 'none';
+    const maxLimit = isAll
+      ? 200000
+      : Math.min(Math.max(1, parseInt(limit, 10) || 10000), 50000);
     sql += ` LIMIT $${idx++};`;
     params.push(maxLimit);
 

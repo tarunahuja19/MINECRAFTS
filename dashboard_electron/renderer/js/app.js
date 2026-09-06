@@ -160,8 +160,8 @@ document.getElementById('tab-map').style.display = 'flex';
       btnCloseAll.disabled = true;
 
       // Halt any local replay or simulation playback immediately
-      if (typeof replayController !== 'undefined' && replayController.stop) {
-        replayController.stop();
+      if (typeof replayController !== 'undefined' && replayController.teardown) {
+        replayController.teardown();
       }
       if (typeof fixtureProvider !== 'undefined' && fixtureProvider.stopReplay) {
         fixtureProvider.stopReplay();
