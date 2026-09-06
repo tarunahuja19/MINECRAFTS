@@ -101,8 +101,12 @@ class MqttBridge:
         #: Last state published per zone, so an alarm goes out on the
         #: transition rather than repeating every tick.
         self._last_zone_state: dict[str, str] = {}
+        #: Last alarm level published per zone to enforce level-change gating.
+        self._last_zone_level: dict[str, int] = {}
         #: Last state published per node to avoid spamming repeated node alarms.
         self._last_node_state: dict[str, str] = {}
+        #: Last alarm level published per node to enforce level-change gating.
+        self._last_node_level: dict[str, int] = {}
 
         if enabled and not _PAHO_AVAILABLE:
             print("[MQTT] paho-mqtt not installed - MQTT publishing disabled")
@@ -268,13 +272,13 @@ class MqttBridge:
             if zone_id is None or state is None:
                 continue
 
-            if self._last_zone_state.get(zone_id) == state:
-                continue
-            self._last_zone_state[zone_id] = state
-
             level = _STATE_TO_LEVEL.get(state)
             if level is None:
                 continue  # STABLE / SETTLING are normal operation.
+
+            # Level gating: if the level of problem does not change, do not give an alarm
+            if self._last_zone_level.get(zone_id) == level and self._last_zone_state.get(zone_id) == state:
+                continue
 
             # Check if this zone is within 1.2x alert radius of any active collapse
             z_cx = float(getattr(z, "cx", 0.0))
@@ -292,18 +296,27 @@ class MqttBridge:
 
             lat, lon = geo.xy_to_latlon(z_cx, z_cy)
 
+            # Only include nodes that are genuinely inside the collapse alert radius
             affected_nodes: list[str] = []
             if sensor_nodes:
-                z_xmin = float(getattr(z, "x_min", -99999.0))
-                z_xmax = float(getattr(z, "x_max", 99999.0))
-                z_ymin = float(getattr(z, "y_min", -99999.0))
-                z_ymax = float(getattr(z, "y_max", 99999.0))
                 for node in sensor_nodes:
                     nx = getattr(node, "x_m", None)
                     ny = getattr(node, "y_m", None)
                     if nx is not None and ny is not None:
-                        if (z_xmin <= nx <= z_xmax) and (z_ymin <= ny <= z_ymax):
-                            affected_nodes.append(_node_topic_id(getattr(node, "node_id", "")))
+                        for pf in active_collapses:
+                            alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.2
+                            p_cx = float(getattr(pf, "cx", 0.0))
+                            p_cy = float(getattr(pf, "cy", 0.0))
+                            if math.hypot(nx - p_cx, ny - p_cy) <= alert_r:
+                                nid = _node_topic_id(getattr(node, "node_id", ""))
+                                if nid not in affected_nodes:
+                                    affected_nodes.append(nid)
+
+            if not affected_nodes:
+                continue
+
+            self._last_zone_state[zone_id] = state
+            self._last_zone_level[zone_id] = level
 
             alarm = {
                 "alarm_id": f"ALM-{zone_id}-{state}",
@@ -383,11 +396,15 @@ class MqttBridge:
             if level is None:
                 if self._last_node_state.get(node_id_str) not in (None, "NORMAL"):
                     self._last_node_state[node_id_str] = "NORMAL"
+                if self._last_node_level.get(node_id_str) not in (None, 0):
+                    self._last_node_level[node_id_str] = 0
                 continue
 
-            if self._last_node_state.get(node_id_str) == state:
+            # Level gating: if the level of problem does not change, do not give an alarm
+            if self._last_node_level.get(node_id_str) == level and self._last_node_state.get(node_id_str) == state:
                 continue
             self._last_node_state[node_id_str] = state
+            self._last_node_level[node_id_str] = level
 
             # Find coordinates
             if node_id_str in node_pos_map:
@@ -438,4 +455,6 @@ class MqttBridge:
     def reset(self) -> None:
         """Forget zone and node alarm history, so a rewound sim re-raises its alarms."""
         self._last_zone_state = {}
+        self._last_zone_level = {}
         self._last_node_state = {}
+        self._last_node_level = {}

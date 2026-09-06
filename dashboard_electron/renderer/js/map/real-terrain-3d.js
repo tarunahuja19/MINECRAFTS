@@ -607,13 +607,26 @@ var realTerrain3D = (function () {
       radarRing.style.boxShadow = '0 0 10px ' + color;
       wrapper.appendChild(radarRing);
 
+      var role = (typeof nodeMarkers !== 'undefined' && nodeMarkers.roleOf) ? nodeMarkers.roleOf(n) : (n.role || 'scout');
+      var tierLetter = (typeof nodeMarkers !== 'undefined' && nodeMarkers.tierLetterOf) ? nodeMarkers.tierLetterOf(n) : ((n.tier || 'A').slice(-1));
+      if (nodeId === 'N31') { role = 'gateway'; tierLetter = 'G'; }
+
+      var glyphHtml = '';
+      if (role === 'scout') {
+        glyphHtml = '<span style="display:inline-block; width:13px; height:13px; line-height:13px; text-align:center; background:' + color + '; color:#0B1318; font-size:9px; font-weight:900; border-radius:2px; margin-right:3px;">' + tierLetter + '</span>';
+      } else if (role === 'gateway') {
+        glyphHtml = '<span style="display:inline-block; width:13px; height:13px; line-height:14px; text-align:center; background:' + color + '; color:#0B1318; font-size:8px; font-weight:900; clip-path:polygon(50% 0%, 0% 100%, 100% 100%); margin-right:3px;">G</span>';
+      } else {
+        glyphHtml = '<span style="display:inline-block; width:13px; height:13px; line-height:13px; text-align:center; background:' + color + '; color:#0B1318; font-size:9px; font-weight:900; border-radius:50%; margin-right:3px;">' + tierLetter + '</span>';
+      }
+
       var pin = document.createElement('div');
       pin.className = 'real-3d-marker-pin';
       pin.setAttribute('data-node-id', nodeId);
 
       pin.innerHTML =
         '<div class="real-3d-marker-tag" style="border-color:' + color + '; color:#E6EDF2;">' +
-          '<span class="real-3d-marker-dot" style="background:' + color + '; box-shadow:0 0 8px ' + color + ';"></span>' +
+          glyphHtml +
           '<span style="font-weight:bold; letter-spacing:0.04em;">' + nodeId + '</span>' +
           '<span style="color:#7A9BAA; font-size:8px; margin-left:2px;">| ' + strainVal + 'µε</span>' +
         '</div>' +

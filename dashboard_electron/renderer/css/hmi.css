@@ -640,9 +640,9 @@ html, body {
 
 .led-active   { background: var(--status-active); }
 .led-warning  { background: var(--status-warning); }
-.led-critical { background: var(--status-critical); animation: blink 1s step-end infinite; }
+.led-critical { background: var(--status-critical); }
 .led-dead     { background: var(--status-dead); }
-.led-lastgasp { background: var(--status-lastgasp); animation: blink 0.5s step-end infinite; }
+.led-lastgasp { background: var(--status-lastgasp); }
 
 @keyframes blink {
   50% { opacity: 0; }
@@ -1021,11 +1021,70 @@ html, body {
   z-index: 1000 !important;
 }
 
-/* Concentric critical alert rings for 2D map */
+/* Concentric critical alert rings for 2D map: expanding radar / shockwave ripples */
 @keyframes alertRing {
-  0%   { transform: scale(0.4); opacity: 0.95; }
-  70%  { transform: scale(2.4); opacity: 0.25; }
-  100% { transform: scale(3.2); opacity: 0; }
+  0% {
+    transform: scale(0.35);
+    border-color: rgba(255, 80, 80, 0.45);
+    box-shadow: 0 0 4px rgba(255, 50, 50, 0.3);
+    opacity: 0.95;
+  }
+  40% {
+    border-color: rgba(255, 20, 20, 0.95);
+    box-shadow: 0 0 12px rgba(255, 0, 0, 0.7);
+    opacity: 0.85;
+  }
+  75% {
+    border-color: rgba(220, 0, 0, 0.7);
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.45);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(4.8);
+    border-color: rgba(180, 0, 0, 0);
+    box-shadow: 0 0 28px rgba(220, 0, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes alertRingLastGasp {
+  0% {
+    transform: scale(0.35);
+    border-color: rgba(255, 120, 20, 0.5);
+    box-shadow: 0 0 6px rgba(255, 68, 0, 0.4);
+    opacity: 0.95;
+  }
+  40% {
+    border-color: rgba(255, 34, 0, 0.95);
+    box-shadow: 0 0 14px rgba(255, 34, 0, 0.7);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(5.2);
+    border-color: rgba(200, 0, 0, 0);
+    box-shadow: 0 0 32px rgba(200, 0, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes alertRingWarning {
+  0% {
+    transform: scale(0.35);
+    border-color: rgba(255, 180, 0, 0.45);
+    box-shadow: 0 0 4px rgba(255, 140, 0, 0.3);
+    opacity: 0.9;
+  }
+  50% {
+    border-color: rgba(255, 100, 0, 0.8);
+    box-shadow: 0 0 10px rgba(255, 80, 0, 0.5);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(4.2);
+    border-color: rgba(255, 40, 0, 0);
+    box-shadow: 0 0 22px rgba(255, 40, 0, 0);
+    opacity: 0;
+  }
 }
 
 .alert-ring-icon {
@@ -1050,7 +1109,7 @@ html, body {
   border: 2px solid #FF2222;
   box-sizing: border-box;
   pointer-events: none;
-  animation: alertRing 1.8s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+  animation: alertRing 2.2s cubic-bezier(0.1, 0.5, 0.3, 1) infinite;
   transform-origin: center center;
 }
 
@@ -1059,15 +1118,25 @@ html, body {
 }
 
 .alert-ring:nth-child(2) {
-  animation-delay: 0.6s;
+  animation-delay: 0.55s;
 }
 
 .alert-ring:nth-child(3) {
-  animation-delay: 1.2s;
+  animation-delay: 1.1s;
+}
+
+.alert-ring:nth-child(4) {
+  animation-delay: 1.65s;
 }
 
 .alert-ring.ring-lastgasp {
   border-color: #FF4400;
+  animation-name: alertRingLastGasp;
+}
+
+.alert-ring.ring-warning {
+  border-color: #FFA500;
+  animation-name: alertRingWarning;
 }
 
 /* Dark Leaflet Controls */
@@ -1943,4 +2012,219 @@ html, body {
 .info-section-anchor {
   height: 0;
   overflow: hidden;
+}
+
+/* ============================================================
+   GLASSMORPHIС NODE DETAILS UI
+   ============================================================ */
+
+.glass-panel {
+  background: rgba(14, 23, 31, 0.78) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(82, 120, 145, 0.28) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.glass-card {
+  background: rgba(18, 30, 40, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(75, 115, 140, 0.22);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 204, 68, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.glass-metric-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.glass-metric-label {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8BA0AC;
+}
+
+.glass-metric-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.glass-metric-val {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 17px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: 0.02em;
+}
+
+.glass-metric-unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: #7A9BAA;
+  margin-left: 2px;
+}
+
+.glass-metric-badge {
+  font-size: 9px;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.glass-metric-badge.nominal {
+  background: rgba(0, 204, 68, 0.15);
+  color: #00CC44;
+  border: 1px solid rgba(0, 204, 68, 0.4);
+}
+
+.glass-metric-badge.warning {
+  background: rgba(255, 165, 0, 0.15);
+  color: #FFA500;
+  border: 1px solid rgba(255, 165, 0, 0.4);
+}
+
+.glass-metric-badge.critical {
+  background: rgba(255, 34, 34, 0.15);
+  color: #FF2222;
+  border: 1px solid rgba(255, 34, 34, 0.4);
+}
+
+.glass-metric-badge.muted {
+  background: rgba(90, 106, 114, 0.15);
+  color: #8AA0AC;
+  border: 1px solid rgba(90, 106, 114, 0.3);
+}
+
+.glass-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: rgba(10, 17, 23, 0.75);
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.glass-track-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.glass-balance-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.glass-balance-label {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #8AA0AC;
+  width: 18px;
+}
+
+.glass-balance-track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  background: rgba(10, 17, 23, 0.75);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.glass-balance-center {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.glass-balance-bar {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 2px;
+  transition: left 0.25s ease, width 0.25s ease, background-color 0.25s ease;
+}
+
+.glass-balance-val {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  color: #CAD5DD;
+  min-width: 58px;
+  text-align: right;
+}
+
+.node-glyph-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #DDE5EB;
+}
+
+.node-glyph-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 9px;
+  color: #0B1318;
+  line-height: 1;
+}
+
+.node-glyph-icon.square {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+}
+
+.node-glyph-icon.circle {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+}
+
+.node-glyph-icon.triangle {
+  width: 14px;
+  height: 14px;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  font-size: 8px;
 }

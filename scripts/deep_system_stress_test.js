@@ -16,6 +16,8 @@
 
 const path = require('path');
 const http = require('http');
+const net = require('net');
+const { spawn } = require('child_process');
 const WebSocket = require(path.join(__dirname, '..', 'backend', 'node_modules', 'ws'));
 const { Pool } = require(path.join(__dirname, '..', 'backend', 'node_modules', 'pg'));
 const mqtt = require('mqtt');
@@ -45,10 +47,53 @@ const BACKEND_WS = 'ws://localhost:8080/ws';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const isPortOpen = (port) => new Promise((resolve) => {
+  const sock = new net.Socket();
+  sock.setTimeout(500);
+  sock.on('connect', () => { sock.destroy(); resolve(true); });
+  sock.on('error', () => { sock.destroy(); resolve(false); });
+  sock.on('timeout', () => { sock.destroy(); resolve(false); });
+  sock.connect(port, '127.0.0.1');
+});
+
 async function runBattery() {
   console.log(c.cyan('================================================================'));
   console.log(c.cyan('  EXTREME SYSTEM CHAOS & STRESS BATTERY (DEEP PASS)'));
   console.log(c.cyan('================================================================'));
+
+  let brokerProc = null;
+  let backendProc = null;
+
+  if (!(await isPortOpen(1883))) {
+    console.log(c.dim('  [Auto-Start] Starting MQTT broker for stress test...'));
+    brokerProc = spawn(process.execPath, [path.join(__dirname, 'broker.js')], {
+      cwd: __dirname,
+      stdio: 'ignore'
+    });
+    for (let i = 0; i < 30; i++) {
+      if (await isPortOpen(1883)) break;
+      await sleep(100);
+    }
+  }
+
+  const isBackendUp = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/nodes`);
+      return res.ok;
+    } catch { return false; }
+  };
+
+  if (!(await isBackendUp())) {
+    console.log(c.dim('  [Auto-Start] Starting backend server on :8080 for stress test...'));
+    backendProc = spawn(process.execPath, [path.join(__dirname, '..', 'backend', 'server.js')], {
+      cwd: path.join(__dirname, '..', 'backend'),
+      stdio: 'ignore'
+    });
+    for (let i = 0; i < 30; i++) {
+      if (await isBackendUp()) break;
+      await sleep(100);
+    }
+  }
 
   const pool = new Pool({
     host: PGHOST,
@@ -263,6 +308,13 @@ async function runBattery() {
 
   await pool.end();
 
+  if (backendProc) {
+    try { backendProc.kill('SIGTERM'); } catch {}
+  }
+  if (brokerProc) {
+    try { brokerProc.kill('SIGTERM'); } catch {}
+  }
+
   console.log(c.cyan('\n================================================================'));
   if (process.exitCode === 1) {
     console.log(c.red('❌ DEEP STRESS & CHAOS BATTERY DETECTED FAILURES'));
@@ -270,6 +322,7 @@ async function runBattery() {
     console.log(c.green('✅ DEEP STRESS & CHAOS BATTERY PASSED 100% ACROSS ALL SERVICES'));
   }
   console.log(c.cyan('================================================================'));
+  process.exit(process.exitCode || 0);
 }
 
 async function waitForCondition(fn, timeoutMs) {

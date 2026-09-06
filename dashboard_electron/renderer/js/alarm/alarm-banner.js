@@ -26,7 +26,10 @@ var alarmBanner = (function () {
   }
 
   function show(alarm) {
-    if (!el) return;
+    if (!el || !alarm) return;
+    if (currentAlarm && currentAlarm.alarm_id === alarm.alarm_id && currentAlarm.level === alarm.level) {
+      return;
+    }
     currentAlarm = alarm;
 
     var levelText = 'LEVEL ' + alarm.level;

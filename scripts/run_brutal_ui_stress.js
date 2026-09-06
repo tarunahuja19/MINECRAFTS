@@ -51,13 +51,11 @@ app.whenReady().then(async () => {
     show: false, // Offscreen headless rendering
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false,
-      preload: path.join(__dirname, '..', 'dashboard_electron', 'preload.js')
+      contextIsolation: false
+      // No preload: contextBridge requires contextIsolation:true; the runner
+      // exercises bus directly via executeJavaScript so it doesn't need IPC.
     }
   });
-
-  const htmlPath = path.join(__dirname, '..', 'dashboard_electron', 'renderer', 'index.html');
-  await win.loadFile(htmlPath);
 
   // Collect uncaught errors in renderer
   let uncaughtErrors = [];
@@ -66,6 +64,9 @@ app.whenReady().then(async () => {
       uncaughtErrors.push({ message, line, sourceId });
     }
   });
+
+  const htmlPath = path.join(__dirname, '..', 'dashboard_electron', 'renderer', 'index.html');
+  await win.loadFile(htmlPath);
 
   try {
     const results = await win.webContents.executeJavaScript(`

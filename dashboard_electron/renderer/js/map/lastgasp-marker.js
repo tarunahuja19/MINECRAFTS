@@ -11,15 +11,16 @@ var lastgaspMarker = (function () {
       var nodeId = t._node_id || t.node_id;
       if (!nodeId) return;
       var state = t.state || (t.aggregates && t.aggregates.node_state ? String(t.aggregates.node_state).toLowerCase() : null);
-      if (state === 'critical' || state === 'lastgasp' || (t.flags & 1) || (t.crack_flags && (t.crack_flags & 1))) {
-        showPulse(nodeId, (state === 'lastgasp' || (t.flags & 1)) ? 'lastgasp' : 'critical');
+      if (t.flags & 1) state = 'lastgasp';
+      if (state === 'critical' || state === 'lastgasp' || state === 'warning') {
+        showPulse(nodeId, state);
       } else if (pulseRings[nodeId]) {
         removePulse(nodeId);
       }
     });
 
     bus.on('node-status-change', function (data) {
-      if (data.state === 'critical' || data.state === 'lastgasp') {
+      if (data.state === 'critical' || data.state === 'lastgasp' || data.state === 'warning') {
         showPulse(data.node_id, data.state);
       } else if (pulseRings[data.node_id]) {
         removePulse(data.node_id);
@@ -28,7 +29,7 @@ var lastgaspMarker = (function () {
 
     bus.on('nodes-loaded', function (nodes) {
       for (var i = 0; i < nodes.length; i++) {
-        if (nodes[i].state === 'critical' || nodes[i].state === 'lastgasp') {
+        if (nodes[i].state === 'critical' || nodes[i].state === 'lastgasp' || nodes[i].state === 'warning') {
           showPulse(nodes[i].node_id, nodes[i].state);
         }
       }
@@ -56,17 +57,21 @@ var lastgaspMarker = (function () {
 
   function showPulse(nodeId, state) {
     if (!map) return;
-    if (pulseRings[nodeId]) return;
+    if (pulseRings[nodeId]) {
+      if (pulseRings[nodeId]._pulseState === state) return;
+      removePulse(nodeId);
+    }
 
     var nd = nodeMarkers.getNodeData(nodeId);
     if (!nd || typeof nd.lat !== 'number' || typeof nd.lng !== 'number') return;
 
-    var isLastgasp = (state === 'lastgasp');
-    var ringClass = isLastgasp ? 'alert-ring ring-lastgasp' : 'alert-ring';
+    var ringClass = (state === 'lastgasp') ? 'alert-ring ring-lastgasp' :
+                    (state === 'warning') ? 'alert-ring ring-warning' : 'alert-ring';
 
     var icon = L.divIcon({
       className: 'alert-ring-icon',
       html: '<div class="alert-ring-container">' +
+            '<div class="' + ringClass + '"></div>' +
             '<div class="' + ringClass + '"></div>' +
             '<div class="' + ringClass + '"></div>' +
             '<div class="' + ringClass + '"></div>' +
@@ -80,6 +85,7 @@ var lastgaspMarker = (function () {
       interactive: false,
       zIndexOffset: -100
     });
+    marker._pulseState = state;
 
     marker.addTo(map);
     pulseRings[nodeId] = marker;

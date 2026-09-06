@@ -120,8 +120,12 @@ document.getElementById('tab-map').style.display = 'flex';
   });
 
   bus.on('detail-opened', function (data) {
-    strainChart.init('strain-chart-container', data.nodeId);
-    tiltChart.init('tilt-chart-container', data.nodeId);
+    if (document.getElementById('strain-chart-container')) {
+      strainChart.init('strain-chart-container', data.nodeId);
+    }
+    if (document.getElementById('tilt-chart-container')) {
+      tiltChart.init('tilt-chart-container', data.nodeId);
+    }
     nodeSensors.render('sensor-readouts', data.nodeId);
 
     if (alarmPanel && alarmPanel.style.display !== 'none') {
@@ -141,8 +145,12 @@ document.getElementById('tab-map').style.display = 'flex';
   bus.on('telemetry', function (t) {
     var id = t._node_id || t.node_id;
     if (id === nodeDetail.getCurrentNodeId()) {
-      strainChart.addPoint(t);
-      tiltChart.addPoint(t);
+      if (document.getElementById('strain-chart-container')) {
+        strainChart.addPoint(t);
+      }
+      if (document.getElementById('tilt-chart-container')) {
+        tiltChart.addPoint(t);
+      }
       nodeSensors.update('sensor-readouts', t);
     }
   });
@@ -207,6 +215,29 @@ document.getElementById('tab-map').style.display = 'flex';
       // 4. Quit Electron via IPC
       if (window.r4 && window.r4.closeApp) {
         window.r4.closeApp();
+      }
+    });
+  }
+
+  var btnDbReset = document.getElementById('btn-db-reset');
+  if (btnDbReset) {
+    btnDbReset.addEventListener('click', async function () {
+      var host = window.location.hostname || 'localhost';
+      try {
+        var res = await fetch('http://' + host + ':8080/api/system/reset', { method: 'POST' });
+        var data = await res.json();
+        bus.emit('system-reset', data);
+      } catch (e) {
+        bus.emit('system-reset', { action: 'reset' });
+      }
+      bus.emit('alarms-loaded', []);
+      bus.emit('simulation-status', { is_running: false, is_paused: false, state: 'STOPPED' });
+      if (typeof alarmBanner !== 'undefined') {
+        alarmBanner.hide();
+        if (alarmBanner.updateBadge) alarmBanner.updateBadge(0);
+      }
+      if (typeof alarmDetail !== 'undefined' && alarmDetail.hide) {
+        alarmDetail.hide();
       }
     });
   }

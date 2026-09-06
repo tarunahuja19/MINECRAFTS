@@ -17,67 +17,90 @@ var nodeMarkers = (function () {
 
   // The 31 real nodes come in three roles and the map has to make them tellable
   // apart at a glance, so role drives SHAPE and state drives COLOUR. Sizes are
-  // the drawn box for each marker; the gateway is largest because it is the one
-  // node placed outside the angle of draw and is the link the rest depend on.
+  // Role defines SHAPE, tier defines GLYPH LETTER, state defines COLOUR:
+  // - Scout: Square A, Square B, Square C
+  // - Anchor: Circular A, Circular B, Circular C
+  // - Gateway: Triangle G
   var ROLE_CONFIG = {
-    gateway: { shape: 'square',   size: 16 },
-    anchor:  { shape: 'triangle', size: 14 },
-    scout:   { shape: 'circle',   size: 11 }
+    scout:   { shape: 'square',   size: 20 },
+    anchor:  { shape: 'circle',   size: 20 },
+    gateway: { shape: 'triangle', size: 22 }
   };
 
   function roleOf(node) {
-    // node_type is what the database and /api/nodes carry. Fall back to the
-    // node id only for legacy fixture rows that predate the column.
     var t = (node.node_type || '').toLowerCase();
     if (ROLE_CONFIG[t]) return t;
-    if (node.node_id === 'N31') return 'gateway';
+    if (node.node_id === 'N31' || node.tier === '3') return 'gateway';
+    if (t.indexOf('anchor') !== -1 || node.tier === '2A' || node.tier === '2B') return 'anchor';
     return 'scout';
   }
 
-  function shapeSvg(role, cfg, state) {
+  function tierLetterOf(node) {
+    if (!node) return 'A';
+    var r = roleOf(node);
+    if (r === 'gateway') return 'G';
+    var tier = (node.tier || '').toUpperCase();
+    if (tier.endsWith('A')) return 'A';
+    if (tier.endsWith('B')) return 'B';
+    if (tier.endsWith('C')) return 'C';
+    var nid = parseInt(String(node.node_id || '').replace(/\D/g, ''), 10);
+    if (nid >= 1 && nid <= 9) return 'A';
+    if (nid >= 10 && nid <= 19) return 'B';
+    if (nid >= 20 && nid <= 25) return 'C';
+    if (nid >= 26 && nid <= 28) return 'A';
+    if (nid >= 29 && nid <= 30) return 'B';
+    if (nid === 31) return 'G';
+    return 'A';
+  }
+
+  function shapeSvg(role, cfg, state, letter) {
     var sz = ROLE_CONFIG[role].size;
     var fill = cfg.color;
     var stroke = cfg.border;
-    var body;
+    var body = '';
+    var textEl = '';
+    var textColor = (state === 'active' || state === 'warning') ? '#0B1318' : '#FFFFFF';
 
     if (ROLE_CONFIG[role].shape === 'square') {
-      body = '<rect x="1.5" y="1.5" width="' + (sz - 3) + '" height="' + (sz - 3) + '" ' +
-             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
+      body = '<rect x="1.5" y="1.5" width="' + (sz - 3) + '" height="' + (sz - 3) + '" rx="2.5" ' +
+             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>';
+      textEl = '<text x="' + (sz / 2) + '" y="' + (sz / 2 + 3.8) + '" text-anchor="middle" ' +
+               'font-size="10.5" font-family="Consolas, monospace, sans-serif" font-weight="900" fill="' + textColor + '">' + letter + '</text>';
     } else if (ROLE_CONFIG[role].shape === 'triangle') {
       body = '<polygon points="' + (sz / 2) + ',1.5 ' + (sz - 1.5) + ',' + (sz - 2) +
              ' 1.5,' + (sz - 2) + '" ' +
-             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5" stroke-linejoin="round"/>';
+             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6" stroke-linejoin="round"/>';
+      textEl = '<text x="' + (sz / 2) + '" y="' + (sz / 2 + 6.2) + '" text-anchor="middle" ' +
+               'font-size="10" font-family="Consolas, monospace, sans-serif" font-weight="900" fill="' + textColor + '">G</text>';
     } else {
       body = '<circle cx="' + (sz / 2) + '" cy="' + (sz / 2) + '" r="' + (sz / 2 - 1.5) + '" ' +
-             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
+             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>';
+      textEl = '<text x="' + (sz / 2) + '" y="' + (sz / 2 + 3.8) + '" text-anchor="middle" ' +
+               'font-size="10.5" font-family="Consolas, monospace, sans-serif" font-weight="900" fill="' + textColor + '">' + letter + '</text>';
     }
 
-    // A dead node keeps its shape (so you can still see WHAT died) and gains a
-    // crosshatch, matching the convention the old LED markers used.
     var cross = '';
     if (state === 'dead') {
-      cross = '<line x1="2" y1="2" x2="' + (sz - 2) + '" y2="' + (sz - 2) + '" stroke="#1A2228" stroke-width="1.6" opacity="0.85"/>' +
-              '<line x1="' + (sz - 2) + '" y1="2" x2="2" y2="' + (sz - 2) + '" stroke="#1A2228" stroke-width="1.6" opacity="0.85"/>';
+      cross = '<line x1="2" y1="2" x2="' + (sz - 2) + '" y2="' + (sz - 2) + '" stroke="#1A2228" stroke-width="1.8" opacity="0.85"/>' +
+              '<line x1="' + (sz - 2) + '" y1="2" x2="2" y2="' + (sz - 2) + '" stroke="#1A2228" stroke-width="1.8" opacity="0.85"/>';
     }
 
     return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 ' + sz + ' ' + sz + '">' +
-           body + cross + '</svg>';
+           body + textEl + cross + '</svg>';
   }
 
-  function createIcon(state, role) {
+  function createIcon(state, role, letter) {
     var cfg = STATE_CONFIG[state] || STATE_CONFIG.dead;
     role = ROLE_CONFIG[role] ? role : 'scout';
+    letter = letter || 'A';
     var sz = ROLE_CONFIG[role].size;
 
-    var animStyle = '';
-    if (state === 'critical') animStyle = 'animation:blink 1s step-end infinite;';
-    if (state === 'lastgasp') animStyle = 'animation:blink 0.5s step-end infinite;';
-
+    // NO BLINKING on affected nodes: solid, readable glyph with expanding concentric circles instead
     return L.divIcon({
       className: 'node-marker-led node-marker-' + role,
       html: '<div class="node-led" style="width:' + sz + 'px;height:' + sz + 'px;' +
-            'line-height:0;cursor:pointer;' + animStyle + '">' +
-            shapeSvg(role, cfg, state) +
+            'line-height:0;cursor:pointer;">' +
+            shapeSvg(role, cfg, state, letter) +
             '</div>',
       iconSize: [sz, sz],
       iconAnchor: [sz / 2, sz / 2]
@@ -230,7 +253,7 @@ var nodeMarkers = (function () {
       nodeData[n.node_id] = n;
 
       var marker = L.marker(pos, {
-        icon: createIcon(n.state, roleOf(n)),
+        icon: createIcon(n.state, roleOf(n), tierLetterOf(n)),
         title: n.node_id
       });
 
@@ -291,7 +314,7 @@ var nodeMarkers = (function () {
           var sid = ids[k];
           nodeData[sid].state = 'dead';
           if (markers[sid]) {
-            markers[sid].setIcon(createIcon('dead', roleOf(nodeData[sid])));
+            markers[sid].setIcon(createIcon('dead', roleOf(nodeData[sid]), tierLetterOf(nodeData[sid])));
             markers[sid].setTooltipContent(buildTooltip(nodeData[sid]));
           }
         }
@@ -301,7 +324,7 @@ var nodeMarkers = (function () {
           var rid = ids[k];
           nodeData[rid].state = 'active';
           if (markers[rid]) {
-            markers[rid].setIcon(createIcon('active', roleOf(nodeData[rid])));
+            markers[rid].setIcon(createIcon('active', roleOf(nodeData[rid]), tierLetterOf(nodeData[rid])));
             markers[rid].setTooltipContent(buildTooltip(nodeData[rid]));
           }
         }
@@ -326,7 +349,7 @@ var nodeMarkers = (function () {
         nodeData[ids[k]].lastTelemetry = null;
         nodeData[ids[k]].state = 'dead';
         if (markers[ids[k]]) {
-          markers[ids[k]].setIcon(createIcon('dead', roleOf(nodeData[ids[k]])));
+          markers[ids[k]].setIcon(createIcon('dead', roleOf(nodeData[ids[k]]), tierLetterOf(nodeData[ids[k]])));
           markers[ids[k]].setTooltipContent(buildTooltip(nodeData[ids[k]]));
         }
       }
@@ -343,8 +366,8 @@ var nodeMarkers = (function () {
         // The server assigns node state (session.py:_assign_node_states) and
         // ships it on the telemetry row as `t.state`. The UI obeys it and never
         // re-derives state from strain/tilt. A genuine last-gasp packet is a
-        // real device event, not a threshold, so it still wins.
-        if ((t.flags & 1) || (t.crack_flags && (t.crack_flags & 1))) {
+        // real device event (PACKET_FLAG_LAST_GASP = 1).
+        if (t.flags & 1) {
           updateState(nodeId, 'lastgasp');
         } else {
           updateState(nodeId, t.state || 'active');
@@ -360,8 +383,9 @@ var nodeMarkers = (function () {
 
     bus.on('alarm', function (alarm) {
       if (alarm.affected_nodes) {
+        var targetState = (alarm.level === 3) ? 'critical' : (alarm.level === 2 ? 'warning' : 'warning');
         for (var j = 0; j < alarm.affected_nodes.length; j++) {
-          updateState(alarm.affected_nodes[j], 'critical');
+          updateState(alarm.affected_nodes[j], targetState);
         }
       }
     });
@@ -396,10 +420,11 @@ var nodeMarkers = (function () {
     // Role is a property of the node, not of its health, so it survives every
     // state change - a gateway must never redraw as a scout circle.
     var role = nodeData[nodeId] ? roleOf(nodeData[nodeId]) : 'scout';
-    markers[nodeId].setIcon(createIcon(state, role));
+    var letter = nodeData[nodeId] ? tierLetterOf(nodeData[nodeId]) : 'A';
+    markers[nodeId].setIcon(createIcon(state, role, letter));
     updateNodeCount();
 
-    if (state === 'critical' || state === 'lastgasp') {
+    if (state === 'critical' || state === 'lastgasp' || state === 'warning') {
       if (typeof lastgaspMarker !== 'undefined' && lastgaspMarker.showPulse) {
         lastgaspMarker.showPulse(nodeId, state);
       }
@@ -439,6 +464,8 @@ var nodeMarkers = (function () {
     updateState: updateState,
     getMarker: getMarker,
     getNodeData: getNodeData,
-    getAllNodes: getAllNodes
+    getAllNodes: getAllNodes,
+    roleOf: roleOf,
+    tierLetterOf: tierLetterOf
   };
 })();

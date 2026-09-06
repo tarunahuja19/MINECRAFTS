@@ -451,9 +451,15 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
                 </mesh>
               )}
 
-              {/* Active Beacon LED Head Sphere */}
+              {/* Active Beacon LED Head: Square for Scout, Circle for Anchor, Triangle for Gateway */}
               <mesh position={[0, style.beaconY, 0]}>
-                <sphereGeometry args={[1.6, 16, 16]} />
+                {node.tier.startsWith("1") ? (
+                  <boxGeometry args={[2.4, 2.4, 2.4]} />
+                ) : node.tier.startsWith("2") ? (
+                  <cylinderGeometry args={[1.5, 1.5, 2.2, 16]} />
+                ) : (
+                  <coneGeometry args={[2.2, 3.4, 3]} />
+                )}
                 <meshStandardMaterial
                   color={stateColor}
                   emissive={stateColor}
@@ -462,6 +468,24 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
                   metalness={0.5}
                 />
               </mesh>
+
+              {/* Concentric ground shockwave ripples for Critical / Warning nodes */}
+              {(stateColor === STATE_COLORS.CRITICAL || stateColor === STATE_COLORS.FAILED) && (
+                <>
+                  <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[style.padR + 2.0, style.padR + 3.0, 32]} />
+                    <meshBasicMaterial color="#FF2222" side={THREE.DoubleSide} transparent opacity={0.8} />
+                  </mesh>
+                  <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[style.padR + 5.0, style.padR + 6.2, 32]} />
+                    <meshBasicMaterial color="#FF1111" side={THREE.DoubleSide} transparent opacity={0.5} />
+                  </mesh>
+                  <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[style.padR + 8.5, style.padR + 10.0, 32]} />
+                    <meshBasicMaterial color="#CC0000" side={THREE.DoubleSide} transparent opacity={0.25} />
+                  </mesh>
+                </>
+              )}
 
               {/* Active Selection Glow Ring & Vertical Pulse Beam */}
               {isSelected && (
