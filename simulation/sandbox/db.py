@@ -321,11 +321,11 @@ class DatabaseManager:
                         # Capture representative sample for logging
                         if node_id in ("N01", "N10", "N26", "N31"):
                             if tier == "1A":
-                                sample_logs.append(f"  • {node_id} [1A Baseline Scout]: tilt=({tilt_x}, {tilt_y}) µrad | accel=({accel_x:.3f}, {accel_y:.3f}, {accel_z:.3f}) g | temp={die_temp:.1f}°C")
+                                sample_logs.append(f"  • {node_id} [1A Baseline Scout]: tilt=({tilt_x}, {tilt_y}) urad | accel=({accel_x:.3f}, {accel_y:.3f}, {accel_z:.3f}) g | temp={die_temp:.1f}C")
                             elif tier == "1B":
-                                sample_logs.append(f"  • {node_id} [1B Tension Scout ]: strain={strain or 0:.1f} µε | fissure={fissure or 0:.2f} mm | tilt=({tilt_x}, {tilt_y}) µrad")
+                                sample_logs.append(f"  • {node_id} [1B Tension Scout ]: strain={strain or 0:.1f} ue | fissure={fissure or 0:.2f} mm | tilt=({tilt_x}, {tilt_y}) urad")
                             elif tier in ("2A", "2B"):
-                                sample_logs.append(f"  • {node_id} [{tier} Router Anchor]: tilt=({tilt_x}, {tilt_y}) µrad | temp={die_temp:.1f}°C")
+                                sample_logs.append(f"  • {node_id} [{tier} Router Anchor]: tilt=({tilt_x}, {tilt_y}) urad | temp={die_temp:.1f}C")
                             elif tier == "3":
                                 sample_logs.append(f"  • {node_id} [3 Master Gateway ]: stable bedrock reference | GPS dx={gps_x or 0.0:.1f}mm dy={gps_y or 0.0:.1f}mm")
 

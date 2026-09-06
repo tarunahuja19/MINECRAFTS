@@ -18,7 +18,15 @@ Wire Protocol (§3.2):
 
 import asyncio
 from contextlib import asynccontextmanager
+import sys
 from typing import Any
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -56,7 +64,7 @@ async def simulation_loop():
     session = get_session()
     while True:
         try:
-            if session.is_running and not session.is_paused and len(_connected_clients) > 0:
+            if session.is_running and not session.is_paused:
                 payload = session.tick()
                 # Broadcast payload to all connected clients
                 if _connected_clients:
@@ -110,6 +118,7 @@ async def lifespan(app: FastAPI):
     await db_manager.connect()
     # Start publishing ticks to the MQTT broker the dashboard subscribes to.
     session.mqtt_bridge.connect()
+    session.start()
     _sim_task = asyncio.create_task(simulation_loop())
     yield
     if _sim_task:
