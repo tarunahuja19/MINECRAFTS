@@ -183,17 +183,36 @@
                       </div>
 
                       <div id="map-hud-legend" class="map-hud-legend">
-                        <span class="hud-item"><span class="hud-dot" style="background:#00CC44;border:1px solid rgba(0,0,0,0.5);"></span>ACTIVE</span>
-                        <span class="hud-item"><span class="hud-dot" style="background:#FFA500;border:1px solid rgba(0,0,0,0.5);"></span>WARNING</span>
-                        <span class="hud-item"><span class="hud-dot" style="background:#FF2222;border:1px solid rgba(0,0,0,0.5);"></span>CRITICAL</span>
-                        <span class="hud-item"><span class="hud-dot" style="background:#FF4400;border:1px solid rgba(0,0,0,0.5);"></span>LAST-GASP</span>
-                        <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #00E676;"></span>3D SELECTION</span>
-                        <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #FFD700;"></span>DEFENSE RING</span>
-                        <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #5A8FA8;"></span>PANEL A</span>
-                        <span class="hud-item" id="hud-legend-sectors"><span class="hud-line" style="border-top:1.5px dashed #38BDF8;"></span>SECTORS (8x8)</span>
-                        <span class="hud-item"><span class="hud-dot" style="background:#2E7D32;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE STABLE</span>
-                        <span class="hud-item"><span class="hud-dot" style="background:#FFC107;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE SUBSIDING</span>
-                        <span class="hud-item"><span class="hud-dot" style="background:#B71C1C;border:1px solid rgba(0,0,0,0.5);"></span>SURFACE TROUGH</span>
+                        <div class="map-hud-legend-header">
+                          <span>MAP STATUS &amp; OVERLAYS</span>
+                          <button id="btn-close-map-legend" class="map-hud-legend-close" title="Close Legend">&times;</button>
+                        </div>
+                        <div class="map-hud-legend-section">
+                          <div class="map-hud-legend-title">NODE SENSORS</div>
+                          <div class="map-hud-legend-grid">
+                            <span class="hud-item"><span class="hud-dot" style="background:#00CC44;border:1px solid rgba(0,0,0,0.5);"></span>ACTIVE</span>
+                            <span class="hud-item"><span class="hud-dot" style="background:#FFA500;border:1px solid rgba(0,0,0,0.5);"></span>WARNING</span>
+                            <span class="hud-item"><span class="hud-dot" style="background:#FF2222;border:1px solid rgba(0,0,0,0.5);"></span>CRITICAL</span>
+                            <span class="hud-item"><span class="hud-dot" style="background:#FF4400;border:1px solid rgba(0,0,0,0.5);"></span>LAST-GASP</span>
+                          </div>
+                        </div>
+                        <div class="map-hud-legend-section">
+                          <div class="map-hud-legend-title">BOUNDARY &amp; GRID</div>
+                          <div class="map-hud-legend-grid">
+                            <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #00E676;"></span>3D SELECT</span>
+                            <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #FFD700;"></span>DEFENSE</span>
+                            <span class="hud-item"><span class="hud-line" style="border-top:1.5px dashed #5A8FA8;"></span>PANEL A</span>
+                            <span class="hud-item" id="hud-legend-sectors"><span class="hud-line" style="border-top:1.5px dashed #38BDF8;"></span>SECTORS (8x8)</span>
+                          </div>
+                        </div>
+                        <div class="map-hud-legend-section">
+                          <div class="map-hud-legend-title">SUBSIDENCE SURFACE</div>
+                          <div class="map-hud-legend-grid">
+                            <span class="hud-item"><span class="hud-dot" style="background:#2E7D32;border:1px solid rgba(0,0,0,0.5);"></span>STABLE</span>
+                            <span class="hud-item"><span class="hud-dot" style="background:#FFC107;border:1px solid rgba(0,0,0,0.5);"></span>SUBSIDING</span>
+                            <span class="hud-item"><span class="hud-dot" style="background:#B71C1C;border:1px solid rgba(0,0,0,0.5);"></span>TROUGH</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

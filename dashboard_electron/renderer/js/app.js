@@ -120,14 +120,6 @@ document.getElementById('tab-map').style.display = 'flex';
   });
 
   bus.on('detail-opened', function (data) {
-    if (document.getElementById('strain-chart-container')) {
-      strainChart.init('strain-chart-container', data.nodeId);
-    }
-    if (document.getElementById('tilt-chart-container')) {
-      tiltChart.init('tilt-chart-container', data.nodeId);
-    }
-    nodeSensors.render('sensor-readouts', data.nodeId);
-
     if (alarmPanel && alarmPanel.style.display !== 'none') {
       if (viewSwitcher) viewSwitcher.style.display = 'flex';
       setRightPanelView('both');
@@ -137,22 +129,13 @@ document.getElementById('tab-map').style.display = 'flex';
   });
 
   bus.on('detail-closed', function () {
-    strainChart.destroy();
-    tiltChart.destroy();
-    if (viewSwitcher) viewSwitcher.style.display = 'none';
-  });
-
-  bus.on('telemetry', function (t) {
-    var id = t._node_id || t.node_id;
-    if (id === nodeDetail.getCurrentNodeId()) {
-      if (document.getElementById('strain-chart-container')) {
-        strainChart.addPoint(t);
-      }
-      if (document.getElementById('tilt-chart-container')) {
-        tiltChart.addPoint(t);
-      }
-      nodeSensors.update('sensor-readouts', t);
+    if (typeof strainChart !== 'undefined' && strainChart.destroy) {
+      strainChart.destroy();
     }
+    if (typeof tiltChart !== 'undefined' && tiltChart.destroy) {
+      tiltChart.destroy();
+    }
+    if (viewSwitcher) viewSwitcher.style.display = 'none';
   });
 
   var btnCloseAll = document.getElementById('btn-close-all');

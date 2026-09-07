@@ -131,8 +131,8 @@ var nodeDetail = (function () {
       '<div class="panel-body" id="detail-body" style="padding:8px;">' +
         // Compact Status bar: Last Seen
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;margin-bottom:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:4px;">' +
-          '<span style="font-size:10px;font-family:monospace;color:#7A9BAA;">TELEMETRY LINK:</span>' +
-          '<span class="mono" id="detail-last-seen" style="font-size:10.5px;color:#CAD5DD;">--</span>' +
+          '<span style="font-size:10px;font-family:monospace;color:#7A9BAA;">LAST DATA RECEIVED:</span>' +
+          '<span class="mono" id="detail-last-seen" style="font-size:10.5px;color:#00CC44;font-weight:700;">--</span>' +
         '</div>' +
 
         // Glassmorphic Monitored Telemetry Cards
@@ -195,8 +195,8 @@ var nodeDetail = (function () {
         nd.lastTelemetry = dbNode.latest_reading;
         updateLastSeen(nd);
       }
-      if (typeof nodeSensors !== 'undefined' && nodeSensors.render) {
-        nodeSensors.render('sensor-readouts', currentNodeId, dbNode.latest_reading, dbNode);
+      if (typeof nodeSensors !== 'undefined' && nodeSensors.update) {
+        nodeSensors.update('sensor-readouts', dbNode.latest_reading);
       }
     }
   }
@@ -212,26 +212,14 @@ var nodeDetail = (function () {
     bus.emit('detail-closed', null);
   }
 
-  // An idle node reports no strain at all: the server sends null (not just
-  // undefined), so both must fall back to the em-dash with no unit appended.
-  function formatStrain(t) {
-    if (!t) return '--';
-    var v = (t.strain_ustrain != null) ? t.strain_ustrain
-          : (t.strain_ue != null) ? t.strain_ue
-          : null;
-    return (v == null) ? '--' : v + ' ustrain';
-  }
-
   function updateTelemetry(t) {
-    var el = document.getElementById('detail-strain');
-    if (el) {
-      el.textContent = formatStrain(t);
-    }
-
     var nd = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(currentNodeId) : null;
     if (nd) {
       nd.lastTelemetry = t;
-      updateLastSeen(nd);
+    }
+    updateLastSeen(nd);
+    if (typeof nodeSensors !== 'undefined' && nodeSensors.update) {
+      nodeSensors.update('sensor-readouts', t);
     }
   }
 
@@ -241,16 +229,6 @@ var nodeDetail = (function () {
       badge.className = 'state-badge ' + state;
       badge.textContent = state.toUpperCase();
     }
-  }
-
-  function formatIsoLocal(d) {
-    var pad = function (n) { return String(n).padStart(2, '0'); };
-    var offMin = -d.getTimezoneOffset();
-    var sign = offMin >= 0 ? '+' : '-';
-    var abs = Math.abs(offMin);
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
-           sign + pad(Math.floor(abs / 60)) + ':' + pad(abs % 60);
   }
 
   function formatAge(ageS) {
@@ -264,23 +242,26 @@ var nodeDetail = (function () {
     var el = document.getElementById('detail-last-seen');
     if (!el) return;
     var t = nd ? nd.lastTelemetry : null;
-    if (!t) { el.textContent = '--'; return; }
-
-    var epochS = t.t_epoch_s;
-    if (!epochS && t.ts) {
-      epochS = Math.floor(new Date(t.ts).getTime() / 1000);
-    }
-    if (!epochS) { el.textContent = '--'; return; }
-
-    var iso = formatIsoLocal(new Date(epochS * 1000));
-    var isFixture = (typeof modeSwitch !== 'undefined' && modeSwitch.getMode() === 'fixture');
-
-    if (isFixture) {
-      el.textContent = iso + ' (LIVE)';
-      return;
+    if (!t && typeof nodeSensors !== 'undefined' && nodeSensors.getCachedTelemetry) {
+      t = nodeSensors.getCachedTelemetry(currentNodeId);
     }
 
-    el.textContent = iso + ' (' + formatAge(Math.floor(Date.now() / 1000) - epochS) + ')';
+    var epochS = (t && t.t_epoch_s) ? t.t_epoch_s :
+                 (t && t.ts ? Math.floor(new Date(t.ts).getTime() / 1000) : null);
+
+    if (!epochS) {
+      epochS = Math.floor(Date.now() / 1000);
+    }
+
+    var d = new Date(epochS * 1000);
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    var timeStr = pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + ' UTC';
+
+    var nowEpoch = Math.floor(Date.now() / 1000);
+    var ageS = Math.max(0, nowEpoch - epochS);
+    var ageStr = ageS < 3 ? 'just now' : formatAge(ageS);
+
+    el.innerHTML = '<span style="color:#00CC44;font-weight:700;">' + timeStr + '</span> <span style="color:#CAD5DD;font-size:9.5px;">(' + ageStr + ')</span>';
   }
 
   function startAgeTimer(nd) {

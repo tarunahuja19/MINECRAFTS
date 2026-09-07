@@ -43,6 +43,121 @@ var alarmHistory = (function () {
     if (badge) badge.textContent = String(activeCount);
   }
 
+  // Deterministic entity key/hash for an alarm
+  function getAlarmEntityKey(alarm) {
+    if (!alarm) return '';
+    if (alarm.zone_id) return 'ZONE:' + alarm.zone_id;
+    if (alarm.affected_nodes && alarm.affected_nodes.length > 0) {
+      var sorted = alarm.affected_nodes.slice().sort();
+      return 'NODES:' + sorted.join(',');
+    }
+    return 'ID:' + (alarm.alarm_id || '');
+  }
+
+  // Check if two alarms share any common affected nodes
+  function shareAnyNodes(alarmA, alarmB) {
+    if (!alarmA || !alarmB) return false;
+    var aNodes = alarmA.affected_nodes || [];
+    var bNodes = alarmB.affected_nodes || [];
+    for (var i = 0; i < aNodes.length; i++) {
+      if (bNodes.indexOf(aNodes[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  // Time difference in milliseconds between two alarm timestamps
+  function timeDiffMs(a, b) {
+    var ta = a && a.t_utc ? new Date(a.t_utc).getTime() : 0;
+    var tb = b && b.t_utc ? new Date(b.t_utc).getTime() : 0;
+    return Math.abs(ta - tb);
+  }
+
+  // Process, hash, deduplicate and level-gate an incoming alarm into targetList
+  function processOrInsertAlarm(alarm, targetList) {
+    if (!alarm || (!alarm.alarm_id && (!alarm.affected_nodes || !alarm.affected_nodes.length))) return;
+    targetList = targetList || allAlarms;
+
+    var newLevel = (typeof alarm.level === 'number') ? alarm.level : 1;
+    var SIMULTANEOUS_WINDOW_MS = 30000; // 30 seconds
+
+    var matchIndex = -1;
+
+    // 1. Exact ID match
+    for (var i = 0; i < targetList.length; i++) {
+      if (alarm.alarm_id && targetList[i].alarm_id === alarm.alarm_id) {
+        matchIndex = i;
+        break;
+      }
+    }
+
+    // 2. Overlapping affected nodes match
+    if (matchIndex === -1) {
+      for (var j = 0; j < targetList.length; j++) {
+        if (shareAnyNodes(alarm, targetList[j])) {
+          matchIndex = j;
+          break;
+        }
+      }
+    }
+
+    // 3. Simultaneous trigger coalescing (same level & state within time window)
+    if (matchIndex === -1) {
+      for (var k = 0; k < targetList.length; k++) {
+        var existing = targetList[k];
+        if (existing.level === newLevel && (existing.state || '').toUpperCase() === (alarm.state || '').toUpperCase()) {
+          if (timeDiffMs(alarm, existing) <= SIMULTANEOUS_WINDOW_MS) {
+            matchIndex = k;
+            break;
+          }
+        }
+      }
+    }
+
+    if (matchIndex !== -1) {
+      var target = targetList[matchIndex];
+      var oldLevel = (typeof target.level === 'number') ? target.level : 1;
+
+      // Merge affected nodes without duplicate entries
+      if (alarm.affected_nodes && alarm.affected_nodes.length > 0) {
+        var merged = target.affected_nodes ? target.affected_nodes.slice() : [];
+        for (var n = 0; n < alarm.affected_nodes.length; n++) {
+          if (merged.indexOf(alarm.affected_nodes[n]) === -1) {
+            merged.push(alarm.affected_nodes[n]);
+          }
+        }
+        merged.sort();
+        target.affected_nodes = merged;
+      }
+
+      // Maximize telemetry metrics
+      if (alarm.max_strain_ue != null) {
+        target.max_strain_ue = Math.max(target.max_strain_ue || 0, alarm.max_strain_ue);
+      }
+      if (alarm.trough_fit_r2 != null && (target.trough_fit_r2 == null || alarm.trough_fit_r2 > target.trough_fit_r2)) {
+        target.trough_fit_r2 = alarm.trough_fit_r2;
+      }
+
+      // Level gating: only escalate if new level is higher ("until and unless the level ups")
+      if (newLevel > oldLevel) {
+        target.level = newLevel;
+        target.state = alarm.state || target.state;
+        target.t_utc = alarm.t_utc || target.t_utc;
+        target.escalated = true;
+        // Move escalated alarm to top of list
+        targetList.splice(matchIndex, 1);
+        targetList.unshift(target);
+      } else {
+        // Same or lower level: do not spam new row or bump to top, just update timestamp & metadata
+        target.t_utc = alarm.t_utc || target.t_utc;
+        if (alarm.centroid && !target.centroid) target.centroid = alarm.centroid;
+        if (alarm.explanation && !target.explanation) target.explanation = alarm.explanation;
+      }
+    } else {
+      // New distinct event
+      targetList.unshift(Object.assign({}, alarm));
+    }
+  }
+
   function init(target) {
     if (Array.isArray(target)) {
       containerIds = target;
@@ -52,18 +167,8 @@ var alarmHistory = (function () {
 
     function dedupeAlarms(list) {
       var result = [];
-      var seenIds = {};
-      var seenNodes = {};
       for (var i = 0; i < list.length; i++) {
-        var a = list[i];
-        if (!a) continue;
-        var aid = a.alarm_id;
-        var pNode = (a.affected_nodes && a.affected_nodes.length === 1) ? a.affected_nodes[0] : null;
-        if (aid && seenIds[aid]) continue;
-        if (pNode && seenNodes[pNode]) continue;
-        if (aid) seenIds[aid] = true;
-        if (pNode) seenNodes[pNode] = true;
-        result.push(a);
+        processOrInsertAlarm(list[i], result);
       }
       return result;
     }
@@ -103,45 +208,18 @@ var alarmHistory = (function () {
 
     bus.on('alarm', function (alarm) {
       if (!alarm || (!alarm.alarm_id && (!alarm.affected_nodes || !alarm.affected_nodes.length))) return;
-      var foundIndex = -1;
-      var primaryNode = (alarm.affected_nodes && alarm.affected_nodes.length === 1) ? alarm.affected_nodes[0] : null;
-
-      for (var i = 0; i < allAlarms.length; i++) {
-        if (alarm.alarm_id && allAlarms[i].alarm_id === alarm.alarm_id) {
-          foundIndex = i;
-          break;
-        }
-        if (primaryNode && allAlarms[i].affected_nodes && allAlarms[i].affected_nodes.length === 1 && allAlarms[i].affected_nodes[0] === primaryNode) {
-          foundIndex = i;
-          break;
-        }
-      }
-      if (foundIndex !== -1) {
-        allAlarms[foundIndex] = Object.assign({}, allAlarms[foundIndex], alarm);
-      } else {
-        allAlarms.unshift(alarm);
-      }
+      processOrInsertAlarm(alarm, allAlarms);
       updateBadges();
       render();
     });
 
     bus.on('alarm-selected', function (alarm) {
-      if (alarm && alarm.alarm_id) {
+      if (alarm && (alarm.alarm_id || (alarm.affected_nodes && alarm.affected_nodes.length))) {
         selectedAlarmId = alarm.alarm_id;
-        var exists = false;
-        for (var i = 0; i < allAlarms.length; i++) {
-          if (allAlarms[i].alarm_id === alarm.alarm_id) {
-            exists = true;
-            break;
-          }
-        }
-        if (!exists) {
-          allAlarms.unshift(alarm);
-          updateBadges();
-          render();
-        } else {
-          updateSelectedHighlight();
-        }
+        processOrInsertAlarm(alarm, allAlarms);
+        updateBadges();
+        render();
+        updateSelectedHighlight();
       }
     });
   }
@@ -176,13 +254,13 @@ var alarmHistory = (function () {
     if (badge) badge.textContent = String(activeCount);
 
     var html =
-      '<table class="data-table">' +
+      '<table class="data-table" style="table-layout:fixed; width:100%;">' +
         '<thead><tr>' +
-          '<th>ID</th>' +
-          '<th>TIME</th>' +
-          '<th>LVL</th>' +
-          '<th>NODES</th>' +
-          '<th>R²</th>' +
+          '<th style="width:25%;">ID</th>' +
+          '<th style="width:23%;">TIME</th>' +
+          '<th style="width:14%; text-align:center;">LVL</th>' +
+          '<th style="width:26%;">NODES</th>' +
+          '<th style="width:12%; text-align:right;">R²</th>' +
         '</tr></thead>' +
         '<tbody>';
 
@@ -202,12 +280,12 @@ var alarmHistory = (function () {
       var isSelected = (a.alarm_id === selectedAlarmId);
 
       html +=
-        '<tr class="alarm-row' + (isSelected ? ' selected-row' : '') + '" data-alarm-idx="' + (start + i) + '" data-alarm-id="' + a.alarm_id + '" style="cursor:pointer;' + (isSelected ? ' background:rgba(46, 74, 90, 0.55);' : '') + '">' +
-          '<td>' + a.alarm_id + '</td>' +
-          '<td>' + timeStr + '</td>' +
-          '<td><span class="level-badge level-' + a.level + '" style="font-size:10px;padding:1px 4px;">' + a.level + '</span></td>' +
-          '<td title="' + nodesTooltip + '" style="font-family:\'Courier New\', monospace; font-size:10px;">' + nodesStr + '</td>' +
-          '<td>' + (typeof a.trough_fit_r2 === 'number' ? a.trough_fit_r2.toFixed(2) : '--') + '</td>' +
+        '<tr class="alarm-row' + (isSelected ? ' selected-row' : '') + '" data-alarm-idx="' + (start + i) + '" data-alarm-id="' + a.alarm_id + '" style="cursor:pointer; height:24px;' + (isSelected ? ' background:rgba(46, 74, 90, 0.55);' : '') + '">' +
+          '<td style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="' + a.alarm_id + '">' + a.alarm_id + '</td>' +
+          '<td style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + timeStr + '</td>' +
+          '<td style="text-align:center;"><span class="level-badge level-' + a.level + '" style="font-size:10px;padding:1px 4px;">' + a.level + '</span></td>' +
+          '<td title="' + nodesTooltip + '" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:\'Courier New\', monospace; font-size:10px;">' + nodesStr + '</td>' +
+          '<td style="text-align:right;">' + (typeof a.trough_fit_r2 === 'number' ? a.trough_fit_r2.toFixed(2) : '--') + '</td>' +
         '</tr>';
     }
 

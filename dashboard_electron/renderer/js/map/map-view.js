@@ -99,12 +99,41 @@ var mapView = (function () {
       var savedBasemap = 'satellite';
       setBasemap(savedBasemap);
 
-      // Metric Scale Control (bottom-right)
-      L.control.scale({
-        position: 'bottomright',
-        metric: true,
-        imperial: false
-      }).addTo(map);
+      // Eye Legend Control: placed directly under Zoom (+/-) in topleft
+      var EyeLegendControl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function () {
+          var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-eye');
+          var btn = L.DomUtil.create('a', 'leaflet-control-eye-btn', container);
+          btn.href = '#';
+          btn.id = 'btn-toggle-map-legend';
+          btn.title = 'Toggle Map Legend (Active, Warning, Critical & Overlays)';
+          btn.setAttribute('role', 'button');
+          btn.setAttribute('aria-label', 'Toggle Legend');
+          btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                            '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>' +
+                            '<circle cx="12" cy="12" r="3"></circle>' +
+                          '</svg>';
+
+          L.DomEvent.disableClickPropagation(container);
+          L.DomEvent.disableScrollPropagation(container);
+
+          L.DomEvent.on(btn, 'click', function (e) {
+            L.DomEvent.preventDefault(e);
+            toggleLegend();
+          });
+
+          return container;
+        }
+      });
+      new EyeLegendControl().addTo(map);
+
+      var closeLegendBtn = document.getElementById('btn-close-map-legend');
+      if (closeLegendBtn) {
+        closeLegendBtn.addEventListener('click', function () {
+          toggleLegend(false);
+        });
+      }
 
       map.fitBounds(MINE_BOUNDS);
 
@@ -117,6 +146,21 @@ var mapView = (function () {
     }
 
     return map;
+  }
+
+  function toggleLegend(forceState) {
+    var legendEl = document.getElementById('map-hud-legend');
+    var btn = document.getElementById('btn-toggle-map-legend');
+    if (!legendEl) return;
+
+    var willShow = (forceState !== undefined) ? !!forceState : !legendEl.classList.contains('visible');
+    if (willShow) {
+      legendEl.classList.add('visible');
+      if (btn) btn.classList.add('active');
+    } else {
+      legendEl.classList.remove('visible');
+      if (btn) btn.classList.remove('active');
+    }
   }
 
   function setBasemap(name) {
@@ -185,6 +229,7 @@ var mapView = (function () {
     fitToMine: fitToMine,
     fitToNodes: fitToNodes,
     panTo: panTo,
+    toggleLegend: toggleLegend,
     MINE_CENTER: MINE_CENTER,
     MINE_BOUNDS: MINE_BOUNDS,
     // Exposed so map layers (node markers, sector grid) project panel-frame

@@ -4,8 +4,34 @@ var lastgaspMarker = (function () {
   var pulseRings = {};
   var map = null;
 
+  function updateZoomScale() {
+    if (!map) return;
+    var z = map.getZoom ? map.getZoom() : 17;
+    // Standard baseline zoom is 17.
+    // At higher zoom (18-19), slightly expand (1.12-1.25)
+    // At lower zoom (16: 0.80, 15: 0.58, <=14: 0.40), shrink significantly so rings do not overlap neighboring nodes.
+    var factor = 1.0;
+    if (z >= 19) factor = 1.25;
+    else if (z === 18) factor = 1.12;
+    else if (z === 17) factor = 1.0;
+    else if (z === 16) factor = 0.80;
+    else if (z === 15) factor = 0.58;
+    else factor = Math.max(0.32, 0.40 - (14 - z) * 0.05);
+
+    var container = map.getContainer ? map.getContainer() : null;
+    if (container) {
+      container.style.setProperty('--alert-ring-zoom-scale', String(factor));
+    }
+  }
+
   function init(mapInstance) {
     map = mapInstance;
+
+    if (map) {
+      map.on('zoom', updateZoomScale);
+      map.on('zoomend', updateZoomScale);
+      updateZoomScale();
+    }
 
     bus.on('telemetry', function (t) {
       var nodeId = t._node_id || t.node_id;
