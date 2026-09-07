@@ -1,143 +1,131 @@
-<mxfile host="app.diagrams.net" modified="2026-09-07T12:45:00.000Z" agent="Antigravity" version="24.0.0" type="device">
-  <diagram id="sih-technical-approach" name="Technical Approach - Full Architecture">
-    <mxGraphModel dx="1200" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1350" pageHeight="650" background="#FFFFFF" math="0" shadow="0">
+<mxfile host="app.diagrams.net" modified="2026-09-07T13:15:00.000Z" agent="Antigravity" version="24.0.0" type="device">
+  <diagram id="sih-technical-approach" name="Technical Approach - Clean Core Flow">
+    <mxGraphModel dx="1200" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1350" pageHeight="550" background="#FFFFFF" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
         <!-- ========================================== -->
-        <!-- LEFT: SCOUTS (EXISTING ON SLIDE)          -->
+        <!-- LEFT: SCOUTS (EXISTING)                    -->
         <!-- ========================================== -->
-        <mxCell id="group_scouts" value="Scouts" style="swimlane;whiteSpace=wrap;html=1;startSize=26;rounded=1;arcSize=8;fillColor=#F8FAFC;strokeColor=#0F172A;strokeWidth=1.5;fontStyle=1;fontSize=14;fontColor=#0F172A;" vertex="1" parent="1">
-          <mxGeometry x="30" y="80" width="180" height="340" as="geometry" />
+        <mxCell id="g_scouts" value="Scouts" style="swimlane;whiteSpace=wrap;html=1;startSize=26;rounded=1;arcSize=8;fillColor=#F8FAFC;strokeColor=#0F172A;strokeWidth=1.5;fontStyle=1;fontSize=13;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="30" y="80" width="160" height="340" as="geometry" />
         </mxCell>
-        <mxCell id="node_1a_1" value="Node 1A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;strokeWidth=1.5;fontColor=#1E3A8A;fontSize=11;fontStyle=1;" vertex="1" parent="group_scouts">
-          <mxGeometry x="80" y="35" width="80" height="30" as="geometry" />
+        <mxCell id="n1a_1" value="Node 1A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;strokeWidth=1.5;fontColor=#1E3A8A;fontSize=11;fontStyle=1;" vertex="1" parent="g_scouts">
+          <mxGeometry x="75" y="35" width="70" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="node_1b_1" value="Node 1B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;strokeWidth=1.5;fontColor=#831843;fontSize=11;fontStyle=1;" vertex="1" parent="group_scouts">
-          <mxGeometry x="15" y="85" width="60" height="40" as="geometry" />
+        <mxCell id="n1b_1" value="Node 1B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;strokeWidth=1.5;fontColor=#831843;fontSize=11;fontStyle=1;" vertex="1" parent="g_scouts">
+          <mxGeometry x="15" y="85" width="55" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="node_1b_2" value="Node 1B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;strokeWidth=1.5;fontColor=#831843;fontSize=11;fontStyle=1;" vertex="1" parent="group_scouts">
-          <mxGeometry x="100" y="90" width="60" height="40" as="geometry" />
+        <mxCell id="n1b_2" value="Node 1B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;strokeWidth=1.5;fontColor=#831843;fontSize=11;fontStyle=1;" vertex="1" parent="g_scouts">
+          <mxGeometry x="90" y="90" width="55" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="node_1a_2" value="Node 1A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;strokeWidth=1.5;fontColor=#1E3A8A;fontSize=11;fontStyle=1;" vertex="1" parent="group_scouts">
-          <mxGeometry x="30" y="150" width="60" height="35" as="geometry" />
+        <mxCell id="n1a_2" value="Node 1A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;strokeWidth=1.5;fontColor=#1E3A8A;fontSize=11;fontStyle=1;" vertex="1" parent="g_scouts">
+          <mxGeometry x="25" y="150" width="55" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="node_1c_1" value="Node 1C" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontSize=11;fontStyle=1;" vertex="1" parent="group_scouts">
-          <mxGeometry x="120" y="155" width="50" height="35" as="geometry" />
+        <mxCell id="n1c_1" value="Node 1C" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontSize=11;fontStyle=1;" vertex="1" parent="g_scouts">
+          <mxGeometry x="95" y="155" width="50" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="node_1c_2" value="Node 1C" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontSize=11;fontStyle=1;" vertex="1" parent="group_scouts">
-          <mxGeometry x="15" y="220" width="60" height="40" as="geometry" />
+        <mxCell id="n1c_2" value="Node 1C" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontSize=11;fontStyle=1;" vertex="1" parent="g_scouts">
+          <mxGeometry x="15" y="220" width="55" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="node_1a_3" value="Node 1A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;strokeWidth=1.5;fontColor=#1E3A8A;fontSize=11;fontStyle=1;" vertex="1" parent="group_scouts">
-          <mxGeometry x="90" y="240" width="60" height="35" as="geometry" />
+        <mxCell id="n1a_3" value="Node 1A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;strokeWidth=1.5;fontColor=#1E3A8A;fontSize=11;fontStyle=1;" vertex="1" parent="g_scouts">
+          <mxGeometry x="85" y="235" width="60" height="35" as="geometry" />
         </mxCell>
 
-        <!-- ========================================== -->
-        <!-- ANCHORS (EXISTING ON SLIDE)               -->
-        <!-- ========================================== -->
-        <mxCell id="group_anchors" value="Anchors" style="swimlane;whiteSpace=wrap;html=1;startSize=26;rounded=1;arcSize=8;fillColor=#F8FAFC;strokeColor=#0F172A;strokeWidth=1.5;fontStyle=1;fontSize=14;fontColor=#0F172A;" vertex="1" parent="1">
-          <mxGeometry x="230" y="80" width="100" height="340" as="geometry" />
+        <!-- ANCHORS -->
+        <mxCell id="g_anchors" value="Anchors" style="swimlane;whiteSpace=wrap;html=1;startSize=26;rounded=1;arcSize=8;fillColor=#F8FAFC;strokeColor=#0F172A;strokeWidth=1.5;fontStyle=1;fontSize=13;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="210" y="80" width="90" height="340" as="geometry" />
         </mxCell>
-        <mxCell id="anchor_2a" value="Anchor 2A&lt;br/&gt;&lt;span style=&quot;font-size:9px;&quot;&gt;Standard&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BAE6FD;strokeColor=#0284C7;strokeWidth=1.5;fontColor=#0369A1;fontSize=11;fontStyle=1;" vertex="1" parent="group_anchors">
-          <mxGeometry x="12" y="45" width="76" height="75" as="geometry" />
+        <mxCell id="a2a" value="Anchor 2A&lt;br/&gt;&lt;span style=&quot;font-size:9px;&quot;&gt;Standard&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BAE6FD;strokeColor=#0284C7;strokeWidth=1.5;fontColor=#0369A1;fontSize=11;fontStyle=1;" vertex="1" parent="g_anchors">
+          <mxGeometry x="8" y="45" width="74" height="75" as="geometry" />
         </mxCell>
-        <mxCell id="anchor_2b" value="Anchor 2B&lt;br/&gt;&lt;span style=&quot;font-size:9px;&quot;&gt;Geotech&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BAE6FD;strokeColor=#0284C7;strokeWidth=1.5;fontColor=#0369A1;fontSize=11;fontStyle=1;" vertex="1" parent="group_anchors">
-          <mxGeometry x="12" y="195" width="76" height="75" as="geometry" />
+        <mxCell id="a2b" value="Anchor 2B&lt;br/&gt;&lt;span style=&quot;font-size:9px;&quot;&gt;Geotech&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BAE6FD;strokeColor=#0284C7;strokeWidth=1.5;fontColor=#0369A1;fontSize=11;fontStyle=1;" vertex="1" parent="g_anchors">
+          <mxGeometry x="8" y="195" width="74" height="75" as="geometry" />
         </mxCell>
 
-        <!-- ========================================== -->
-        <!-- THE HIVE (EXISTING ON SLIDE)              -->
-        <!-- ========================================== -->
-        <mxCell id="group_hive" value="The Hive" style="swimlane;whiteSpace=wrap;html=1;startSize=26;rounded=1;arcSize=8;fillColor=#F8FAFC;strokeColor=#0F172A;strokeWidth=1.5;fontStyle=1;fontSize=14;fontColor=#0F172A;" vertex="1" parent="1">
-          <mxGeometry x="350" y="80" width="100" height="340" as="geometry" />
+        <!-- THE HIVE -->
+        <mxCell id="g_hive" value="The Hive" style="swimlane;whiteSpace=wrap;html=1;startSize=26;rounded=1;arcSize=8;fillColor=#F8FAFC;strokeColor=#0F172A;strokeWidth=1.5;fontStyle=1;fontSize=13;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="320" y="80" width="90" height="340" as="geometry" />
         </mxCell>
-        <mxCell id="master_gw" value="Master&lt;br/&gt;Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontSize=12;fontStyle=1;" vertex="1" parent="group_hive">
-          <mxGeometry x="12" y="45" width="76" height="230" as="geometry" />
+        <mxCell id="hive_gw" value="Master&lt;br/&gt;Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontSize=12;fontStyle=1;" vertex="1" parent="g_hive">
+          <mxGeometry x="8" y="45" width="74" height="230" as="geometry" />
         </mxCell>
 
-        <!-- ========================================== -->
-        <!-- AI PREDICTIVE SURVIVAL MODEL (EXISTING)    -->
-        <!-- ========================================== -->
-        <mxCell id="box_ai_pipeline" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;" vertex="1" parent="1">
-          <mxGeometry x="470" y="80" width="310" height="340" as="geometry" />
+        <!-- AI MODEL CONTAINER -->
+        <mxCell id="box_ai" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="430" y="80" width="310" height="340" as="geometry" />
         </mxCell>
-        
-        <!-- 4 Vertical Stage Stripes -->
-        <mxCell id="stage_temporal" value="Temporal Encoder" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BFDBFE;strokeColor=#60A5FA;strokeWidth=1;fontColor=#1E3A8A;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="485" y="105" width="36" height="290" as="geometry" />
+        <mxCell id="s_temporal" value="Temporal Encoder" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BFDBFE;strokeColor=#60A5FA;strokeWidth=1;fontColor=#1E3A8A;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="445" y="105" width="34" height="290" as="geometry" />
         </mxCell>
-        <mxCell id="stage_gate" value="Compute Gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FED7AA;strokeColor=#FB923C;strokeWidth=1;fontColor=#7C2D12;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="527" y="105" width="36" height="290" as="geometry" />
+        <mxCell id="s_gate" value="Compute Gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FED7AA;strokeColor=#FB923C;strokeWidth=1;fontColor=#7C2D12;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="485" y="105" width="34" height="290" as="geometry" />
         </mxCell>
-        <mxCell id="stage_gnn" value="Spatial GNN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BAE6FD;strokeColor=#38BDF8;strokeWidth=1;fontColor=#0369A1;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="569" y="105" width="36" height="290" as="geometry" />
+        <mxCell id="s_gnn" value="Spatial GNN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BAE6FD;strokeColor=#38BDF8;strokeWidth=1;fontColor=#0369A1;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="525" y="105" width="34" height="290" as="geometry" />
         </mxCell>
-        <mxCell id="stage_hazard" value="Hazard Head" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C7D2FE;strokeColor=#818CF8;strokeWidth=1;fontColor=#312E81;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
-          <mxGeometry x="611" y="105" width="36" height="290" as="geometry" />
+        <mxCell id="s_hazard" value="Hazard Head" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C7D2FE;strokeColor=#818CF8;strokeWidth=1;fontColor=#312E81;fontSize=11;fontStyle=1;direction=south;" vertex="1" parent="1">
+          <mxGeometry x="565" y="105" width="34" height="290" as="geometry" />
         </mxCell>
 
-        <!-- Hazard & Survival Curve Plots -->
-        <mxCell id="plot_hazard" value="&lt;b style=&quot;font-size:10px;&quot;&gt;hazard curve λ&lt;sub&gt;k&lt;/sub&gt;&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:8px;color:#64748B;&quot;&gt;k = 1 .. 12&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;color:#DC2626;font-size:11px;&quot;&gt;📈&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="660" y="115" width="105" height="90" as="geometry" />
+        <!-- PLOTS -->
+        <mxCell id="p_hazard" value="&lt;b style=&quot;font-size:10px;&quot;&gt;hazard curve λ&lt;sub&gt;k&lt;/sub&gt;&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:8px;color:#64748B;&quot;&gt;k = 1 .. 12&lt;/span&gt;&lt;br/&gt;📈" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="615" y="115" width="105" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="plot_survival" value="&lt;b style=&quot;font-size:10px;&quot;&gt;survival S = Π(1-λ)&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:8px;color:#64748B;&quot;&gt;Probability of Safety&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;color:#2563EB;font-size:11px;&quot;&gt;📉&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="660" y="275" width="105" height="90" as="geometry" />
+        <mxCell id="p_survival" value="&lt;b style=&quot;font-size:10px;&quot;&gt;survival S = Π(1-λ)&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:8px;color:#64748B;&quot;&gt;Safety Probability&lt;/span&gt;&lt;br/&gt;📉" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="615" y="275" width="105" height="90" as="geometry" />
         </mxCell>
 
-        <!-- Arrow: The Hive -> AI Model -->
-        <mxCell id="edge_hive_ai" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="master_gw" target="stage_temporal">
+        <mxCell id="e_hive_ai" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#334155;strokeWidth=2;endArrow=classic;" edge="1" parent="1" source="hive_gw" target="s_temporal">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- ========================================== -->
-        <!-- >>> THE NEW RIGHT-HAND COMPLETION <<<       -->
+        <!-- SHORT, CRISP RIGHT-HAND BLOCKS             -->
         <!-- ========================================== -->
 
-        <!-- 1. AUTHORITATIVE POSTGRESQL (EXISTING LOGO + CLEAN CARD) -->
-        <mxCell id="card_postgres" value="&lt;b style=&quot;font-size: 13px; color: #1E3A8A;&quot;&gt;PostgreSQL Database&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size: 10px; color: #3B82F6;&quot;&gt;Authoritative Single Source of Truth&lt;/span&gt;&lt;br/&gt;&lt;hr style=&quot;margin: 3px 0;&quot;/&gt;&lt;span style=&quot;font-size: 9px; color: #475569;&quot;&gt;• readings &amp;amp; 60s JSONB Packets&lt;br/&gt;• Predicted Hazard Risk Ledger (λ)&lt;/span&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#3B82F6;strokeWidth=1.5;fontColor=#1E3A8A;align=center;verticalAlign=middle;spacing=4;" vertex="1" parent="1">
-          <mxGeometry x="820" y="190" width="180" height="90" as="geometry" />
+        <!-- 1. POSTGRESQL AUTHORITATIVE DATABASE -->
+        <mxCell id="box_db" value="&lt;b style=&quot;font-size:12px;color:#1E3A8A;&quot;&gt;Authoritative Database&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:10px;font-weight:bold;color:#2563EB;&quot;&gt;PostgreSQL (Port 5432)&lt;/span&gt;&lt;br/&gt;&lt;div style=&quot;text-align:left;padding-left:8px;font-size:9.5px;color:#334155;line-height:1.4;&quot;&gt;• 60s Telemetry Packets&lt;br/&gt;• Hazard Risk Ledger (λ&lt;sub&gt;k&lt;/sub&gt;)&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#3B82F6;strokeWidth=1.5;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="765" y="200" width="165" height="85" as="geometry" />
         </mxCell>
 
-        <!-- 2. CENTRAL BACKEND & C8 RULES ENGINE -->
-        <mxCell id="card_backend" value="&lt;b style=&quot;font-size: 13px; color: #065F46;&quot;&gt;Central Backend &amp;amp; API&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size: 10px; color: #059669;&quot;&gt;Node.js / Express (:8080)&lt;/span&gt;&lt;br/&gt;&lt;hr style=&quot;margin: 3px 0;&quot;/&gt;&lt;span style=&quot;font-size: 9px; color: #334155;&quot;&gt;• DGMS Blast &amp;amp; Machine Veto&lt;br/&gt;• Native WebSocket Event Broadcaster&lt;/span&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;strokeWidth=1.5;fontColor=#065F46;align=center;verticalAlign=middle;spacing=4;" vertex="1" parent="1">
-          <mxGeometry x="1040" y="190" width="180" height="90" as="geometry" />
+        <!-- 2. CENTRAL BACKEND & C8 ENGINE -->
+        <mxCell id="box_backend" value="&lt;b style=&quot;font-size:12px;color:#065F46;&quot;&gt;C8 Decision Engine&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:10px;font-weight:bold;color:#059669;&quot;&gt;Node.js / Express (:8080)&lt;/span&gt;&lt;br/&gt;&lt;div style=&quot;text-align:left;padding-left:8px;font-size:9.5px;color:#334155;line-height:1.4;&quot;&gt;• Knothe Fit (R² ≥ 0.85)&lt;br/&gt;• Blast &amp;amp; Machine Veto (f&lt;sub&gt;dom&lt;/sub&gt;)&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;strokeWidth=1.5;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="965" y="200" width="165" height="85" as="geometry" />
         </mxCell>
 
-        <!-- 3. OPERATOR MISSION CONTROL HMI (CONCISE) -->
-        <mxCell id="card_hmi" value="&lt;b style=&quot;font-size: 13px; color: #831843;&quot;&gt;Operator Mission Control&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size: 10px; color: #BE185D;&quot;&gt;Electron HMI &amp;amp; 3D WebGL (:8085/:5173)&lt;/span&gt;&lt;br/&gt;&lt;hr style=&quot;margin: 3px 0;&quot;/&gt;&lt;span style=&quot;font-size: 9px; color: #475569;&quot;&gt;• 2D Sector Subsidence Heatmap (8x8)&lt;br/&gt;• Dynamic 3D DEM Terrain Mesh&lt;/span&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FDF2F8;strokeColor=#EC4899;strokeWidth=1.5;fontColor=#831843;align=center;verticalAlign=middle;spacing=4;" vertex="1" parent="1">
-          <mxGeometry x="1040" y="80" width="180" height="85" as="geometry" />
+        <!-- 3. OPERATOR MISSION CONTROL HMI -->
+        <mxCell id="box_hmi" value="&lt;b style=&quot;font-size:12px;color:#831843;&quot;&gt;Mission Control HMI&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:10px;font-weight:bold;color:#BE185D;&quot;&gt;Electron &amp;amp; 3D WebGL&lt;/span&gt;&lt;br/&gt;&lt;div style=&quot;text-align:left;padding-left:8px;font-size:9.5px;color:#334155;line-height:1.4;&quot;&gt;• 8×8 Sector Hazard Heatmap&lt;br/&gt;• Real DEM 3D Terrain Mesh&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FDF2F8;strokeColor=#EC4899;strokeWidth=1.5;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="965" y="90" width="165" height="85" as="geometry" />
         </mxCell>
 
-        <!-- 4. EARLY WARNING & SAFETY ACTUATION -->
-        <mxCell id="card_actuation" value="&lt;b style=&quot;font-size: 13px; color: #991B1B;&quot;&gt;Early Warning &amp;amp; Actuation&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size: 10px; color: #DC2626;&quot;&gt;Life Safety &amp;amp; Evacuation Protocol&lt;/span&gt;&lt;br/&gt;&lt;hr style=&quot;margin: 3px 0;&quot;/&gt;&lt;span style=&quot;font-size: 9px; color: #475569;&quot;&gt;• 10m Antenna Mast Siren Sounding&lt;br/&gt;• Shift Supervisor Emergency SMS&lt;/span&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#EF4444;strokeWidth=1.5;fontColor=#991B1B;align=center;verticalAlign=middle;spacing=4;" vertex="1" parent="1">
-          <mxGeometry x="1040" y="325" width="180" height="85" as="geometry" />
+        <!-- 4. EARLY WARNING & ACTUATION -->
+        <mxCell id="box_alert" value="&lt;b style=&quot;font-size:12px;color:#991B1B;&quot;&gt;Autonomous Early Warning&lt;/b&gt;&lt;br/&gt;&lt;span style=&quot;font-size:10px;font-weight:bold;color:#DC2626;&quot;&gt;DGMS Emergency Actuation&lt;/span&gt;&lt;br/&gt;&lt;div style=&quot;text-align:left;padding-left:8px;font-size:9.5px;color:#334155;line-height:1.4;&quot;&gt;• 10m Antenna Mast Siren&lt;br/&gt;• GSM / SMS Supervisor Alert&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#EF4444;strokeWidth=1.5;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="965" y="310" width="165" height="85" as="geometry" />
         </mxCell>
 
         <!-- ========================================== -->
-        <!-- CONNECTING ARROWS                          -->
+        <!-- CLEAN CONNECTIONS                          -->
         <!-- ========================================== -->
 
-        <!-- Arrow: Hazard Head & Survival -> PostgreSQL -->
-        <mxCell id="edge_ai_pg" value="Hazard Ledger &amp;amp; Risk Scores" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1E3A8A;strokeWidth=2;fontColor=#1E3A8A;fontSize=10;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="box_ai_pipeline" target="card_postgres">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="785" y="235" as="sourcePoint" />
-            <mxPoint x="820" y="235" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Arrow: PostgreSQL -> Central Backend -->
-        <mxCell id="edge_pg_be" value="Query Pool" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=2;fontColor=#065F46;fontSize=10;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="card_postgres" target="card_backend">
+        <!-- AI to PostgreSQL -->
+        <mxCell id="e_ai_pg" value="Hazard Scores (λ)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#1E3A8A;strokeWidth=2;fontColor=#1E3A8A;fontSize=9.5;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="box_ai" target="box_db">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- Arrow: Backend -> Operator Mission Control -->
-        <mxCell id="edge_be_hmi" value="WebSocket Stream" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BE185D;strokeWidth=2;fontColor=#831843;fontSize=10;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="card_backend" target="card_hmi">
+        <!-- PostgreSQL to Backend -->
+        <mxCell id="e_pg_be" value="Query Pool" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#059669;strokeWidth=2;fontColor=#065F46;fontSize=9.5;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="box_db" target="box_backend">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <!-- Arrow: Backend -> Early Warning & Actuation -->
-        <mxCell id="edge_be_act" value="Knothe Alarm Trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=2;fontColor=#991B1B;fontSize=10;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="card_backend" target="card_actuation">
+        <!-- Backend to HMI -->
+        <mxCell id="e_be_hmi" value="WebSocket Stream" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#BE185D;strokeWidth=2;fontColor=#831843;fontSize=9.5;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="box_backend" target="box_hmi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Backend to Siren -->
+        <mxCell id="e_be_alert" value="Verified Alarm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#DC2626;strokeWidth=2;fontColor=#991B1B;fontSize=9.5;fontStyle=1;endArrow=classic;" edge="1" parent="1" source="box_backend" target="box_alert">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 

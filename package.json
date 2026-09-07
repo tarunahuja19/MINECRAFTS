@@ -22,7 +22,8 @@
     "stress:geo": "simulation/.venv/bin/python simulation/scripts/deep_geomechanics_chaos.py 2>/dev/null || python3 simulation/scripts/deep_geomechanics_chaos.py",
     "stress:chaos": "node scripts/deep_system_stress_test.js",
     "stress:full": "node scripts/run_full_system_stress.js",
-    "stress:ui": "./dashboard_electron/node_modules/.bin/electron scripts/run_brutal_ui_stress.js"
+    "stress:ui": "./dashboard_electron/node_modules/.bin/electron scripts/run_brutal_ui_stress.js",
+    "stress:v3": "./dashboard_electron/node_modules/.bin/electron scripts/run_v3_feature_stress.js"
   },
   "keywords": [
     "mine-subsidence",

@@ -344,6 +344,7 @@ var nodeMarkers = (function () {
         for (var k = 0; k < ids.length; k++) {
           var sid = ids[k];
           nodeData[sid].state = 'dead';
+          nodeData[sid].lastTelemetry = null;
           if (markers[sid]) {
             markers[sid].setIcon(createIcon('dead', roleOf(nodeData[sid]), tierLetterOf(nodeData[sid])));
             markers[sid].setTooltipContent(buildTooltip(nodeData[sid]));

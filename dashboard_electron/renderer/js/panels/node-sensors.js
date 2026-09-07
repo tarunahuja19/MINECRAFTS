@@ -5,6 +5,11 @@ var nodeSensors = (function () {
   var nodeTelemetryCache = {};
 
   function getMergedTelemetry(nodeId, incoming, nd) {
+    // If node is dead, strictly return null so all SCADA instruments display offline
+    if (nd && nd.state === 'dead') {
+      return null;
+    }
+
     var cached = nodeTelemetryCache[nodeId] || null;
 
     // Check fixture history for any existing records if not in cache
@@ -31,13 +36,23 @@ var nodeSensors = (function () {
       }
     }
 
-    // Do NOT fabricate artificial baselines for dead nodes with no telemetry
-    if (!cached || (nd && nd.state === 'dead' && !incoming)) {
+    if (!cached) {
       return null;
     }
 
     nodeTelemetryCache[nodeId] = cached;
     return cached;
+  }
+
+  if (typeof bus !== 'undefined' && bus.on) {
+    bus.on('simulation-status', function (data) {
+      if (!data || !data.is_running) {
+        nodeTelemetryCache = {};
+      }
+    });
+    bus.on('system-reset', function () {
+      nodeTelemetryCache = {};
+    });
   }
 
   function triggerFlash(el) {
@@ -131,7 +146,7 @@ var nodeSensors = (function () {
              (t.tilt_z != null) ? (Math.abs(t.tilt_z) < 10 ? Math.round(t.tilt_z * 1000) : Math.round(t.tilt_z)) :
              (t.channels && t.channels.tilt_z != null) ? Math.round(t.channels.tilt_z) : 0;
 
-    if (tx == null || ty == null) {
+    if (tx == null || ty == null || !isFinite(tx) || !isFinite(ty)) {
       return { tx: null, ty: null, tz: null, mag: null, statusClass: 'dead', statusText: 'OFFLINE' };
     }
 
@@ -146,7 +161,7 @@ var nodeSensors = (function () {
   }
 
   function renderBalanceMetrics(val) {
-    if (val == null) {
+    if (val == null || !isFinite(val)) {
       return { left: 50, width: 0, color: '#5A6A72', text: '--' };
     }
 
@@ -292,7 +307,7 @@ var nodeSensors = (function () {
                  (t.strain != null) ? t.strain :
                  (t.channels && t.channels.strain_ue != null) ? t.channels.strain_ue : null;
 
-    if (strain == null) {
+    if (strain == null || !isFinite(strain)) {
       return { strain: null, pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
     }
 
@@ -385,7 +400,7 @@ var nodeSensors = (function () {
               (t.vib_rms != null) ? t.vib_rms :
               (t.channels && t.channels.vibration_rms != null) ? t.channels.vibration_rms : null;
 
-    if (rms == null) {
+    if (rms == null || !isFinite(rms)) {
       return { rms: null, valStr: '--', unit: 'mm/s PPV', pct: 0, statusClass: 'dead', statusText: 'OFFLINE' };
     }
 
@@ -487,7 +502,7 @@ var nodeSensors = (function () {
                (t.temperature_c != null) ? t.temperature_c :
                (t.channels && t.channels.temperature_c != null) ? t.channels.temperature_c : null;
 
-    if (temp == null) {
+    if (temp == null || !isFinite(temp)) {
       return { temp: null, valStr: '--', pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
     }
 
@@ -562,7 +577,7 @@ var nodeSensors = (function () {
              (t.battery_mv != null) ? t.battery_mv :
              (t.channels && t.channels.battery_voltage != null) ? Math.round(t.channels.battery_voltage * 1000) : null;
 
-    if (mv == null) {
+    if (mv == null || !isFinite(mv)) {
       return { mv: null, pct: 0, valStr: '--', statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
     }
 

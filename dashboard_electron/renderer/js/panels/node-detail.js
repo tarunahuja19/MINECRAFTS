@@ -71,6 +71,29 @@ var nodeDetail = (function () {
         updateStateBadge(data.state);
       }
     });
+
+    bus.on('simulation-status', function (data) {
+      var isRunning = data && data.is_running;
+      if (!isRunning && currentNodeId) {
+        updateStateBadge('dead');
+        var lastSeenEl = document.getElementById('detail-last-seen');
+        if (lastSeenEl) {
+          lastSeenEl.innerHTML = '<span style="color:#7A9BAA;">--</span>';
+        }
+        var nd = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(currentNodeId) : null;
+        if (nd) {
+          nd.state = 'dead';
+          nd.lastTelemetry = null;
+        }
+        if (typeof nodeSensors !== 'undefined' && nodeSensors.render) {
+          nodeSensors.render('sensor-readouts', currentNodeId, null, nd || { node_id: currentNodeId, state: 'dead' });
+        }
+      }
+    });
+
+    bus.on('system-reset', function () {
+      hide();
+    });
   }
 
   function glyphChipOf(nodeId, nd, tierKey) {
@@ -103,8 +126,9 @@ var nodeDetail = (function () {
 
     var tierKey = getTierForNode(nodeId, nd);
 
-    var t = nd.lastTelemetry;
-    if (!t && typeof fixtureProvider !== 'undefined') {
+    var isDead = (nd && nd.state === 'dead');
+    var t = isDead ? null : nd.lastTelemetry;
+    if (!t && !isDead && typeof fixtureProvider !== 'undefined') {
       var allT = fixtureProvider.getTelemetry();
       if (allT) {
         for (var k = allT.length - 1; k >= 0; k--) {
@@ -167,10 +191,12 @@ var nodeDetail = (function () {
     startAgeTimer(nd);
 
     if (typeof nodeSensors !== 'undefined' && nodeSensors.render) {
-      nodeSensors.render('sensor-readouts', nodeId, t, nd);
+      nodeSensors.render('sensor-readouts', nodeId, isDead ? null : t, nd);
     }
 
-    fetchDbNodeProfile(nodeId);
+    if (!isDead) {
+      fetchDbNodeProfile(nodeId);
+    }
 
     bus.emit('detail-opened', { nodeId: nodeId });
   }
