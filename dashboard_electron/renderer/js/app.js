@@ -219,28 +219,5 @@ document.getElementById('tab-map').style.display = 'flex';
     });
   }
 
-  var btnDbReset = document.getElementById('btn-db-reset');
-  if (btnDbReset) {
-    btnDbReset.addEventListener('click', async function () {
-      var host = window.location.hostname || 'localhost';
-      try {
-        var res = await fetch('http://' + host + ':8080/api/system/reset', { method: 'POST' });
-        var data = await res.json();
-        bus.emit('system-reset', data);
-      } catch (e) {
-        bus.emit('system-reset', { action: 'reset' });
-      }
-      bus.emit('alarms-loaded', []);
-      bus.emit('simulation-status', { is_running: false, is_paused: false, state: 'STOPPED' });
-      if (typeof alarmBanner !== 'undefined') {
-        alarmBanner.hide();
-        if (alarmBanner.updateBadge) alarmBanner.updateBadge(0);
-      }
-      if (typeof alarmDetail !== 'undefined' && alarmDetail.hide) {
-        alarmDetail.hide();
-      }
-    });
-  }
-
   modeSwitch.init();
 })();

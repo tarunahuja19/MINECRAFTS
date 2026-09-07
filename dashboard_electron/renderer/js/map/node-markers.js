@@ -15,15 +15,13 @@ var nodeMarkers = (function () {
     dead:     { color: '#5A6A72', border: 'rgba(0,0,0,0.75)' }
   };
 
-  // The 31 real nodes come in three roles and the map has to make them tellable
-  // apart at a glance, so role drives SHAPE and state drives COLOUR. Sizes are
   // Role defines SHAPE, tier defines GLYPH LETTER, state defines COLOUR:
-  // - Scout: Square A, Square B, Square C
-  // - Anchor: Circular A, Circular B, Circular C
+  // - Scout: Circular A, Circular B, Circular C
+  // - Anchor: Concentric Circular A, Circular B, Circular C
   // - Gateway: Triangle G
   var ROLE_CONFIG = {
-    scout:   { shape: 'square',   size: 20 },
-    anchor:  { shape: 'circle',   size: 20 },
+    scout:   { shape: 'circle',   size: 20 },
+    anchor:  { shape: 'circle',   size: 22 },
     gateway: { shape: 'triangle', size: 22 }
   };
 
@@ -61,18 +59,22 @@ var nodeMarkers = (function () {
     var textEl = '';
     var textColor = (state === 'active' || state === 'warning') ? '#0B1318' : '#FFFFFF';
 
-    if (ROLE_CONFIG[role].shape === 'square') {
-      body = '<rect x="1.5" y="1.5" width="' + (sz - 3) + '" height="' + (sz - 3) + '" rx="2.5" ' +
-             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>';
-      textEl = '<text x="' + (sz / 2) + '" y="' + (sz / 2 + 3.8) + '" text-anchor="middle" ' +
-               'font-size="10.5" font-family="Consolas, monospace, sans-serif" font-weight="900" fill="' + textColor + '">' + letter + '</text>';
-    } else if (ROLE_CONFIG[role].shape === 'triangle') {
+    if (ROLE_CONFIG[role].shape === 'triangle') {
       body = '<polygon points="' + (sz / 2) + ',1.5 ' + (sz - 1.5) + ',' + (sz - 2) +
              ' 1.5,' + (sz - 2) + '" ' +
              'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6" stroke-linejoin="round"/>';
       textEl = '<text x="' + (sz / 2) + '" y="' + (sz / 2 + 6.2) + '" text-anchor="middle" ' +
                'font-size="10" font-family="Consolas, monospace, sans-serif" font-weight="900" fill="' + textColor + '">G</text>';
+    } else if (role === 'anchor') {
+      // Anchor: concentric dual ring circle with tier letter inside
+      body = '<circle cx="' + (sz / 2) + '" cy="' + (sz / 2) + '" r="' + (sz / 2 - 1.5) + '" ' +
+             'fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>' +
+             '<circle cx="' + (sz / 2) + '" cy="' + (sz / 2) + '" r="' + (sz / 2 - 3.8) + '" ' +
+             'fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="0.9"/>';
+      textEl = '<text x="' + (sz / 2) + '" y="' + (sz / 2 + 3.8) + '" text-anchor="middle" ' +
+               'font-size="10.5" font-family="Consolas, monospace, sans-serif" font-weight="900" fill="' + textColor + '">' + letter + '</text>';
     } else {
+      // Scout: clean single-stroke circle with tier letter inside (no square overlaid)
       body = '<circle cx="' + (sz / 2) + '" cy="' + (sz / 2) + '" r="' + (sz / 2 - 1.5) + '" ' +
              'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>';
       textEl = '<text x="' + (sz / 2) + '" y="' + (sz / 2 + 3.8) + '" text-anchor="middle" ' +
@@ -81,11 +83,11 @@ var nodeMarkers = (function () {
 
     var cross = '';
     if (state === 'dead') {
-      cross = '<line x1="2" y1="2" x2="' + (sz - 2) + '" y2="' + (sz - 2) + '" stroke="#1A2228" stroke-width="1.8" opacity="0.85"/>' +
-              '<line x1="' + (sz - 2) + '" y1="2" x2="2" y2="' + (sz - 2) + '" stroke="#1A2228" stroke-width="1.8" opacity="0.85"/>';
+      cross = '<line x1="3" y1="3" x2="' + (sz - 3) + '" y2="' + (sz - 3) + '" stroke="#1A2228" stroke-width="1.8" opacity="0.85"/>' +
+              '<line x1="' + (sz - 3) + '" y1="3" x2="3" y2="' + (sz - 3) + '" stroke="#1A2228" stroke-width="1.8" opacity="0.85"/>';
     }
 
-    return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 ' + sz + ' ' + sz + '">' +
+    return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 ' + sz + ' ' + sz + '" style="display:block;">' +
            body + textEl + cross + '</svg>';
   }
 
@@ -95,7 +97,6 @@ var nodeMarkers = (function () {
     letter = letter || 'A';
     var sz = ROLE_CONFIG[role].size;
 
-    // NO BLINKING on affected nodes: solid, readable glyph with expanding concentric circles instead
     return L.divIcon({
       className: 'node-marker-led node-marker-' + role,
       html: '<div class="node-led" style="width:' + sz + 'px;height:' + sz + 'px;' +
@@ -182,26 +183,48 @@ var nodeMarkers = (function () {
   function buildPopup(node) {
     var role = roleOf(node);
     function row(k, v) {
-      return '<div style="display:flex;gap:10px;justify-content:space-between;">' +
+      return '<div style="display:flex;gap:10px;justify-content:space-between;margin-top:2px;">' +
              '<span style="color:#8AA0AC;">' + k + '</span>' +
-             '<span style="color:#E6EDF2;font-variant-numeric:tabular-nums;">' + v + '</span></div>';
+             '<span style="color:#E6EDF2;font-variant-numeric:tabular-nums;font-weight:600;">' + v + '</span></div>';
     }
     var xm = (typeof node.x === 'number') ? node.x.toFixed(1) + ' m' : '--';
     var ym = (typeof node.y === 'number') ? node.y.toFixed(1) + ' m' : '--';
     var lat = (typeof node.lat === 'number') ? node.lat.toFixed(6) : '--';
     var lng = (typeof node.lng === 'number') ? node.lng.toFixed(6) : '--';
 
-    return '<div style="font:11px ui-monospace,Menlo,monospace;min-width:190px;">' +
-           '<div style="font-size:12px;font-weight:600;color:#E6EDF2;margin-bottom:6px;">' +
-           node.node_id + '</div>' +
-           row('Role', ROLE_LABEL[role] || role) +
-           row('Tier', node.tier || '--') +
-           row('State', (node.state || 'unknown').toUpperCase()) +
+    var t = node.lastTelemetry;
+    var strainVal = (t && t.strain_ustrain != null) ? (t.strain_ustrain + ' µε')
+                  : (t && t.strain_ue != null) ? (t.strain_ue + ' µε')
+                  : (t && t.strain != null) ? (t.strain + ' µε') : '--';
+    var vbatVal = (t && t.vbat_mv != null) ? (t.vbat_mv + ' mV')
+                : (t && t.channels && t.channels.vbat_mv != null) ? (t.channels.vbat_mv + ' mV') : '--';
+    var tx = (t && t.tilt_x_mdeg != null) ? t.tilt_x_mdeg : (t && t.tilt_x != null ? t.tilt_x : null);
+    var ty = (t && t.tilt_y_mdeg != null) ? t.tilt_y_mdeg : (t && t.tilt_y != null ? t.tilt_y : null);
+    var tiltVal = (tx != null && ty != null) ? Math.hypot(tx, ty).toFixed(0) + ' mdeg' : '--';
+    var tempVal = (t && t.temp_c != null) ? (t.temp_c + ' °C')
+                : (t && t.channels && t.channels.temperature_c != null) ? (t.channels.temperature_c + ' °C') : '--';
+
+    var stateColor = '#00CC44';
+    if (node.state === 'warning') stateColor = '#FFA500';
+    else if (node.state === 'critical' || node.state === 'lastgasp') stateColor = '#FF2222';
+    else if (node.state === 'dead') stateColor = '#5A6A72';
+
+    return '<div style="font:11px ui-monospace,Menlo,monospace;min-width:210px;padding:2px 0;">' +
+           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+             '<span style="font-size:13px;font-weight:900;color:#FFF;">' + node.node_id + '</span>' +
+             '<span style="padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;background:' + stateColor + ';color:#0B1318;">' +
+               (node.state || 'unknown').toUpperCase() +
+             '</span>' +
+           '</div>' +
+           row('Role / Tier', (ROLE_LABEL[role] || role) + ' (' + (node.tier || tierLetterOf(node)) + ')') +
            '<div style="height:1px;background:#2A3841;margin:6px 0;"></div>' +
-           row('x (panel)', xm) +
-           row('y (panel)', ym) +
-           row('lat', lat) +
-           row('lon', lng) +
+           row('Strain (Gauge)', strainVal) +
+           row('Tilt Magnitude', tiltVal) +
+           row('Battery (Vbat)', vbatVal) +
+           row('Temperature', tempVal) +
+           '<div style="height:1px;background:#2A3841;margin:6px 0;"></div>' +
+           row('Grid (X / Y)', xm + ', ' + ym) +
+           row('GPS (Lat/Lon)', lat + ', ' + lng) +
            '</div>';
   }
 
@@ -210,11 +233,19 @@ var nodeMarkers = (function () {
       return node.node_id + ' [OFFLINE]\nSIMULATION: STOPPED\nWaiting for simulation start...';
     }
     var t = node.lastTelemetry;
-    var strain = (t && t.strain_ustrain != null) ? (t.strain_ustrain + ' ustrain') : '--';
-    var battery = (t && t.vbat_mv != null) ? (t.vbat_mv + ' mV') : '--';
+    var strain = (t && t.strain_ustrain != null) ? (t.strain_ustrain + ' µε')
+               : (t && t.strain_ue != null) ? (t.strain_ue + ' µε')
+               : (t && t.strain != null) ? (t.strain + ' µε') : '--';
+    var battery = (t && t.vbat_mv != null) ? (t.vbat_mv + ' mV')
+                : (t && t.channels && t.channels.vbat_mv != null) ? (t.channels.vbat_mv + ' mV') : '--';
+    var tx = (t && t.tilt_x_mdeg != null) ? t.tilt_x_mdeg : (t && t.tilt_x != null ? t.tilt_x : null);
+    var ty = (t && t.tilt_y_mdeg != null) ? t.tilt_y_mdeg : (t && t.tilt_y != null ? t.tilt_y : null);
+    var tiltStr = (tx != null && ty != null) ? Math.hypot(tx, ty).toFixed(0) + ' mdeg' : '--';
     var ts = t ? formatTimestamp(t.t_epoch_s) : '--:--:--';
-    return node.node_id + '\n' +
+    return node.node_id + ' [' + (node.state || 'active').toUpperCase() + ']\n' +
+           'Role: ' + (ROLE_LABEL[roleOf(node)] || 'Scout') + ' (Tier ' + tierLetterOf(node) + ')\n' +
            'Strain: ' + strain + '\n' +
+           'Tilt: ' + tiltStr + '\n' +
            'Battery: ' + battery + '\n' +
            'Last: ' + ts;
   }
@@ -375,6 +406,9 @@ var nodeMarkers = (function () {
 
         if (markers[nodeId]) {
           markers[nodeId].setTooltipContent(buildTooltip(nodeData[nodeId]));
+          if (markers[nodeId].setPopupContent) {
+            markers[nodeId].setPopupContent(buildPopup(nodeData[nodeId]));
+          }
         }
       }
 
@@ -422,6 +456,12 @@ var nodeMarkers = (function () {
     var role = nodeData[nodeId] ? roleOf(nodeData[nodeId]) : 'scout';
     var letter = nodeData[nodeId] ? tierLetterOf(nodeData[nodeId]) : 'A';
     markers[nodeId].setIcon(createIcon(state, role, letter));
+    if (markers[nodeId].setPopupContent) {
+      markers[nodeId].setPopupContent(buildPopup(nodeData[nodeId]));
+    }
+    if (markers[nodeId].setTooltipContent) {
+      markers[nodeId].setTooltipContent(buildTooltip(nodeData[nodeId]));
+    }
     updateNodeCount();
 
     if (state === 'critical' || state === 'lastgasp' || state === 'warning') {

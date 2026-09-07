@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS readings (
 
 CREATE INDEX IF NOT EXISTS idx_readings_node_ts ON readings (node_id, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_readings_ts ON readings (ts DESC);
+ALTER TABLE readings ADD COLUMN IF NOT EXISTS state VARCHAR(32) DEFAULT 'active';
 
 -- 3. simulation_packets — 60-second aggregated simulation packets
 CREATE TABLE IF NOT EXISTS simulation_packets (

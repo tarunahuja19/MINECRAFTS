@@ -78,8 +78,8 @@ var nodeDetail = (function () {
     var letter = (typeof nodeMarkers !== 'undefined' && nodeMarkers.tierLetterOf) ? nodeMarkers.tierLetterOf(nd || { node_id: nodeId }) : 'A';
     if (nodeId === 'N31' || tierKey === '3') { role = 'gateway'; letter = 'G'; }
 
-    var shapeClass = (role === 'gateway') ? 'triangle' : (role === 'anchor' ? 'circle' : 'square');
-    var shapeName = (role === 'gateway') ? 'Triangle' : (role === 'anchor' ? 'Circular' : 'Square');
+    var shapeClass = (role === 'gateway') ? 'triangle' : 'circle';
+    var shapeName = (role === 'gateway') ? 'Triangle' : 'Circular';
     var roleLabel = (role === 'gateway') ? 'Gateway' : (role === 'anchor' ? 'Anchor' : 'Scout');
 
     var color = '#00CC44';

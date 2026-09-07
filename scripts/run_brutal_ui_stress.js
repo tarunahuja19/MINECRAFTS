@@ -203,15 +203,15 @@ app.whenReady().then(async () => {
         assert(tabSwitchErrors === 0, \`120 rapid tab switches completed without exceptions (Leaflet/Chart.js reflow intact)\`);
 
         // ------------------------------------------------------------------
-        // SCENARIO 5: In-Flight Database Reset Button Chaos Under Telemetry Load
+        // SCENARIO 5: In-Flight Close Everything Button Chaos Under Telemetry Load
         // ------------------------------------------------------------------
-        console.log('[Stress 5] In-Flight Database Reset Button Chaos...');
+        console.log('[Stress 5] In-Flight Close Everything Button Chaos...');
         for (let k = 0; k < 200; k++) {
           bus.emit('telemetry', { _node_id: nodeIds[k % nodeIds.length], strain_ustrain: 600 });
         }
 
-        const resetBtn = document.getElementById('btn-db-reset');
-        assert(resetBtn !== null, 'Reset Database operator button verified present in top tab bar');
+        const closeBtn = document.getElementById('btn-close-all');
+        assert(closeBtn !== null, 'Close Everything operator button verified present in top tab bar');
 
         // Fire system reset event into bus
         bus.emit('system-reset', { action: 'reset' });

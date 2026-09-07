@@ -28,6 +28,7 @@ var replayController = (function () {
   var replaySpeed = 10;
   var batchSize = 60;
   var replayAlarms = [];
+  var replayDbAlarms = [];
   var emittedAlarms = {};
 
   // 'stopped' | 'loading' | 'playing' | 'paused'
@@ -228,12 +229,29 @@ var replayController = (function () {
     syncButtons();
     setStatus('FETCHING DATABASE RECORDS (ROW 1 → NOW)...');
 
-    fetch(API_BASE + '/api/readings?order=asc&limit=all')
+    var readingsFetch = fetch(API_BASE + '/api/readings?order=asc&limit=all')
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
+      });
+
+    var alarmsFetch = fetch(API_BASE + '/api/alarms')
+      .then(function (res) {
+        return res.ok ? res.json() : [];
       })
-      .then(function (data) {
+      .catch(function () {
+        return [];
+      });
+
+    Promise.all([readingsFetch, alarmsFetch])
+      .then(function (results) {
+        var data = results[0];
+        var alarms = results[1];
+        if (Array.isArray(alarms) && alarms.length > 0) {
+          replayDbAlarms = alarms;
+        } else {
+          replayDbAlarms = [];
+        }
         if (Array.isArray(data) && data.length > 0) {
           replayData = data;
           setSource('● DB (' + data.length + ' ROWS)');
@@ -306,8 +324,8 @@ var replayController = (function () {
     replayIndex = 0;
     emittedAlarms = {};
 
-    var rawAlarms = [];
-    if (typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) {
+    var rawAlarms = (replayDbAlarms && replayDbAlarms.length > 0) ? replayDbAlarms : [];
+    if (rawAlarms.length === 0 && typeof fixtureProvider !== 'undefined' && fixtureProvider.getAlarms) {
       rawAlarms = fixtureProvider.getAlarms() || [];
     }
     replayAlarms = rawAlarms.map(function (a) {
@@ -437,14 +455,12 @@ var replayController = (function () {
     var isLoading = state === 'loading';
 
     document.querySelectorAll('.replay-btn-play').forEach(function (btn) {
-      // PLAY doubles as RESUME so the primary button is always the one that
-      // moves the timeline forward.
       btn.disabled = isPlaying || isLoading;
       btn.textContent = isPaused ? 'RESUME' : 'PLAY';
     });
     document.querySelectorAll('.replay-btn-pause').forEach(function (btn) {
-      btn.disabled = !(isPlaying || isPaused);
-      btn.textContent = isPaused ? 'RESUME' : 'PAUSE';
+      btn.disabled = !isPlaying;
+      btn.textContent = isPaused ? 'PAUSED' : 'PAUSE';
       btn.classList.toggle('is-paused', isPaused);
     });
     document.querySelectorAll('.replay-btn-stop').forEach(function (btn) {

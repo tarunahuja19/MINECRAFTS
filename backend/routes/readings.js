@@ -8,6 +8,15 @@ const { ingestReadings } = require('../scripts/ingest-simulation');
 // Format a row to include both SCHEMA.md standard columns and frontend compatibility fields
 function formatReading(row) {
   const epoch = Math.floor(new Date(row.ts).getTime() / 1000);
+  let state = 'active';
+  if (row.state) {
+    state = String(row.state).toLowerCase();
+  } else if (row.strain_ue != null && row.strain_ue >= 5000) {
+    state = 'critical';
+  } else if (row.strain_ue != null && row.strain_ue >= 3500) {
+    state = 'warning';
+  }
+
   return {
     ...row,
     // Frontend chart / fixture compatibility aliases
@@ -18,7 +27,9 @@ function formatReading(row) {
     temp_c_x10: row.die_temp_c != null ? Math.round(row.die_temp_c * 10) : 215,
     vib_rms: row.vib_rms_mm_s != null ? Math.round(row.vib_rms_mm_s * 10) : 8,
     vbat_mv: 4120,
-    flags: 0
+    flags: 0,
+    state: state,
+    node_state: state.toUpperCase()
   };
 }
 

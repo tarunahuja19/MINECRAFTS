@@ -145,16 +145,43 @@ export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
   const strainUe = measuredStrainUe ?? geo.tensileStrainMmPerM * 1000.0;
   const strainMmPerM = strainUe / 1000.0;
 
-  // Determine State
+  // Determine State strictly using server node_state and geometric alert radius:
+  // Red (Critical): d <= 1.2 * R
+  // Yellow (Warning / Tension): 1.2 * R < d <= 1.5 * R
+  // (No hardcoded secondary strain / drop thresholds dividing or overriding this)
   let nodeState: SegmentState = "STABLE";
-  if (Math.abs(strainMmPerM) > 5.3 || geo.dropDistanceM > 0.4) {
+
+  const isServerCritical = localTel?.node_state === "CRITICAL" || remoteDetails?.node_state === "CRITICAL";
+  const isServerWarning = localTel?.node_state === "WARNING" || remoteDetails?.node_state === "WARNING";
+  const isServerFailed = localTel?.node_state === "DEAD" || remoteDetails?.node_state === "DEAD";
+
+  if (isServerFailed) {
     nodeState = "FAILED";
-  } else if (Math.abs(strainMmPerM) > 3.8 || geo.dropDistanceM > 0.15) {
+  } else if (isServerCritical) {
     nodeState = "CRITICAL";
-  } else if (Math.abs(strainMmPerM) > 2.0 || geo.dropDistanceM > 0.04) {
+  } else if (isServerWarning) {
     nodeState = "TENSION";
-  } else if (geo.dropDistanceM > 0.005) {
-    nodeState = "SETTLING";
+  } else {
+    // Check geometric distance to collapse interventions
+    let minDistFactor: number | null = null;
+    if (globalGeomechanics && Array.isArray(globalGeomechanics.interventions)) {
+      for (const inter of globalGeomechanics.interventions) {
+        if (inter.radiusM > 0) {
+          const dist = Math.hypot(x - inter.cx, yCoord - inter.cy);
+          const factor = dist / inter.radiusM;
+          if (minDistFactor === null || factor < minDistFactor) {
+            minDistFactor = factor;
+          }
+        }
+      }
+    }
+    if (minDistFactor !== null) {
+      if (minDistFactor <= 1.2) {
+        nodeState = "CRITICAL";
+      } else if (minDistFactor <= 1.5) {
+        nodeState = "TENSION";
+      }
+    }
   }
 
   const stateColor = STATE_COLORS[nodeState];
@@ -794,8 +821,9 @@ export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
                     <span style={{ color: "var(--text-secondary)" }}>RADIUS (R):</span>
                     <span style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                       <strong style={{ color: "var(--state-info-alt)" }}>{radiusM.toFixed(0)} m</strong>
-                      <span style={{ fontSize: "10px", color: "var(--state-critical)", fontWeight: 700 }}>
-                        [ALERT: {(radiusM * 1.2).toFixed(0)} m]
+                      <span style={{ fontSize: "9.5px", display: "flex", gap: "4px", fontWeight: 700 }}>
+                        <span style={{ color: "var(--state-critical)" }}>[RED: {(radiusM * 1.2).toFixed(0)}m]</span>
+                        <span style={{ color: "var(--state-warning)" }}>[WARN: {(radiusM * 1.5).toFixed(0)}m]</span>
                       </span>
                     </span>
                   </div>

@@ -75,6 +75,10 @@ ALTER TABLE nodes ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
 ALTER TABLE nodes ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION;
 """
 
+ALTER_READINGS_STATE_SQL = """
+ALTER TABLE readings ADD COLUMN IF NOT EXISTS state VARCHAR(32) DEFAULT 'active';
+"""
+
 UPSERT_NODE_SQL = """
 INSERT INTO nodes (node_id, site_id, tier, node_type, x, y, z, installed_at, status, lat, lon)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -98,13 +102,16 @@ INSERT INTO readings (
     fissure_mm, strain_ue, moisture_pct, ext_delta_mm,
     pore_pressure_kpa, borehole_tilt_d1_urad, borehole_tilt_d2_urad,
     borehole_tilt_d3_urad, borehole_tilt_d4_urad,
-    gps_dx_mm, gps_dy_mm, gps_dz_mm
+    gps_dx_mm, gps_dy_mm, gps_dz_mm,
+    state
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
     $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-    $21, $22, $23, $24, $25, $26
+    $21, $22, $23, $24, $25, $26,
+    $27
 )
-ON CONFLICT (node_id, ts) DO NOTHING;
+ON CONFLICT (node_id, ts) DO UPDATE
+SET state = EXCLUDED.state;
 """
 
 UPSERT_PACKET_SQL = """
@@ -178,6 +185,7 @@ class DatabaseManager:
             async with self.pool.acquire() as conn:
                 await conn.execute(CREATE_PACKETS_TABLE_SQL)
                 await conn.execute(ALTER_NODES_GEO_SQL)
+                await conn.execute(ALTER_READINGS_STATE_SQL)
 
             self.is_connected = True
             print(f"[DB] Connected to PostgreSQL ({PGHOST}:{PGPORT}/{PGDATABASE}). Table `simulation_packets` ready.")
@@ -316,6 +324,8 @@ class DatabaseManager:
                         gps_y = ch.get("gps_dy_mm") if tier == "3" else None
                         gps_z = ch.get("gps_dz_mm") if tier == "3" else None
 
+                        node_state_val = getattr(r, "node_state", "ACTIVE").lower()
+
                         await conn.execute(
                             INSERT_READING_SQL,
                             node_id, ts, tilt_x, tilt_y,
@@ -324,6 +334,7 @@ class DatabaseManager:
                             fissure, strain, moisture, ext_delta,
                             pore_press, bh_t1, bh_t2, bh_t3, bh_t4,
                             gps_x, gps_y, gps_z,
+                            node_state_val,
                         )
                         inserted += 1
 

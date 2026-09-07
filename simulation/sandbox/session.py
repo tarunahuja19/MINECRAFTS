@@ -45,7 +45,7 @@ from sandbox.sensors import CHANNEL_COLUMNS, CSV_COLUMNS, SensorArray, SensorNoi
 #: ring and the MQTT alarm bridge measure against these same numbers, so a
 #: node's colour, its ring, and its alarm can never disagree.
 CRITICAL_RADIUS_FACTOR = 1.2
-WARNING_RADIUS_FACTOR = 1.6
+WARNING_RADIUS_FACTOR = 1.5
 
 #: Ordering for resolving overlapping carves - a node takes its worst state.
 _STATE_SEVERITY = {"ACTIVE": 0, "WARNING": 1, "CRITICAL": 2}
@@ -237,7 +237,7 @@ class SimulationSession:
         radius R:
 
         - within ``1.2 * R``: CRITICAL, the collapse footprint proper
-        - within ``1.6 * R``: WARNING, the ground-falling fringe outside it
+        - within ``1.5 * R``: WARNING, the ground-falling fringe outside it
         - beyond that: ACTIVE
 
         Overlapping carves resolve to the most severe state, so a node in one

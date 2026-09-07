@@ -320,37 +320,46 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
         const strainMmPerM = node.strainMmPerM;
         const tiltMmPerM = node.tiltMmPerM;
 
-        // 1.2x Alert Radius check:
-        // When a collapse is applied or perturbation is active with radius R,
-        // any node within 1.2 * R is evaluated as affected and marked RED.
-        // At the beginning (before collapse events), nodes are NOT called red based on data.
-        const isInsideCollapseAlert = (() => {
-          if (globalGeomechanics && Array.isArray(globalGeomechanics.interventions)) {
-            for (const inter of globalGeomechanics.interventions) {
-              const alertR = inter.radiusM * 1.2;
-              if (Math.hypot(node.x - inter.cx, node.y - inter.cy) <= alertR) {
-                return true;
+        // Pure geometric distance alert checks:
+        // Red (Critical): d <= 1.2 * R
+        // Yellow (Warning): 1.2 * R < d <= 1.5 * R
+        // Remove any deterministic numbers or overrides dividing this.
+        let alertStatus: "CRITICAL" | "WARNING" | null = null;
+        if (globalGeomechanics && Array.isArray(globalGeomechanics.interventions)) {
+          for (const inter of globalGeomechanics.interventions) {
+            if (inter.radiusM > 0) {
+              const d = Math.hypot(node.x - inter.cx, node.y - inter.cy);
+              if (d <= inter.radiusM * 1.2) {
+                alertStatus = "CRITICAL";
+                break;
+              } else if (d <= inter.radiusM * 1.5) {
+                alertStatus = "WARNING";
               }
             }
           }
-          if (Array.isArray(perturbations)) {
-            for (const p of perturbations) {
-              const alertR = (p.radius_m || 60) * 1.2;
-              if (Math.hypot(node.x - p.cx, node.y - p.cy) <= alertR) {
-                return true;
+        }
+        if (alertStatus !== "CRITICAL" && Array.isArray(perturbations)) {
+          for (const p of perturbations) {
+            const rad = p.radius_m || 60;
+            if (rad > 0) {
+              const d = Math.hypot(node.x - p.cx, node.y - p.cy);
+              if (d <= rad * 1.2) {
+                alertStatus = "CRITICAL";
+                break;
+              } else if (d <= rad * 1.5) {
+                alertStatus = "WARNING";
               }
             }
           }
-          return false;
-        })();
+        }
 
         let stateColor = STATE_COLORS.STABLE;
-        if (node.serverState === "CRITICAL" || isInsideCollapseAlert) {
+        if (node.serverState === "DEAD" || node.serverState === "FAILED") {
+          stateColor = STATE_COLORS.FAILED;
+        } else if (node.serverState === "CRITICAL" || alertStatus === "CRITICAL") {
           stateColor = STATE_COLORS.CRITICAL;
-        } else if (node.serverState === "WARNING") {
+        } else if (node.serverState === "WARNING" || alertStatus === "WARNING") {
           stateColor = STATE_COLORS.TENSION;
-        } else if (finalDrop > 0.05) {
-          stateColor = STATE_COLORS.SETTLING;
         }
 
         // Single source for the badge text, so it can never disagree with the
@@ -451,10 +460,10 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
                 </mesh>
               )}
 
-              {/* Active Beacon LED Head: Square for Scout, Circle for Anchor, Triangle for Gateway */}
+              {/* Active Beacon LED Head: Sphere for Scout (clean circle), Cylinder for Anchor, Cone for Gateway */}
               <mesh position={[0, style.beaconY, 0]}>
                 {node.tier.startsWith("1") ? (
-                  <boxGeometry args={[2.4, 2.4, 2.4]} />
+                  <sphereGeometry args={[1.6, 16, 16]} />
                 ) : node.tier.startsWith("2") ? (
                   <cylinderGeometry args={[1.5, 1.5, 2.2, 16]} />
                 ) : (
@@ -469,7 +478,7 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
                 />
               </mesh>
 
-              {/* Concentric ground shockwave ripples for Critical / Warning nodes */}
+              {/* Concentric ground shockwave ripples for Critical (Red) nodes */}
               {(stateColor === STATE_COLORS.CRITICAL || stateColor === STATE_COLORS.FAILED) && (
                 <>
                   <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -483,6 +492,24 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
                   <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                     <ringGeometry args={[style.padR + 8.5, style.padR + 10.0, 32]} />
                     <meshBasicMaterial color="#CC0000" side={THREE.DoubleSide} transparent opacity={0.25} />
+                  </mesh>
+                </>
+              )}
+
+              {/* Concentric ground shockwave ripples for Warning / Tension (Yellow) nodes */}
+              {stateColor === STATE_COLORS.TENSION && (
+                <>
+                  <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[style.padR + 1.8, style.padR + 2.6, 32]} />
+                    <meshBasicMaterial color="#FFA500" side={THREE.DoubleSide} transparent opacity={0.75} />
+                  </mesh>
+                  <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[style.padR + 4.2, style.padR + 5.2, 32]} />
+                    <meshBasicMaterial color="#FFB82E" side={THREE.DoubleSide} transparent opacity={0.45} />
+                  </mesh>
+                  <mesh position={[0, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                    <ringGeometry args={[style.padR + 7.0, style.padR + 8.2, 32]} />
+                    <meshBasicMaterial color="#E69500" side={THREE.DoubleSide} transparent opacity={0.2} />
                   </mesh>
                 </>
               )}

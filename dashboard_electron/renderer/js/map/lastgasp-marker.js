@@ -14,15 +14,24 @@ var lastgaspMarker = (function () {
       if (t.flags & 1) state = 'lastgasp';
       if (state === 'critical' || state === 'lastgasp' || state === 'warning') {
         showPulse(nodeId, state);
-      } else if (pulseRings[nodeId]) {
+      } else if (pulseRings[nodeId] && (state === 'active' || state === 'stable' || state === 'normal')) {
         removePulse(nodeId);
+      }
+    });
+
+    bus.on('alarm', function (alarm) {
+      if (alarm.affected_nodes) {
+        var targetState = (alarm.level === 3) ? 'critical' : 'warning';
+        for (var j = 0; j < alarm.affected_nodes.length; j++) {
+          showPulse(alarm.affected_nodes[j], targetState);
+        }
       }
     });
 
     bus.on('node-status-change', function (data) {
       if (data.state === 'critical' || data.state === 'lastgasp' || data.state === 'warning') {
         showPulse(data.node_id, data.state);
-      } else if (pulseRings[data.node_id]) {
+      } else if (pulseRings[data.node_id] && (data.state === 'active' || data.state === 'stable' || data.state === 'normal')) {
         removePulse(data.node_id);
       }
     });

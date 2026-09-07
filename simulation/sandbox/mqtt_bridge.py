@@ -280,12 +280,12 @@ class MqttBridge:
             if self._last_zone_level.get(zone_id) == level and self._last_zone_state.get(zone_id) == state:
                 continue
 
-            # Check if this zone is within 1.2x alert radius of any active collapse
+            # Check if this zone is within 1.5x alert radius of any active collapse
             z_cx = float(getattr(z, "cx", 0.0))
             z_cy = float(getattr(z, "cy", 0.0))
             in_alert = False
             for pf in active_collapses:
-                alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.2
+                alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.5
                 p_cx = float(getattr(pf, "cx", 0.0))
                 p_cy = float(getattr(pf, "cy", 0.0))
                 if math.hypot(z_cx - p_cx, z_cy - p_cy) <= alert_r + 50.0:
@@ -296,7 +296,7 @@ class MqttBridge:
 
             lat, lon = geo.xy_to_latlon(z_cx, z_cy)
 
-            # Only include nodes that are genuinely inside the collapse alert radius
+            # Only include nodes that are genuinely inside the collapse alert radius (<= 1.5R)
             affected_nodes: list[str] = []
             if sensor_nodes:
                 for node in sensor_nodes:
@@ -304,7 +304,7 @@ class MqttBridge:
                     ny = getattr(node, "y_m", None)
                     if nx is not None and ny is not None:
                         for pf in active_collapses:
-                            alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.2
+                            alert_r = float(getattr(pf, "radius_m", 60.0)) * 1.5
                             p_cx = float(getattr(pf, "cx", 0.0))
                             p_cy = float(getattr(pf, "cy", 0.0))
                             if math.hypot(nx - p_cx, ny - p_cy) <= alert_r:
@@ -351,7 +351,7 @@ class MqttBridge:
     ) -> list[dict[str, Any]]:
         """Publish an alarm for any node in an elevated strain, tilt, or failure state.
 
-        Only active collapse events trigger alarms. Nodes within 1.2x of the collapse
+        Only active collapse events trigger alarms. Nodes within 1.5x of the collapse
         radius are evaluated. Normal continuous subsidence produces zero alarms.
         """
         if not active_collapses:

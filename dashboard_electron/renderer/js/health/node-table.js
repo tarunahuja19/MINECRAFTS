@@ -110,7 +110,7 @@ var nodeTable = (function () {
       var snrStr = r.snr !== null ? r.snr.toFixed(1) + ' dB' : '--';
 
       html +=
-        '<tr>' +
+        '<tr data-node-id="' + r.node_id + '" style="cursor:pointer;">' +
           '<td>' + r.node_id + '</td>' +
           '<td><span class="state-badge ' + r.state + '">' + r.state.toUpperCase() + '</span></td>' +
           '<td>' + r.ring.toUpperCase() + '</td>' +
@@ -143,6 +143,18 @@ var nodeTable = (function () {
             sortAsc = true;
           }
           render();
+        });
+      }
+
+      var tableRows = cont.querySelectorAll('tbody tr');
+      for (var k = 0; k < tableRows.length; k++) {
+        tableRows[k].addEventListener('click', function () {
+          var nid = this.getAttribute('data-node-id');
+          if (nid) {
+            bus.emit('node-selected', nid);
+            var mapTab = document.querySelector('.tab-btn[data-tab="map"]');
+            if (mapTab) mapTab.click();
+          }
         });
       }
     }
