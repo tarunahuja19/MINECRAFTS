@@ -120,7 +120,7 @@ var replayController = (function () {
           setStatus(count > 0
             ? 'READY — ' + count + ' DB ROWS'
             : 'READY — NO RECORDED ROWS YET');
-          setSource('● DB (ROW 1 → NOW)');
+          setSource('● ALL RECORDED DATA TILL TODAY');
         }
       })
       .catch(function () {
@@ -129,7 +129,7 @@ var replayController = (function () {
         if (allT && allT.length) {
           setProgress(0, allT.length);
           setStatus('READY — ' + allT.length + ' FIXTURE ROWS');
-          setSource('● FIXTURE (BACKEND OFFLINE)');
+          setSource('● FIXTURE DATA TILL TODAY');
         } else {
           setStatus('BACKEND UNREACHABLE');
           setSource('● NO SOURCE');
@@ -144,10 +144,12 @@ var replayController = (function () {
   function render() {
     var html =
       '<div class="replay-controls">' +
-        '<div class="replay-row">' +
+        '<div class="replay-row replay-actions-row">' +
           '<button class="btn replay-btn replay-btn-play">PLAY</button>' +
           '<button class="btn replay-btn replay-btn-pause" disabled>PAUSE</button>' +
           '<button class="btn replay-btn replay-btn-stop" disabled>STOP</button>' +
+        '</div>' +
+        '<div class="replay-row replay-speed-row">' +
           '<span class="replay-label">SPEED:</span>' +
           '<button class="btn replay-speed-btn active" data-speed="10">10x</button>' +
           '<button class="btn replay-speed-btn" data-speed="50">50x</button>' +
@@ -161,7 +163,7 @@ var replayController = (function () {
         '</div>' +
         '<div class="replay-row replay-row-status">' +
           '<span class="replay-status">DATABASE REPLAY READY</span>' +
-          '<span class="replay-db-source">● DB (ROW 1 → NOW)</span>' +
+          '<span class="replay-db-source">● ALL RECORDED DATA TILL TODAY</span>' +
         '</div>' +
       '</div>';
 
@@ -254,7 +256,7 @@ var replayController = (function () {
         }
         if (Array.isArray(data) && data.length > 0) {
           replayData = data;
-          setSource('● DB (' + data.length + ' ROWS)');
+          setSource('● DB (' + data.length + ' ROWS TILL TODAY)');
           finishDataLoadAndPlay();
         } else {
           fallbackHistoryQuery();
@@ -272,7 +274,7 @@ var replayController = (function () {
         .then(function (data) {
           if (Array.isArray(data) && data.length > 0) {
             replayData = data;
-            setSource('● DB VIA IPC (' + data.length + ' ROWS)');
+            setSource('● DB VIA IPC (' + data.length + ' ROWS TILL TODAY)');
             finishDataLoadAndPlay();
           } else {
             fallbackToFixture();
@@ -291,7 +293,7 @@ var replayController = (function () {
       ? fixtureProvider.getTelemetry() : [];
     if (allT && allT.length) {
       replayData = allT.slice();
-      setSource('● FIXTURE (' + allT.length + ' ROWS)');
+      setSource('● FIXTURE (' + allT.length + ' ROWS TILL TODAY)');
       finishDataLoadAndPlay();
     } else {
       state = 'stopped';

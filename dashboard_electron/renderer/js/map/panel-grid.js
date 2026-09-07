@@ -92,8 +92,8 @@ var panelGrid = (function () {
   ];
   var SURFACE_FILL_OPACITY = 0.42;
   var surfaceOn = false;
-  var gridOn = true;
-  var labelsOn = true;
+  var gridOn = false;
+  var labelsOn = false;
 
   // Cell geometry in the physics frame. Row 0 is the NORTH-most row, so y runs
   // downward with r; col 0 is the WEST-most, so x runs rightward with c.

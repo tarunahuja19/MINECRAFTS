@@ -117,14 +117,16 @@ var nodeDetail = (function () {
       }
     }
 
-    var stateUpper = (nd.state || 'active').toUpperCase();
+    var effectiveState = (nd.state || 'active').toLowerCase();
+    if (effectiveState === 'lastgasp') effectiveState = 'critical';
+    var stateUpper = effectiveState.toUpperCase();
 
     container.innerHTML =
       '<div class="panel-header" style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;gap:6px;">' +
         '<div style="display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;">' +
           '<span style="font-family:monospace;font-size:13px;font-weight:900;color:#FFF;">' + nodeId + '</span>' +
           glyphChipOf(nodeId, nd, tierKey) +
-          '<span class="state-badge ' + (nd.state || 'active') + '">' + stateUpper + '</span>' +
+          '<span class="state-badge ' + effectiveState + '">' + stateUpper + '</span>' +
         '</div>' +
         '<button class="btn" id="btn-close-detail" style="margin-left:auto;padding:2px 7px;font-size:10px;line-height:1.2;">✕</button>' +
       '</div>' +
@@ -224,6 +226,7 @@ var nodeDetail = (function () {
   }
 
   function updateStateBadge(state) {
+    if (state === 'lastgasp') state = 'critical';
     var badge = container.querySelector('.state-badge');
     if (badge) {
       badge.className = 'state-badge ' + state;
@@ -246,11 +249,17 @@ var nodeDetail = (function () {
       t = nodeSensors.getCachedTelemetry(currentNodeId);
     }
 
+    if (!t || (nd && nd.state === 'dead')) {
+      el.innerHTML = '<span style="color:#7A9BAA;">--</span>';
+      return;
+    }
+
     var epochS = (t && t.t_epoch_s) ? t.t_epoch_s :
                  (t && t.ts ? Math.floor(new Date(t.ts).getTime() / 1000) : null);
 
     if (!epochS) {
-      epochS = Math.floor(Date.now() / 1000);
+      el.innerHTML = '<span style="color:#7A9BAA;">--</span>';
+      return;
     }
 
     var d = new Date(epochS * 1000);

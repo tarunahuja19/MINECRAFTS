@@ -11,7 +11,7 @@ var nodeMarkers = (function () {
     active:   { color: '#00CC44', border: 'rgba(0,0,0,0.7)' },
     warning:  { color: '#FFA500', border: 'rgba(0,0,0,0.7)' },
     critical: { color: '#FF2222', border: 'rgba(0,0,0,0.75)' },
-    lastgasp: { color: '#FF4400', border: 'rgba(0,0,0,0.75)' },
+    lastgasp: { color: '#FF2222', border: 'rgba(0,0,0,0.75)' },
     dead:     { color: '#5A6A72', border: 'rgba(0,0,0,0.75)' }
   };
 
@@ -399,9 +399,11 @@ var nodeMarkers = (function () {
         // re-derives state from strain/tilt. A genuine last-gasp packet is a
         // real device event (PACKET_FLAG_LAST_GASP = 1).
         if (t.flags & 1) {
-          updateState(nodeId, 'lastgasp');
+          updateState(nodeId, 'critical');
         } else {
-          updateState(nodeId, t.state || 'active');
+          var s = t.state || 'active';
+          if (s === 'lastgasp') s = 'critical';
+          updateState(nodeId, s);
         }
 
         if (markers[nodeId]) {
@@ -445,6 +447,7 @@ var nodeMarkers = (function () {
 
   function updateState(nodeId, state) {
     if (!markers[nodeId]) return;
+    if (state === 'lastgasp') state = 'critical';
     // No-op when the state has not actually changed. The live provider
     // re-asserts every node's status on every 60-s packet; without this guard
     // each packet redraws all 31 marker icons and re-runs the alarm hooks,

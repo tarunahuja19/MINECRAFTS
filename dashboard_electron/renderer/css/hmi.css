@@ -279,6 +279,24 @@ html, body {
   gap: 6px;
 }
 
+.panel-transparent .replay-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-transparent .replay-speed-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.panel-transparent .replay-speed-row .replay-label {
+  font-size: 9.5px;
+  margin-right: 2px;
+}
+
 .panel-transparent .replay-label {
   font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
   font-size: 10px;

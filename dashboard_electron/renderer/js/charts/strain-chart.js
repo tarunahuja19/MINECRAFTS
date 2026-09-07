@@ -3,20 +3,24 @@
 var strainChart = (function () {
   var chart = null;
   var canvas = null;
-  var LEVEL1_THRESHOLD = 400;
-  var LEVEL2_THRESHOLD = 600;
+  var LEVEL1_THRESHOLD = 500;
+  var LEVEL2_THRESHOLD = 1500;
   var MAX_POINTS = 30;
 
-  function init(containerId, nodeId) {
+  function init(containerId, nodeId, optTelemetry) {
     var container = document.getElementById(containerId);
     if (!container) return;
 
     destroy();
 
+    var history = getSeedHistory(nodeId);
+    if (history.labels.length === 0 && !optTelemetry) {
+      container.innerHTML = '<div class="live-chart-empty-msg" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:70px;font-family:Consolas,monospace;font-size:10px;color:#5A6E7C;letter-spacing:0.05em;">NO TELEMETRY RECORDED — NODE OFFLINE</div>';
+      return;
+    }
+
     container.innerHTML = '<canvas id="strain-canvas" style="width:100%;height:100%;display:block;"></canvas>';
     canvas = document.getElementById('strain-canvas');
-
-    var history = getSeedHistory(nodeId);
 
     chart = new Chart(canvas, {
       type: 'line',
@@ -26,18 +30,18 @@ var strainChart = (function () {
           {
             label: 'Strain (µε)',
             data: history.values,
-            borderColor: '#00BFFF',
-            backgroundColor: 'rgba(0, 191, 255, 0.1)',
-            borderWidth: 2,
+            borderColor: '#00CC44',
+            backgroundColor: 'rgba(0, 204, 68, 0.08)',
+            borderWidth: 1.5,
             fill: true,
-            pointRadius: 1.5,
-            pointBackgroundColor: '#00BFFF',
-            tension: 0.35
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            tension: 0
           },
           {
-            label: 'L1 (400)',
+            label: 'Warn (500)',
             data: history.labels.map(function () { return LEVEL1_THRESHOLD; }),
-            borderColor: '#FFB300',
+            borderColor: 'rgba(255, 165, 0, 0.65)',
             borderWidth: 1,
             borderDash: [4, 4],
             fill: false,
@@ -45,11 +49,11 @@ var strainChart = (function () {
             tension: 0
           },
           {
-            label: 'L2 (600)',
+            label: 'Crit (1500)',
             data: history.labels.map(function () { return LEVEL2_THRESHOLD; }),
-            borderColor: '#FF3344',
+            borderColor: 'rgba(255, 34, 34, 0.75)',
             borderWidth: 1,
-            borderDash: [4, 4],
+            borderDash: [3, 3],
             fill: false,
             pointRadius: 0,
             tension: 0
@@ -70,7 +74,7 @@ var strainChart = (function () {
             position: 'top',
             align: 'end',
             labels: {
-              font: { family: 'Courier New', size: 8.5 },
+              font: { family: 'Consolas, monospace', size: 8.5 },
               color: '#8BA0AC',
               boxWidth: 8,
               boxHeight: 8,
@@ -79,8 +83,8 @@ var strainChart = (function () {
           },
           tooltip: {
             enabled: true,
-            titleFont: { family: 'Courier New', size: 9 },
-            bodyFont: { family: 'Courier New', size: 9 },
+            titleFont: { family: 'Consolas, monospace', size: 9 },
+            bodyFont: { family: 'Consolas, monospace', size: 9 },
             callbacks: {
               label: function (ctx) {
                 return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + ' µε';
@@ -92,25 +96,25 @@ var strainChart = (function () {
           x: {
             display: true,
             ticks: {
-              font: { family: 'Courier New', size: 8 },
+              font: { family: 'Consolas, monospace', size: 8 },
               color: '#5A6E7C',
               maxTicksLimit: 4,
               maxRotation: 0
             },
             grid: {
-              color: 'rgba(255, 255, 255, 0.04)'
+              color: 'rgba(255, 255, 255, 0.05)'
             }
           },
           y: {
             display: true,
             suggestedMin: 0,
             ticks: {
-              font: { family: 'Courier New', size: 8 },
+              font: { family: 'Consolas, monospace', size: 8 },
               color: '#7A9BAA',
               maxTicksLimit: 4
             },
             grid: {
-              color: 'rgba(255, 255, 255, 0.06)'
+              color: 'rgba(255, 255, 255, 0.05)'
             }
           }
         },
@@ -122,17 +126,24 @@ var strainChart = (function () {
   }
 
   function addPoint(t) {
-    if (!chart || !t) return;
+    if (!t) return;
+    if (!chart) {
+      var container = document.getElementById('strain-chart-container');
+      if (container) {
+        init('strain-chart-container', t.node_id || t._node_id, t);
+      }
+      if (!chart) return;
+    }
 
     var s = (t.strain_ustrain != null) ? t.strain_ustrain :
             (t.strain_ue != null) ? t.strain_ue :
             (t.strain != null) ? t.strain :
             (t.channels && t.channels.strain_ue != null) ? t.channels.strain_ue : null;
 
-    // Zero-null guarantee: fallback to last dataset value or nominal
+    // Zero-null guarantee: fallback to last dataset value or zero
     var lastVal = (chart.data.datasets[0].data.length > 0)
       ? chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1]
-      : 190;
+      : 0;
 
     if (s == null) s = lastVal;
     s = Math.round(s);
@@ -167,9 +178,11 @@ var strainChart = (function () {
         if (r.node_id === nodeId) {
           var val = (r.strain_ustrain != null) ? r.strain_ustrain :
                     (r.strain_ue != null) ? r.strain_ue :
-                    (r.strain != null) ? r.strain : 190;
-          labels.push(formatTime(r.t_epoch_s));
-          values.push(Math.round(val));
+                    (r.strain != null) ? r.strain : null;
+          if (val != null) {
+            labels.push(formatTime(r.t_epoch_s));
+            values.push(Math.round(val));
+          }
         }
       }
     }
@@ -177,17 +190,6 @@ var strainChart = (function () {
     if (labels.length > MAX_POINTS) {
       labels = labels.slice(-MAX_POINTS);
       values = values.slice(-MAX_POINTS);
-    }
-
-    // If still empty or very short, synthesize an initial nominal waveform so the operator immediately sees a living graph
-    if (labels.length < 10) {
-      var nowEpoch = Math.floor(Date.now() / 1000) - (15 * 5);
-      for (var k = 0; k < 15; k++) {
-        var ep = nowEpoch + (k * 5);
-        labels.push(formatTime(ep));
-        var synthVal = Math.round(180 + Math.sin(k * 0.5) * 25 + Math.cos(k * 0.8) * 15);
-        values.push(synthVal);
-      }
     }
 
     return { labels: labels, values: values };

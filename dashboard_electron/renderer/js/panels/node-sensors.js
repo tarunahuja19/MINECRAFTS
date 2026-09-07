@@ -4,40 +4,17 @@ var nodeSensors = (function () {
   var activeNodeId = null;
   var nodeTelemetryCache = {};
 
-  function getNominalBaseline(nodeId, tier) {
-    return {
-      node_id: nodeId,
-      tilt_x_mdeg: 12,
-      tilt_y_mdeg: -8,
-      tilt_z_mdeg: 0,
-      strain_ustrain: (tier === '1B') ? 240 : 185,
-      vib_rms_mm_s: 0.04,
-      die_temp_c: 28.4,
-      vbat_mv: 3950,
-      flags: 0,
-      t_epoch_s: Math.floor(Date.now() / 1000),
-      ts: new Date().toISOString()
-    };
-  }
-
   function getMergedTelemetry(nodeId, incoming, nd) {
-    var tier = (nd && nd.tier) || '1A';
-    var cached = nodeTelemetryCache[nodeId];
+    var cached = nodeTelemetryCache[nodeId] || null;
 
-    if (!cached) {
-      cached = getNominalBaseline(nodeId, tier);
-
-      // Check fixture history for any existing records
+    // Check fixture history for any existing records if not in cache
+    if (!cached && !incoming) {
       if (typeof fixtureProvider !== 'undefined' && fixtureProvider.getTelemetry) {
         var allT = fixtureProvider.getTelemetry();
-        if (allT) {
+        if (allT && allT.length) {
           for (var k = allT.length - 1; k >= 0; k--) {
             if (allT[k].node_id === nodeId) {
-              for (var f in allT[k]) {
-                if (allT[k][f] !== null && allT[k][f] !== undefined) {
-                  cached[f] = allT[k][f];
-                }
-              }
+              cached = Object.assign({}, allT[k]);
               break;
             }
           }
@@ -46,11 +23,17 @@ var nodeSensors = (function () {
     }
 
     if (incoming) {
+      if (!cached) cached = {};
       for (var prop in incoming) {
         if (incoming[prop] !== null && incoming[prop] !== undefined) {
           cached[prop] = incoming[prop];
         }
       }
+    }
+
+    // Do NOT fabricate artificial baselines for dead nodes with no telemetry
+    if (!cached || (nd && nd.state === 'dead' && !incoming)) {
+      return null;
     }
 
     nodeTelemetryCache[nodeId] = cached;
@@ -73,25 +56,25 @@ var nodeSensors = (function () {
     if (optProfile) nd = Object.assign({}, nd || {}, optProfile);
 
     var t = getMergedTelemetry(nodeId, optReading || (nd ? nd.lastTelemetry : null), nd);
-    if (nd) nd.lastTelemetry = t;
+    if (nd && t) nd.lastTelemetry = t;
 
     var extraChannelsHtml = buildExtraChannels(t, optProfile);
 
+    // Hardware status flags removed from display as requested
     container.innerHTML =
       buildTiltCard(t) +
       buildStrainCard(t, nd) +
       buildVibrationCard(t) +
       buildTemperatureCard(t) +
       buildBatteryCard(t) +
-      (extraChannelsHtml ? extraChannelsHtml : '') +
-      buildFlagsCard(t);
+      (extraChannelsHtml ? extraChannelsHtml : '');
 
     // Mount embedded live rolling waveform charts inside the cards
     if (typeof tiltChart !== 'undefined' && tiltChart.init) {
-      tiltChart.init('tilt-chart-container', nodeId);
+      tiltChart.init('tilt-chart-container', nodeId, t);
     }
     if (typeof strainChart !== 'undefined' && strainChart.init) {
-      strainChart.init('strain-chart-container', nodeId);
+      strainChart.init('strain-chart-container', nodeId, t);
     }
   }
 
@@ -132,17 +115,25 @@ var nodeSensors = (function () {
   // ---------------------------------------------------------------------
 
   function calcTiltValues(t) {
-    var tx = (t && t.tilt_x_mdeg != null) ? t.tilt_x_mdeg :
-             (t && t.tilt_x != null) ? (Math.abs(t.tilt_x) < 10 ? Math.round(t.tilt_x * 1000) : Math.round(t.tilt_x)) :
-             (t && t.channels && t.channels.tilt_x != null) ? Math.round(t.channels.tilt_x) : 12;
+    if (!t) {
+      return { tx: null, ty: null, tz: null, mag: null, statusClass: 'dead', statusText: 'OFFLINE' };
+    }
 
-    var ty = (t && t.tilt_y_mdeg != null) ? t.tilt_y_mdeg :
-             (t && t.tilt_y != null) ? (Math.abs(t.tilt_y) < 10 ? Math.round(t.tilt_y * 1000) : Math.round(t.tilt_y)) :
-             (t && t.channels && t.channels.tilt_y != null) ? Math.round(t.channels.tilt_y) : -8;
+    var tx = (t.tilt_x_mdeg != null) ? t.tilt_x_mdeg :
+             (t.tilt_x != null) ? (Math.abs(t.tilt_x) < 10 ? Math.round(t.tilt_x * 1000) : Math.round(t.tilt_x)) :
+             (t.channels && t.channels.tilt_x != null) ? Math.round(t.channels.tilt_x) : null;
 
-    var tz = (t && t.tilt_z_mdeg != null) ? t.tilt_z_mdeg :
-             (t && t.tilt_z != null) ? (Math.abs(t.tilt_z) < 10 ? Math.round(t.tilt_z * 1000) : Math.round(t.tilt_z)) :
-             (t && t.channels && t.channels.tilt_z != null) ? Math.round(t.channels.tilt_z) : 0;
+    var ty = (t.tilt_y_mdeg != null) ? t.tilt_y_mdeg :
+             (t.tilt_y != null) ? (Math.abs(t.tilt_y) < 10 ? Math.round(t.tilt_y * 1000) : Math.round(t.tilt_y)) :
+             (t.channels && t.channels.tilt_y != null) ? Math.round(t.channels.tilt_y) : null;
+
+    var tz = (t.tilt_z_mdeg != null) ? t.tilt_z_mdeg :
+             (t.tilt_z != null) ? (Math.abs(t.tilt_z) < 10 ? Math.round(t.tilt_z * 1000) : Math.round(t.tilt_z)) :
+             (t.channels && t.channels.tilt_z != null) ? Math.round(t.channels.tilt_z) : 0;
+
+    if (tx == null || ty == null) {
+      return { tx: null, ty: null, tz: null, mag: null, statusClass: 'dead', statusText: 'OFFLINE' };
+    }
 
     var mag = Math.round(Math.hypot(tx, ty));
 
@@ -155,6 +146,10 @@ var nodeSensors = (function () {
   }
 
   function renderBalanceMetrics(val) {
+    if (val == null) {
+      return { left: 50, width: 0, color: '#5A6A72', text: '--' };
+    }
+
     var clamped = Math.max(-1000, Math.min(1000, val));
     var span = (clamped / 1000) * 48;
     var barLeft = 50;
@@ -178,6 +173,9 @@ var nodeSensors = (function () {
 
   function buildTiltCard(t) {
     var d = calcTiltValues(t);
+    var isLive = (d.mag !== null && d.mag !== undefined);
+    var magStr = isLive ? String(d.mag) : '--';
+    var xyStr = isLive ? ('X ' + (d.tx >= 0 ? '+' : '') + d.tx + ' · Y ' + (d.ty >= 0 ? '+' : '') + d.ty + ' mdeg') : 'X -- · Y -- mdeg';
     var bx = renderBalanceMetrics(d.tx);
     var by = renderBalanceMetrics(d.ty);
     var bz = renderBalanceMetrics(d.tz);
@@ -189,17 +187,17 @@ var nodeSensors = (function () {
              '</div>' +
              '<div class="glass-metric-top">' +
                '<div>' +
-                 '<span id="tilt-mag-val" class="glass-metric-val">' + d.mag + '</span>' +
+                 '<span id="tilt-mag-val" class="glass-metric-val">' + magStr + '</span>' +
                  '<span class="glass-metric-unit">mdeg |θ|</span>' +
                '</div>' +
-               '<span id="tilt-xy-val" style="font-family:monospace;font-size:10.5px;color:#8BA0AC;">X ' + (d.tx >= 0 ? '+' : '') + d.tx + ' · Y ' + (d.ty >= 0 ? '+' : '') + d.ty + ' mdeg</span>' +
+               '<span id="tilt-xy-val" style="font-family:monospace;font-size:10.5px;color:#8BA0AC;">' + xyStr + '</span>' +
              '</div>' +
              '<div style="margin-top:2px;">' +
                '<div class="glass-balance-row">' +
                  '<span class="glass-balance-label">X</span>' +
                  '<div class="glass-balance-track">' +
                    '<div class="glass-balance-center"></div>' +
-                   '<div id="tilt-bar-x" class="glass-balance-bar" style="left:' + bx.left + '%;width:' + bx.width + '%;background:' + bx.color + ';box-shadow:0 0 6px ' + bx.color + ';"></div>' +
+                   '<div id="tilt-bar-x" class="glass-balance-bar" style="left:' + bx.left + '%;width:' + bx.width + '%;background:' + bx.color + ';' + (isLive ? ('box-shadow:0 0 6px ' + bx.color + ';') : '') + '"></div>' +
                  '</div>' +
                  '<span id="tilt-val-x" class="glass-balance-val">' + bx.text + '</span>' +
                '</div>' +
@@ -207,7 +205,7 @@ var nodeSensors = (function () {
                  '<span class="glass-balance-label">Y</span>' +
                  '<div class="glass-balance-track">' +
                    '<div class="glass-balance-center"></div>' +
-                   '<div id="tilt-bar-y" class="glass-balance-bar" style="left:' + by.left + '%;width:' + by.width + '%;background:' + by.color + ';box-shadow:0 0 6px ' + by.color + ';"></div>' +
+                   '<div id="tilt-bar-y" class="glass-balance-bar" style="left:' + by.left + '%;width:' + by.width + '%;background:' + by.color + ';' + (isLive ? ('box-shadow:0 0 6px ' + by.color + ';') : '') + '"></div>' +
                  '</div>' +
                  '<span id="tilt-val-y" class="glass-balance-val">' + by.text + '</span>' +
                '</div>' +
@@ -215,7 +213,7 @@ var nodeSensors = (function () {
                  '<span class="glass-balance-label">Z</span>' +
                  '<div class="glass-balance-track">' +
                    '<div class="glass-balance-center"></div>' +
-                   '<div id="tilt-bar-z" class="glass-balance-bar" style="left:' + bz.left + '%;width:' + bz.width + '%;background:' + bz.color + ';box-shadow:0 0 6px ' + bz.color + ';"></div>' +
+                   '<div id="tilt-bar-z" class="glass-balance-bar" style="left:' + bz.left + '%;width:' + bz.width + '%;background:' + bz.color + ';' + (isLive ? ('box-shadow:0 0 6px ' + bz.color + ';') : '') + '"></div>' +
                  '</div>' +
                  '<span id="tilt-val-z" class="glass-balance-val">' + bz.text + '</span>' +
                '</div>' +
@@ -226,15 +224,18 @@ var nodeSensors = (function () {
 
   function updateTiltDOM(t) {
     var d = calcTiltValues(t);
+    var isLive = (d.mag !== null && d.mag !== undefined);
+    var valStr = isLive ? String(d.mag) : '--';
+
     var magEl = document.getElementById('tilt-mag-val');
-    if (magEl && magEl.textContent !== String(d.mag)) {
-      magEl.textContent = String(d.mag);
-      triggerFlash(magEl);
+    if (magEl && magEl.textContent !== valStr) {
+      magEl.textContent = valStr;
+      if (isLive) triggerFlash(magEl);
     }
 
     var xyEl = document.getElementById('tilt-xy-val');
     if (xyEl) {
-      xyEl.textContent = 'X ' + (d.tx >= 0 ? '+' : '') + d.tx + ' · Y ' + (d.ty >= 0 ? '+' : '') + d.ty + ' mdeg';
+      xyEl.textContent = isLive ? ('X ' + (d.tx >= 0 ? '+' : '') + d.tx + ' · Y ' + (d.ty >= 0 ? '+' : '') + d.ty + ' mdeg') : 'X -- · Y -- mdeg';
     }
 
     var badge = document.getElementById('tilt-status-badge');
@@ -249,7 +250,7 @@ var nodeSensors = (function () {
       barX.style.left = bx.left + '%';
       barX.style.width = bx.width + '%';
       barX.style.background = bx.color;
-      barX.style.boxShadow = '0 0 6px ' + bx.color;
+      barX.style.boxShadow = isLive ? ('0 0 6px ' + bx.color) : 'none';
     }
     var valX = document.getElementById('tilt-val-x');
     if (valX) valX.textContent = bx.text;
@@ -260,7 +261,7 @@ var nodeSensors = (function () {
       barY.style.left = by.left + '%';
       barY.style.width = by.width + '%';
       barY.style.background = by.color;
-      barY.style.boxShadow = '0 0 6px ' + by.color;
+      barY.style.boxShadow = isLive ? ('0 0 6px ' + by.color) : 'none';
     }
     var valY = document.getElementById('tilt-val-y');
     if (valY) valY.textContent = by.text;
@@ -271,7 +272,7 @@ var nodeSensors = (function () {
       barZ.style.left = bz.left + '%';
       barZ.style.width = bz.width + '%';
       barZ.style.background = bz.color;
-      barZ.style.boxShadow = '0 0 6px ' + bz.color;
+      barZ.style.boxShadow = isLive ? ('0 0 6px ' + bz.color) : 'none';
     }
     var valZ = document.getElementById('tilt-val-z');
     if (valZ) valZ.textContent = bz.text;
@@ -282,10 +283,18 @@ var nodeSensors = (function () {
   // ---------------------------------------------------------------------
 
   function calcStrainValues(t, nd) {
-    var strain = (t && t.strain_ustrain != null) ? t.strain_ustrain :
-                 (t && t.strain_ue != null) ? t.strain_ue :
-                 (t && t.strain != null) ? t.strain :
-                 (t && t.channels && t.channels.strain_ue != null) ? t.channels.strain_ue : 185;
+    if (!t) {
+      return { strain: null, pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+    }
+
+    var strain = (t.strain_ustrain != null) ? t.strain_ustrain :
+                 (t.strain_ue != null) ? t.strain_ue :
+                 (t.strain != null) ? t.strain :
+                 (t.channels && t.channels.strain_ue != null) ? t.channels.strain_ue : null;
+
+    if (strain == null) {
+      return { strain: null, pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+    }
 
     strain = Math.round(strain);
     var pct = Math.min(100, Math.max(0, (strain / 2000) * 100));
@@ -309,6 +318,9 @@ var nodeSensors = (function () {
 
   function buildStrainCard(t, nd) {
     var d = calcStrainValues(t, nd);
+    var isLive = (d.strain !== null);
+    var valStr = isLive ? String(d.strain) : '--';
+    var subStr = isLive ? (d.pct.toFixed(0) + '% rupture limit') : '--';
 
     return '<div class="glass-card">' +
              '<div class="glass-metric-header">' +
@@ -317,13 +329,13 @@ var nodeSensors = (function () {
              '</div>' +
              '<div class="glass-metric-top">' +
                '<div>' +
-                 '<span id="strain-val" class="glass-metric-val">' + d.strain + '</span>' +
+                 '<span id="strain-val" class="glass-metric-val">' + valStr + '</span>' +
                  '<span class="glass-metric-unit">µε (ustrain)</span>' +
                '</div>' +
-               '<span id="strain-sub-val" style="font-family:monospace;font-size:10.5px;color:#7A9BAA;">' + d.pct.toFixed(0) + '% rupture limit</span>' +
+               '<span id="strain-sub-val" style="font-family:monospace;font-size:10.5px;color:#7A9BAA;">' + subStr + '</span>' +
              '</div>' +
              '<div class="glass-track">' +
-               '<div id="strain-bar-fill" class="glass-track-fill" style="width:' + d.pct + '%;background:' + d.barColor + ';box-shadow:0 0 8px ' + d.barColor + ';"></div>' +
+               '<div id="strain-bar-fill" class="glass-track-fill" style="width:' + d.pct + '%;background:' + d.barColor + ';' + (isLive ? ('box-shadow:0 0 8px ' + d.barColor + ';') : '') + '"></div>' +
              '</div>' +
              '<div class="live-chart-container" id="strain-chart-container"></div>' +
            '</div>';
@@ -331,15 +343,18 @@ var nodeSensors = (function () {
 
   function updateStrainDOM(t, nd) {
     var d = calcStrainValues(t, nd);
+    var isLive = (d.strain !== null);
+    var valStr = isLive ? String(d.strain) : '--';
+
     var strainEl = document.getElementById('strain-val');
-    if (strainEl && strainEl.textContent !== String(d.strain)) {
-      strainEl.textContent = String(d.strain);
-      triggerFlash(strainEl);
+    if (strainEl && strainEl.textContent !== valStr) {
+      strainEl.textContent = valStr;
+      if (isLive) triggerFlash(strainEl);
     }
 
     var subEl = document.getElementById('strain-sub-val');
     if (subEl) {
-      subEl.textContent = d.pct.toFixed(0) + '% rupture limit';
+      subEl.textContent = isLive ? (d.pct.toFixed(0) + '% rupture limit') : '--';
     }
 
     var badge = document.getElementById('strain-status-badge');
@@ -352,7 +367,7 @@ var nodeSensors = (function () {
     if (bar) {
       bar.style.width = d.pct + '%';
       bar.style.background = d.barColor;
-      bar.style.boxShadow = '0 0 8px ' + d.barColor;
+      bar.style.boxShadow = isLive ? ('0 0 8px ' + d.barColor) : 'none';
     }
   }
 
@@ -361,10 +376,18 @@ var nodeSensors = (function () {
   // ---------------------------------------------------------------------
 
   function calcVibValues(t) {
-    var isMmS = (t && t.vib_rms_mm_s != null);
+    if (!t) {
+      return { rms: null, valStr: '--', unit: 'mm/s PPV', pct: 0, statusClass: 'dead', statusText: 'OFFLINE' };
+    }
+
+    var isMmS = (t.vib_rms_mm_s != null);
     var rms = isMmS ? t.vib_rms_mm_s :
-              (t && t.vib_rms != null) ? t.vib_rms :
-              (t && t.channels && t.channels.vibration_rms != null) ? t.channels.vibration_rms : 0.04;
+              (t.vib_rms != null) ? t.vib_rms :
+              (t.channels && t.channels.vibration_rms != null) ? t.channels.vibration_rms : null;
+
+    if (rms == null) {
+      return { rms: null, valStr: '--', unit: 'mm/s PPV', pct: 0, statusClass: 'dead', statusText: 'OFFLINE' };
+    }
 
     if (typeof rms === 'number') rms = parseFloat(rms.toFixed(2));
 
@@ -395,7 +418,7 @@ var nodeSensors = (function () {
     for (var b = 0; b < numBars; b++) {
       var h = 4 + (b * 1.1);
       var segCol = '#253540';
-      if (b < activeBars) {
+      if (b < activeBars && pct > 0) {
         segCol = (b >= 6) ? '#FF2222' : ((b >= 4) ? '#FFA500' : '#00CC44');
       }
       eqHtml += '<div style="flex:1;height:' + h + 'px;background:' + segCol + ';border-radius:1px;"></div>';
@@ -427,10 +450,12 @@ var nodeSensors = (function () {
 
   function updateVibrationDOM(t) {
     var d = calcVibValues(t);
+    var isLive = (d.rms !== null);
+
     var vibEl = document.getElementById('vib-val');
     if (vibEl && vibEl.textContent !== d.valStr) {
       vibEl.textContent = d.valStr;
-      triggerFlash(vibEl);
+      if (isLive) triggerFlash(vibEl);
     }
 
     var unitEl = document.getElementById('vib-unit');
@@ -453,10 +478,18 @@ var nodeSensors = (function () {
   // ---------------------------------------------------------------------
 
   function calcTempValues(t) {
-    var temp = (t && t.die_temp_c != null) ? t.die_temp_c :
-               (t && t.temp_c_x10 != null) ? (t.temp_c_x10 / 10) :
-               (t && t.temperature_c != null) ? t.temperature_c :
-               (t && t.channels && t.channels.temperature_c != null) ? t.channels.temperature_c : 28.4;
+    if (!t) {
+      return { temp: null, valStr: '--', pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+    }
+
+    var temp = (t.die_temp_c != null) ? t.die_temp_c :
+               (t.temp_c_x10 != null) ? (t.temp_c_x10 / 10) :
+               (t.temperature_c != null) ? t.temperature_c :
+               (t.channels && t.channels.temperature_c != null) ? t.channels.temperature_c : null;
+
+    if (temp == null) {
+      return { temp: null, valStr: '--', pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+    }
 
     var statusClass = 'nominal';
     var statusText = 'NORMAL (20-45°C)';
@@ -472,6 +505,7 @@ var nodeSensors = (function () {
 
   function buildTemperatureCard(t) {
     var d = calcTempValues(t);
+    var isLive = (d.temp !== null);
 
     return '<div class="glass-card">' +
              '<div class="glass-metric-header">' +
@@ -486,17 +520,19 @@ var nodeSensors = (function () {
                '<span style="font-family:monospace;font-size:10.5px;color:#7A9BAA;">ENVELOPE 25-40°C</span>' +
              '</div>' +
              '<div class="glass-track">' +
-               '<div id="temp-bar-fill" class="glass-track-fill" style="width:' + d.pct + '%;background:' + d.barColor + ';box-shadow:0 0 8px ' + d.barColor + ';"></div>' +
+               '<div id="temp-bar-fill" class="glass-track-fill" style="width:' + d.pct + '%;background:' + d.barColor + ';' + (isLive ? ('box-shadow:0 0 8px ' + d.barColor + ';') : '') + '"></div>' +
              '</div>' +
            '</div>';
   }
 
   function updateTemperatureDOM(t) {
     var d = calcTempValues(t);
+    var isLive = (d.temp !== null);
+
     var tempEl = document.getElementById('temp-val');
     if (tempEl && tempEl.textContent !== d.valStr) {
       tempEl.textContent = d.valStr;
-      triggerFlash(tempEl);
+      if (isLive) triggerFlash(tempEl);
     }
 
     var badge = document.getElementById('temp-status-badge');
@@ -509,7 +545,7 @@ var nodeSensors = (function () {
     if (bar) {
       bar.style.width = d.pct + '%';
       bar.style.background = d.barColor;
-      bar.style.boxShadow = '0 0 8px ' + d.barColor;
+      bar.style.boxShadow = isLive ? ('0 0 8px ' + d.barColor) : 'none';
     }
   }
 
@@ -518,9 +554,17 @@ var nodeSensors = (function () {
   // ---------------------------------------------------------------------
 
   function calcBatteryValues(t) {
-    var mv = (t && t.vbat_mv != null) ? t.vbat_mv :
-             (t && t.battery_mv != null) ? t.battery_mv :
-             (t && t.channels && t.channels.battery_voltage != null) ? Math.round(t.channels.battery_voltage * 1000) : 3950;
+    if (!t) {
+      return { mv: null, pct: 0, valStr: '--', statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+    }
+
+    var mv = (t.vbat_mv != null) ? t.vbat_mv :
+             (t.battery_mv != null) ? t.battery_mv :
+             (t.channels && t.channels.battery_voltage != null) ? Math.round(t.channels.battery_voltage * 1000) : null;
+
+    if (mv == null) {
+      return { mv: null, pct: 0, valStr: '--', statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+    }
 
     var pct = 0;
     var statusClass = 'nominal';
@@ -543,6 +587,7 @@ var nodeSensors = (function () {
 
   function buildBatteryCard(t) {
     var d = calcBatteryValues(t);
+    var isLive = (d.mv !== null);
 
     return '<div class="glass-card">' +
              '<div class="glass-metric-header">' +
@@ -556,17 +601,19 @@ var nodeSensors = (function () {
                '<span style="font-family:monospace;font-size:10.5px;color:#7A9BAA;">LiFePO4 3.7V</span>' +
              '</div>' +
              '<div class="glass-track">' +
-               '<div id="vbat-bar-fill" class="glass-track-fill" style="width:' + d.pct + '%;background:' + d.barColor + ';box-shadow:0 0 8px ' + d.barColor + ';"></div>' +
+               '<div id="vbat-bar-fill" class="glass-track-fill" style="width:' + d.pct + '%;background:' + d.barColor + ';' + (isLive ? ('box-shadow:0 0 8px ' + d.barColor + ';') : '') + '"></div>' +
              '</div>' +
            '</div>';
   }
 
   function updateBatteryDOM(t) {
     var d = calcBatteryValues(t);
+    var isLive = (d.mv !== null);
+
     var batEl = document.getElementById('vbat-val');
     if (batEl && batEl.textContent !== d.valStr) {
       batEl.textContent = d.valStr;
-      triggerFlash(batEl);
+      if (isLive) triggerFlash(batEl);
     }
 
     var badge = document.getElementById('vbat-status-badge');
@@ -579,7 +626,7 @@ var nodeSensors = (function () {
     if (bar) {
       bar.style.width = d.pct + '%';
       bar.style.background = d.barColor;
-      bar.style.boxShadow = '0 0 8px ' + d.barColor;
+      bar.style.boxShadow = isLive ? ('0 0 8px ' + d.barColor) : 'none';
     }
   }
 
