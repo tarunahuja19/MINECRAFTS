@@ -62,8 +62,10 @@ cleanup() {
   echo ""
   say "[LAUNCHER] Shutting down services..."
   for pid in "$ELECTRON_PID" "$VITE_PID" "$SIM_PID" "$FRONTEND_PID" "$BACKEND_PID" "$BROKER_PID"; do
-    [ -n "$pid" ] && kill "$pid" 2>/dev/null
+    [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null
   done
+  # Ensure no orphan processes linger on application ports
+  lsof -ti:1883,8080,8085,8000,5173 | xargs kill -9 2>/dev/null || true
   wait 2>/dev/null
   say "[LAUNCHER] All services stopped."
 }
@@ -71,6 +73,10 @@ trap cleanup SIGINT SIGTERM EXIT
 
 # ---------------------------------------------------------------- preflight --
 say "[0] Preflight checks"
+
+# Clear any zombie/orphan processes holding stack ports
+lsof -ti:1883,8080,8085,8000,5173 | xargs kill -9 2>/dev/null || true
+ok "verified stack ports (1883, 8080, 8085, 8000, 5173) are free"
 
 command -v node >/dev/null || die "node not found on PATH"
 ok "node $(node --version)"

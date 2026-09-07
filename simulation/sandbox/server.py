@@ -60,6 +60,42 @@ def get_session() -> SimulationSession:
     return _session
 
 
+def ensure_simulation_task() -> asyncio.Task:
+    """Ensure the background simulation tick loop task is running."""
+    global _sim_task
+    if _sim_task is None or _sim_task.done() or _sim_task.cancelled():
+        _sim_task = asyncio.create_task(simulation_loop())
+        print("[SERVER] Background simulation_loop worker task started/re-armed")
+    return _sim_task
+
+
+async def broadcast_simulation_status(session: SimulationSession) -> dict[str, Any]:
+    """Broadcast simulation run state across MQTT, WebSockets, and backend."""
+    status_state = "RUNNING" if session.is_running and not session.is_paused else ("PAUSED" if session.is_paused else "STOPPED")
+    session.mqtt_bridge.publish_simulation_status(session.is_running, session.is_paused)
+
+    # Inform backend of status transition (non-blocking in thread)
+    def _notify_backend():
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                "http://127.0.0.1:8080/api/simulation/status",
+                data=json.dumps({
+                    "is_running": session.is_running,
+                    "is_paused": session.is_paused,
+                    "state": status_state,
+                }).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            urllib.request.urlopen(req, timeout=0.5)
+        except Exception:
+            pass
+
+    asyncio.create_task(asyncio.to_thread(_notify_backend))
+    return {"state": status_state, "is_running": session.is_running, "is_paused": session.is_paused}
+
+
 async def simulation_loop():
     """Background asyncio worker running the simulation tick loop."""
     session = get_session()
@@ -105,14 +141,14 @@ async def simulation_loop():
         except asyncio.CancelledError:
             break
         except Exception as e:
-            print(f"[ERROR in simulation loop]: {e}")
+            import traceback
+            print(f"[ERROR in simulation loop]: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(0.1)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager to initialize simulation and background loop."""
-    global _sim_task
     session = get_session()
     print(f"[*] Mine Sandbox Server initialized. SNR Margin: {session.snr_margin:.2f}")
     # Initialize PostgreSQL connection pool
@@ -120,8 +156,9 @@ async def lifespan(app: FastAPI):
     # Start publishing ticks to the MQTT broker the dashboard subscribes to.
     session.mqtt_bridge.connect()
     # Note: session starts idle (is_running = False) until user explicitly clicks Start
-    _sim_task = asyncio.create_task(simulation_loop())
+    ensure_simulation_task()
     yield
+    global _sim_task
     if _sim_task:
         _sim_task.cancel()
     if _session:
@@ -184,6 +221,8 @@ def _node_defs() -> list[dict[str, Any]]:
 async def health():
     """Health check endpoint exposing boot SNR margin and current sim-time."""
     session = get_session()
+    if session.is_running and not session.is_paused:
+        ensure_simulation_task()
     return {
         "status": "healthy",
         "snr_margin": session.snr_margin,
@@ -408,10 +447,12 @@ async def control(cmd: CommandRequest):
     action = cmd.action.lower()
 
     if action == "start":
+        ensure_simulation_task()
         session.start()
     elif action == "pause":
         session.is_paused = True
     elif action == "resume":
+        ensure_simulation_task()
         session.is_paused = False
     elif action in ("stop", "reset"):
         if action == "reset":
@@ -435,43 +476,8 @@ async def control(cmd: CommandRequest):
     else:
         return {"status": "error", "message": f"Unknown action {cmd.action}"}
 
-    # Broadcast updated status to MQTT and WebSocket clients
-    status_state = "RUNNING" if session.is_running and not session.is_paused else ("PAUSED" if session.is_paused else "STOPPED")
-    session.mqtt_bridge.publish_simulation_status(session.is_running, session.is_paused)
-
-    status_frame = json.dumps({
-        "type": "simulation_status",
-        "is_running": session.is_running,
-        "is_paused": session.is_paused,
-        "state": status_state,
-        "t_sim_seconds": session.t_sim_seconds,
-    })
-    dead_clients = set()
-    for ws in list(_connected_clients):
-        try:
-            await ws.send_text(status_frame)
-        except Exception:
-            dead_clients.add(ws)
-    _connected_clients.difference_update(dead_clients)
-
-    # Inform backend of status transition (non-blocking)
-    try:
-        import urllib.request
-        req = urllib.request.Request(
-            "http://localhost:8080/api/simulation/status",
-            data=json.dumps({
-                "is_running": session.is_running,
-                "is_paused": session.is_paused,
-                "state": status_state,
-            }).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        urllib.request.urlopen(req, timeout=0.3)
-    except Exception:
-        pass
-
-    return {"status": "success", "action": action, "speed": session.speed_multiplier, "state": status_state}
+    status_info = await broadcast_simulation_status(session)
+    return {"status": "success", "action": action, "speed": session.speed_multiplier, "state": status_info["state"]}
 
 
 @app.websocket("/ws")
@@ -565,11 +571,16 @@ async def websocket_endpoint(websocket: WebSocket):
             # on one. Report it to the client and keep the socket open.
             try:
                 if action == "start":
+                    ensure_simulation_task()
                     session.start()
+                    await broadcast_simulation_status(session)
                 elif action == "pause":
                     session.is_paused = True
+                    await broadcast_simulation_status(session)
                 elif action == "resume":
+                    ensure_simulation_task()
                     session.is_paused = False
+                    await broadcast_simulation_status(session)
                 elif action in ("stop", "reset"):
                     if action == "reset":
                         session.reset()
@@ -577,6 +588,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             await db_manager.reset_database()
                     else:
                         session.stop()
+                    await broadcast_simulation_status(session)
                 elif action == "set_speed":
                     # Falls back to the configured default, not a hardcoded
                     # 2000.0: a set_speed message that arrived without a
@@ -585,6 +597,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # exists to prevent.
                     mult = float(data.get("multiplier", DEFAULT_SPEED_MULTIPLIER))
                     session.set_speed(mult)
+                    await broadcast_simulation_status(session)
                 elif action in ("collapse", "apply_collapse"):
                     cx = float(data.get("cx", 0.0))
                     cy = float(data.get("cy", 0.0))

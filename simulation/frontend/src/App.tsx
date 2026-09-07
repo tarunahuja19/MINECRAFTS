@@ -397,8 +397,29 @@ export const App: React.FC = () => {
   }, [eventEndsAt]);
 
   const sendWsAction = (payload: any) => {
+    let sentViaWs = false;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(payload));
+      try {
+        wsRef.current.send(JSON.stringify(payload));
+        sentViaWs = true;
+      } catch (err) {
+        console.warn("[App] WS send error:", err);
+      }
+    } else {
+      console.warn("[App] WS not OPEN, state is:", wsRef.current?.readyState);
+    }
+
+    // Dual-channel reliability: also dispatch via HTTP POST /control
+    if (payload && payload.action) {
+      fetch("/control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).catch((err) => {
+        if (!sentViaWs) {
+          console.error("[App] Both WS and HTTP /control delivery failed:", err);
+        }
+      });
     }
   };
 

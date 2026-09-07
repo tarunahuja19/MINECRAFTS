@@ -14,7 +14,7 @@
 //   7. Browser tab on the 3D sandbox
 // ==============================================================================
 
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const net = require('net');
@@ -42,7 +42,40 @@ console.log('  R4 MINE SUBSIDENCE MONITORING SYSTEM - LAUNCHER');
 console.log(`  Root: ${ROOT_DIR}`);
 console.log('=================================================================');
 
+const STACK_PORTS = [1883, 8080, 8085, 8000, 5173];
 const children = [];
+
+function clearPortOccupants(ports = STACK_PORTS) {
+  try {
+    if (process.platform === 'win32') {
+      for (const port of ports) {
+        try {
+          const stdout = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+          const lines = stdout.split('\n');
+          for (const line of lines) {
+            const parts = line.trim().split(/\s+/);
+            const pid = parts[parts.length - 1];
+            if (pid && !isNaN(Number(pid)) && Number(pid) > 0 && Number(pid) !== process.pid) {
+              execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+            }
+          }
+        } catch (_) {}
+      }
+    } else {
+      const portStr = ports.join(',');
+      try {
+        const pids = execSync(`lsof -ti:${portStr}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+          .trim()
+          .split('\n')
+          .map((p) => p.trim())
+          .filter((p) => p && !isNaN(Number(p)) && Number(p) !== String(process.pid));
+        if (pids.length > 0) {
+          execSync(`kill -9 ${pids.join(' ')} 2>/dev/null`, { stdio: 'ignore' });
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+}
 
 function killChild(child) {
   if (!child || child.killed || !child.pid) return;
@@ -50,7 +83,11 @@ function killChild(child) {
     if (process.platform === 'win32') {
       spawn('taskkill', ['/pid', String(child.pid), '/f', '/t'], { stdio: 'ignore' });
     } else {
-      child.kill('SIGTERM');
+      try {
+        process.kill(-child.pid, 'SIGKILL');
+      } catch (_) {
+        child.kill('SIGKILL');
+      }
     }
   } catch (_) {}
 }
@@ -61,6 +98,7 @@ function cleanup() {
   for (const child of children) {
     killChild(child);
   }
+  clearPortOccupants(STACK_PORTS);
   say('[LAUNCHER] All services stopped.');
   process.exit(0);
 }
@@ -71,6 +109,7 @@ process.on('exit', () => {
   for (const child of children) {
     killChild(child);
   }
+  clearPortOccupants(STACK_PORTS);
 });
 
 function waitForTcp(port, host = '127.0.0.1', timeoutMs = 15000) {
@@ -105,12 +144,16 @@ function waitForTcp(port, host = '127.0.0.1', timeoutMs = 15000) {
   });
 }
 
-function waitForHttp(url, timeoutMs = 25000) {
+function waitForHttp(url, timeoutMs = 25000, childProc = null) {
   const start = Date.now();
   return new Promise((resolve, reject) => {
     let resolved = false;
     function check() {
       if (resolved) return;
+      if (childProc && childProc.exitCode !== null) {
+        resolved = true;
+        return reject(new Error(`Process died prematurely with exit code ${childProc.exitCode} while waiting for ${url}`));
+      }
       const req = http.get(url, (res) => {
         res.resume();
         if (res.statusCode >= 200 && res.statusCode < 400) {
@@ -124,6 +167,10 @@ function waitForHttp(url, timeoutMs = 25000) {
       });
       req.on('error', () => {
         if (resolved) return;
+        if (childProc && childProc.exitCode !== null) {
+          resolved = true;
+          return reject(new Error(`Process died prematurely with exit code ${childProc.exitCode} while waiting for ${url}`));
+        }
         if (Date.now() - start > timeoutMs) {
           reject(new Error(`Timeout connecting to ${url}`));
         } else {
@@ -156,6 +203,10 @@ function getPythonExecutable() {
 async function main() {
   say('[0] Preflight checks');
   
+  // Clear any zombie/orphan processes holding stack ports
+  clearPortOccupants(STACK_PORTS);
+  ok('verified stack ports (1883, 8080, 8085, 8000, 5173) are free');
+
   // 1. Check & Auto-Reset DB for a pristine run
   try {
     const db = require(path.join(ROOT_DIR, 'backend', 'db', 'db'));
@@ -188,7 +239,7 @@ async function main() {
     env: { ...process.env }
   });
   children.push(backendProc);
-  await waitForHttp('http://localhost:8080/api/health');
+  await waitForHttp('http://localhost:8080/api/health', 25000, backendProc);
   ok('backend healthy - http://localhost:8080/api/health');
 
   // 4. Start Dashboard Web Server
@@ -198,7 +249,7 @@ async function main() {
     stdio: 'inherit'
   });
   children.push(serveProc);
-  await waitForHttp('http://127.0.0.1:8085/');
+  await waitForHttp('http://127.0.0.1:8085/', 25000, serveProc);
   ok('dashboard tile proxy at http://127.0.0.1:8085/');
 
   // 5. Start Sandbox Simulation Server
@@ -210,7 +261,7 @@ async function main() {
     env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', PYTHONUNBUFFERED: '1' }
   });
   children.push(simProc);
-  await waitForHttp('http://127.0.0.1:8000/health');
+  await waitForHttp('http://127.0.0.1:8000/health', 25000, simProc);
   ok('simulation server healthy - http://127.0.0.1:8000/health');
 
   // 6. Start Vite 3D Sandbox Frontend
@@ -226,30 +277,45 @@ async function main() {
     shell: false
   });
   children.push(viteProc);
-  await waitForHttp('http://127.0.0.1:5173/');
+  await waitForHttp('http://127.0.0.1:5173/', 25000, viteProc);
   ok('3D sandbox UI ready at http://127.0.0.1:5173/');
 
+  const noUi = process.argv.includes('--no-ui');
+  const noBrowser = process.argv.includes('--no-browser') || process.argv.includes('--no-chrome');
+
   // 7. Start Electron Operator UI
-  say('[6] Electron dashboard');
-  const localElectron = path.join(ROOT_DIR, 'dashboard_electron', 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron');
-  const electronBin = fs.existsSync(localElectron) ? localElectron : (process.platform === 'win32' ? 'npx.cmd' : 'npx');
-  const electronArgs = fs.existsSync(localElectron) ? ['.'] : ['electron', '.'];
-  const electronProc = spawn(electronBin, electronArgs, {
-    cwd: path.join(ROOT_DIR, 'dashboard_electron'),
-    stdio: 'inherit',
-    shell: false,
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined }
-  });
-  children.push(electronProc);
-  ok('operator UI launched in Electron window');
+  if (!noUi) {
+    say('[6] Electron dashboard');
+    const localElectron = path.join(ROOT_DIR, 'dashboard_electron', 'node_modules', '.bin', process.platform === 'win32' ? 'electron.cmd' : 'electron');
+    const electronBin = fs.existsSync(localElectron) ? localElectron : (process.platform === 'win32' ? 'npx.cmd' : 'npx');
+    const electronArgs = fs.existsSync(localElectron) ? ['.'] : ['electron', '.'];
+    const electronProc = spawn(electronBin, electronArgs, {
+      cwd: path.join(ROOT_DIR, 'dashboard_electron'),
+      stdio: 'inherit',
+      shell: false,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined }
+    });
+    children.push(electronProc);
+    ok('operator UI launched in Electron window');
+
+    electronProc.on('exit', (code) => {
+      console.log(`[main] Electron window closed (code ${code}).`);
+    });
+  } else {
+    ok('Skipping Electron operator UI (--no-ui)');
+  }
 
   // 8. Open 3D sandbox in default browser
-  say('[7] Opening 3D Sandbox in browser');
-  try {
-    const opener = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
-    spawn(opener, ['http://127.0.0.1:5173/'], { shell: true });
-    ok('3D Sandbox tab opened in default browser');
-  } catch (_) {}
+  if (!noBrowser) {
+    say('[7] Opening 3D Sandbox in browser');
+    try {
+      const opener = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+      spawn(opener, ['http://127.0.0.1:5173/'], { shell: true });
+      ok('3D Sandbox tab opened in default browser');
+    } catch (_) {}
+  } else {
+    ok('Skipping browser launch (--no-browser)');
+  }
 
   console.log('-----------------------------------------------------------------');
   say('Stack is up and running! Press Ctrl+C to stop all services.');
@@ -259,10 +325,6 @@ async function main() {
   console.log('  Physics Sim Engine:       http://127.0.0.1:8000');
   console.log('  MQTT Telemetry Broker:    mqtt://127.0.0.1:1883');
   console.log('-----------------------------------------------------------------');
-
-  electronProc.on('exit', (code) => {
-    console.log(`[main] Electron window closed (code ${code}).`);
-  });
 }
 
 main().catch(err => {

@@ -13,7 +13,7 @@ const TOPICS = [
 class MqttClient {
   constructor(mainWindow, opts) {
     this.mainWindow = mainWindow;
-    this.brokerUrl = opts.brokerUrl || 'mqtt://localhost:1883';
+    this.brokerUrl = opts.brokerUrl || 'mqtt://127.0.0.1:1883';
     this.client = null;
     this.connected = false;
     this.onTelemetry = opts.onTelemetry || null;

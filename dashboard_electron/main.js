@@ -71,7 +71,7 @@ function ensureTileServer() {
   });
 }
 
-const BROKER_URL = process.env.R4_BROKER_URL || 'mqtt://localhost:1883';
+const BROKER_URL = process.env.R4_BROKER_URL || 'mqtt://127.0.0.1:1883';
 const CACHE_FLUSH_INTERVAL_MS = 10000;
 
 function createWindow() {
