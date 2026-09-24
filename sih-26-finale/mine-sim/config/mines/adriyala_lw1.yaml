@@ -1,0 +1,55 @@
+schema_version: 1
+name: adriyala_lw1
+display_name: Adriyala Longwall Project, Panel 1 (SCCL, Godavari Valley)
+# Knothe values below are fitted by minesim.fitting.fit_adriyala -> data/fitted/adriyala_lw1_params.json
+# (283 digitised points, 6 epochs; RMS 52.1 mm, R^2 0.9845, peak 1202 vs 1267 mm). 2026-09-13 values superseded.
+geometry:
+  A1_panel_width_m: 250.0
+  A1_panel_length_m: 2500.0
+  A1b_inflection_offset_m: 58.96        # fitted: trough edge sits 59 m inside each rib (0.16 x depth)
+  A2_depth_m: 375.0
+  A3_seam_thickness_m: 3.6
+  seam_inclination_deg: 10.0
+  advance_direction_deg: 0.0
+  # A district of panels rather than the single LW1. Subsidence is the linear superposition of the
+  # panels' troughs (standard NCB treatment; minesim.physics.subsidence). n_panels: 1 restores the
+  # single panel exactly.
+  #
+  # PROVENANCE: only the centre panel is LW1 from 10.18311/jmmf/2022/32099. The other seven repeat
+  # LW1's geometry on a plausible chain-pillar pitch — SYNTHETIC, not from the paper. They exist so
+  # the view shows a working district across the real terrain instead of one strip. The fit, and every
+  # validation number anchored to it, still comes from the centre panel alone.
+  # Held at n_panels: 1 pending Adarsh's decision (F6, 16 Sep). Scout counts measured on this config
+  # (they depend on tier spacing, not on the child cap):
+  #   n_panels 1 -> 327 scouts   82 anchors
+  #   n_panels 2 -> 694 scouts   174 anchors
+  #   n_panels 3 -> 972 scouts   243 anchors
+  # NO LONGER A HARD CEILING (17 Sep 2026, session 24, contract §3 amended): the anchor count is
+  # ceil(scouts / (max_children_per_anchor - 1)) with nothing truncating it, so a district is no
+  # longer refused for being too big to address. What raising this number now costs is hardware and
+  # airtime, not a ContractViolation — check the cost line and the TDMA uplink window before doing
+  # it. The old 495-scout ceiling came from the fixed 1-99 anchor ID range, which is gone.
+  district:
+    n_panels: 1                   # OPEN — DECISION NEEDED; 1 = LW1 only, exactly as published
+    chain_pillar_width_m: 40.0    # OPEN — guess, replace with the mine plan; pitch = 250 + 40 = 290 m
+    start_stagger_days: 80.0      # OPEN — design choice; panel k's face starts 80 d after panel k-1,
+                                  # so a 690 d run shows settled, active and untouched panels at once
+knothe:
+  A4_subsidence_factor: 0.45            # not identifiable from one line: smallest a within 5% of best RMS
+  A5_tan_beta: 2.5676                   # fitted (r = 146 m)
+  A7_time_coefficient_per_day: 0.02358  # fitted jointly with survey_line_x_m (they trade off)
+  A6_face_advance_m_per_day: 4.0
+pinning:
+  source: 10.18311/jmmf/2022/32099
+  profiles_csv: data/real/adriyala_lw1_profiles.csv
+  fitted_params: data/fitted/adriyala_lw1_params.json
+  # Along-panel x (m from the starting face) of survey line S. FITTED, not read from the paper:
+  # 200-650 m fit equally well (RMS ~52 mm). OPEN: replace with the JMMF monitoring-layout figure value.
+  survey_line_x_m: 258.0
+  # CSV distance_m = panel-axis y + this offset (CSV origin is the trough minimum, R0-7). Fitted.
+  survey_origin_offset_m: 13.47
+site:
+  # Where the panel sits on Earth. Drives the real terrain (scripts/fetch_dem.py) and node lat/lon.
+  panel_centre_lat_deg: 18.6435         # OPEN — VERIFY: approximate Adriyala site, carried from the old sandbox; replace with the mine plan
+  panel_centre_lon_deg: 79.5725         # OPEN — VERIFY (same); geometry.advance_direction_deg (0 = east) is also unverified
+  dem_npz: data/real/adriyala_lw1_dem.npz   # real SRTM-derived elevation in panel coordinates (built by scripts/fetch_dem.py)

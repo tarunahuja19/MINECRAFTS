@@ -1,0 +1,25 @@
+{
+  "mine": "adriyala_lw1",
+  "source_doi": "10.18311/jmmf/2022/32099",
+  "fitted_at": "2026-09-13",
+  "params": {
+    "subsidence_factor": 0.2609,
+    "tan_beta": 3.0907,
+    "time_coefficient_per_day": 0.01309,
+    "paper_s_max_mm": 1219.6
+  },
+  "fit": {
+    "rms_residual_mm": 177.5,
+    "max_residual_mm": 517.68,
+    "n_points": 283,
+    "n_epochs": 6,
+    "r_squared": 0.9859,
+    "knothe_r_squared": 0.8201
+  },
+  "residual_by_flank": {
+    "dip_side_rms_mm": 150.0,
+    "rise_side_rms_mm": 195.29
+  },
+  "verdict": "Knothe is the wrong driver (RMS=177.5 mm > 150 mm). Escalate: Seam is inclined 10.3\u00b0 with asymmetric draw (dip RMS 150.0 mm vs rise RMS 195.3 mm). The JMMF Table 3 profile function achieves RMS=49.7 mm and R^2=0.9859 >= 0.90. Use Table 3 profile as terrain driver and keep Knothe as detector only.",
+  "notes": "Extracted from Ramalingeswarudu et al. (2022) Table 1, Table 2, Fig 6, Fig 7, Fig 12. Extraction height m = 3.6 m (Table 1). Working depth 375 m (Table 2 uses 410 m; depth span 366-458 m). Maximum measured subsidence 1.267 m (19.5% of seam thickness, 35.2% of extraction height)."
+}

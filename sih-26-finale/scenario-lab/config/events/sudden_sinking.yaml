@@ -1,0 +1,14 @@
+# Scenario event: the ground suddenly drops at a point (WP9 §5 row 1).
+# Every value here is a SCENARIO INPUT — a user hypothesis, not a measurement at this mine (Invariant 7).
+schema_version: 1
+name: sudden_sinking
+title: "Sudden sinking at a point"
+plain: "The ground over already-worked coal gives way early, dropping now as much as it still had left to sink."
+
+inputs:
+  collapse_radius_m:
+    default: 60.0
+    min: 5.0
+    max: 400.0
+    unit: m
+    source: "scenario input — not measured at this mine; the user says how wide the collapse is"

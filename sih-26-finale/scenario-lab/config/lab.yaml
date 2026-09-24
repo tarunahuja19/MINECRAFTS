@@ -1,0 +1,42 @@
+# Scenario Lab configuration (WP9 §2). Every number the lab uses lives here or in config/events/*.yaml
+# with a source: comment. Gate L4 scans lab/**/*.py and allows no other numeric literal.
+schema_version: 1
+
+settled_time_coefficient_per_day: 100.0   # source: WP9 §5 — numerical stand-in for "all settlement has already
+                                          # happened". The Knothe time factor is 1 - exp(-c*t); at c = 100/day it is
+                                          # within 1e-43 of 1 after a single day, so S_pot is the final trough.
+min_effect_mm: 10.0                       # source: mirrors sensing.A10_detection_threshold_mm in
+                                          # mine-sim/config/assumptions.yaml — below this the ground has not
+                                          # measurably moved, so the lab reports "not possible" rather than noise.
+world_model_tolerance_mm: 2.0             # source: WP9 §4 — the int32 world grid rounds S to whole mm each step, so
+                                          # the replayed surface and the float model may differ by rounding. Larger
+                                          # than that means the world and physics genuinely disagree -> ValueError.
+display_cell_m: 20.0                      # source: display choice — block-average cell for /api/snapshot and forecast
+                                          # arrays, so a response stays a few MB. Scenario windows stay native.
+spread_min_weight: 0.05                   # source: WP9 §7 — below this summed Gaussian weight no node is near enough
+                                          # for a forecast value to mean anything; the cell is masked.
+store_dir: "store"                        # source: WP9 §1 — the only directory the lab may write to, relative to
+                                          # scenario-lab/.
+port: 8010                                # source: display choice — lab server port, clear of the 8000 Window 1 view.
+id_hash_chars: 8                          # source: WP9 §7 — characters of the sha256 kept in run_id and scenario_id.
+test_forecast_band_fraction: 0.15         # source: WP9 — p10/p90 band as a fraction of p50, for the TEST fixture only.
+test_forecast_band_min_mm: 5.0            # source: WP9 — floor on that band so a near-zero p50 still has a range.
+
+# --- P2: consequences (cracks as lines, objects, the vibration layer) ---
+road_crack_search_m: 10.0                 # source: WP9 §6 — how far either side of a road's centre-line a crack is
+                                          # counted as being "in the road". Two grid cells at the 5 m world cell.
+max_crack_segments: 4000                  # source: display choice — a day-690 field cracks tens of thousands of
+                                          # cells and no screen can show them; the widest are kept and the payload
+                                          # says how many were dropped, so a thinned picture never reads as a
+                                          # complete one.
+crack_segment_min_width_mm: 1.0           # source: display choice — a fissure narrower than this is not something a
+                                          # survey crew would record as a crack, so it is not drawn as one.
+ppv_contour_levels_mm_s: [2.0, 5.0, 10.0] # source: DGMS (Tech) Circular 7 of 1997 domestic limits are 5 / 10 / 15
+                                          # mm/s by frequency band (mine-sim assumptions.yaml vibration:); 2.0 is a
+                                          # below-limit "felt" line. Drawn as contour LINES, per Adarsh session 26.
+preview_rows: 5                           # source: display choice — how many example rows a terminal tool
+                                          # prints before saying how many there were in total. Small enough
+                                          # to read, and the total is always printed beside it.
+
+# --- Sitting B: geographic projection ---
+m_per_deg_lat: 111320.0                   # source: WGS-84 mean spherical earth metres per degree of latitude, matching simulation/sandbox/geo.py and standard equirectangular projection

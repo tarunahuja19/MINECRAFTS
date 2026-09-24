@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /opt/miniconda3/envs/pinn-sandbox/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale/mine-sim
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 12 items
+
+tests/unit/test_stream.py::test_header_exactly_contract PASSED           [  8%]
+tests/unit/test_stream.py::test_four_artefacts PASSED                    [ 16%]
+tests/unit/test_stream.py::test_row_per_scout_per_epoch PASSED           [ 25%]
+tests/unit/test_stream.py::test_g04_csv_every_value_has_populated_prov PASSED [ 33%]
+tests/unit/test_stream.py::test_tier_empty_fields PASSED                 [ 41%]
+tests/unit/test_stream.py::test_jsonl_one_line_per_step_with_empty_cells PASSED [ 50%]
+tests/unit/test_stream.py::test_jsonl_round_trip_equals_world_deltas PASSED [ 58%]
+tests/unit/test_stream.py::test_npz_keys PASSED                          [ 66%]
+tests/unit/test_stream.py::test_summary PASSED                           [ 75%]
+tests/unit/test_stream.py::test_full_loss_still_writes_rows PASSED       [ 83%]
+tests/unit/test_stream.py::test_same_seed_identical_csv PASSED           [ 91%]
+tests/unit/test_run.py::test_cli_two_day_run_writes_four_artefacts PASSED [100%]
+
+============================== 12 passed in 4.59s ==============================

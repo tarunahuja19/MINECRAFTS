@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /opt/miniconda3/envs/pinn-sandbox/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale/mine-sim
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 19 items
+
+tests/unit/test_physics.py::test_zero_at_t0 PASSED                       [  5%]
+tests/unit/test_physics.py::test_transverse_symmetry PASSED              [ 10%]
+tests/unit/test_physics.py::test_peak_location PASSED                    [ 15%]
+tests/unit/test_physics.py::test_subcritical_peak_formula PASSED         [ 21%]
+tests/unit/test_physics.py::test_edge_decay PASSED                       [ 26%]
+tests/unit/test_physics.py::test_tilt_zero_at_centre PASSED              [ 31%]
+tests/unit/test_physics.py::test_vectorisation PASSED                    [ 36%]
+tests/unit/test_physics.py::test_baseline_sensitivity_strain PASSED      [ 42%]
+tests/unit/test_physics.py::test_displacement_points_toward_trough PASSED [ 47%]
+tests/unit/test_physics.py::test_strain_tension_outside_rib PASSED       [ 52%]
+tests/unit/test_physics.py::test_strain_compression_over_centre PASSED   [ 57%]
+tests/unit/test_physics.py::test_strain_is_not_tilt PASSED               [ 63%]
+tests/unit/test_physics.py::test_face_stops_at_panel_end PASSED          [ 68%]
+tests/unit/test_physics.py::test_ground_near_panel_end_settles_fully PASSED [ 73%]
+tests/unit/test_physics.py::test_peak_near_long_term_value PASSED        [ 78%]
+tests/unit/test_physics.py::test_continuous_at_the_face PASSED           [ 84%]
+tests/unit/test_physics.py::test_more_subsidence_behind_the_face PASSED  [ 89%]
+tests/unit/test_physics.py::test_monotone_in_time PASSED                 [ 94%]
+tests/gates/test_g01.py::test_g01_single_physics_implementation PASSED   [100%]
+
+============================== 19 passed in 0.31s ==============================

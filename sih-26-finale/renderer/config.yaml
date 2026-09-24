@@ -1,0 +1,126 @@
+# Window 1 3D Consequence Renderer Configuration
+run_dir: "mine-sim/out/v2-690d"  # source: default finished simulation run directory
+day_step_days: 1  # source: F0 DF1 smooth playback — one exported frame per simulated day
+frame_chunk_days: 30  # source: display choice (F4) — days per binary frame file, loaded lazily
+frame_max_chunks_in_memory: 3  # source: F4 step — the browser keeps at most this many chunk files
+downsample_cells: 2  # source: spatial downsampling stride k (z[::k, ::k]) to meet <30MB file size target
+vertical_exaggeration: 10.0  # source: display vertical scale multiplier to make millimeter subsidence visible at panel scale
+assumptions_path: "mine-sim/config/assumptions.yaml"  # source: simulator assumptions config path for advance rate and panel geometry
+terrain_extent: margin  # source: display choice — margin = context_margin_m around the world grid (tightly focused on the mine)
+context_margin_m: 100.0  # source: display choice (Adarsh, 17 Sep: "padding could be a bit, not the full") — context
+                         # padding around the mine bounds, PER SIDE. 600 m put ~2.5 km of empty SRTM hillside in every
+                         # shot; 250 m still drew 4.81 km2 for a trough 542 m wide. 100 m draws 3.29 x 1.04 km.
+cover_planned_nodes: false # source: display choice (17 Sep) — when true, widen individual sides so no planned node stands
+                           # off the drawn ground (the gateway sits at y = 1097.9 m, 423 m past the old 250 m margin).
+                           # Left FALSE after rendering both: covering the gateway costs 3.42 -> 5.56 km2, an empty
+                           # north lobe bigger than the trough itself, and it does NOT stop the gateway marker reading
+                           # as floating — with the ground drawn under it the marker still sits above the horizon,
+                           # because what lifts it is the x25 vertical exaggeration on its antenna height, not a
+                           # missing mesh. Paying 2.1 km2 of empty ground for no visible gain is the wrong trade.
+                           # Set true if a node ever needs to stand on drawn ground for a reason other than looks.
+node_ground_pad_m: 60.0    # source: display choice (17 Sep) — ground kept beyond the outermost planned node when
+                           # cover_planned_nodes widens a side, so a node stands on a patch of land, not on the rim.
+terrain_max_vertices: 1500000  # source: display choice (F2) — one terrain draw call; export stops if the mesh is larger
+plan_path: "mine-sim/out/plan/node_plan.json"  # source: minesim.placement output (v2 planned network)
+
+playback:
+  sim_seconds_per_real_second_at_1x: 360   # source: F0 decision DF1 — 1x plays a full year in ~24 h real time
+  speeds: [1, 10, 20, 40, 100, 250, 500, 1000, 5000, 10000]   # source: F0 decision DF1
+  default_speed: 1000                       # source: F5 step
+  start_date: "2026-01-01"                  # source: display choice — label only, not a real mining date
+  initial_day: 345                          # source: display choice — day shown when the page opens (was a literal in app.js)
+  ui_update_hz: 30                          # source: display choice — terrain / HUD redraw cap while playing
+  prefetch_days: 5                          # source: F5 step — start loading the next chunk this many days ahead
+  prefetch_real_s: 2.0                      # source: display choice (F5) — or this many real seconds ahead at the current speed, whichever is further
+  max_frame_dt_s: 1.0                       # source: display choice (F5) — a stalled tab never jumps the clock more than this per frame
+
+zoom:
+  levels_view_width_m: [8000, 4000, 2000, 1000, 500, 250, 120, 60]  # source: display choice (F2) — ground width visible at the target per zoom level
+  default_level: 2              # source: display choice (F2) — 2000 m width, neatly framing the 2500 m panel
+  icon_above_view_m: 1400.0     # source: display choice (F7) — 3D models stay on out to this view width, so an isolated 250 m segment (~940 m of framing) shows hardware, not just icons
+  models_below_view_m: 400.0    # source: display choice — narrower views draw 3D models
+  icon_px: 18                   # source: display choice (F7) — icons mark every node at every zoom, so they carry the network read
+  cluster_px: 18                # source: display choice (F2) — kept >= icon_px (asserted by test_export_scene)
+  pick_px: 12                   # source: display choice — hit radius around an icon, pixels
+  scale_bar_lengths_m: [5, 10, 20, 50, 100, 250, 500, 1000, 2000, 5000]  # source: display choice (F2) — round scale-bar lengths
+  scale_bar_max_px: 150         # source: display choice (F2) — longest scale bar drawn
+  wheel_step_ms: 150            # source: display choice — smooth responsive wheel/trackpad
+  fly_seconds: 1.1              # source: display choice — camera fly animation length
+  fog_near_factor: 1.6          # source: display choice (F2) — fog starts at this × camera distance
+  fog_far_factor: 5.0           # source: display choice (F2) — fog is full at this × camera distance
+  near_clip_factor: 0.005       # source: display choice (F2) — camera near plane = this × camera distance
+  far_clip_m: 60000.0           # source: display choice (F2) — camera far plane
+
+display:
+  face_curtain_height_m: 1.5  # source: OPEN — design choice (thin solid band height for longwall face marker)
+  segment_cut_depth_m: 100.0  # source: display choice — an isolated 250x250 m segment is cut this deep so its side walls read as a slab of rock. Cutting to the 375 m seam makes a tower no camera can frame; the seam stays in the Underground X-ray view.
+  segment_context_m: 60.0     # source: display choice (F7) — ground kept around an isolated 250 m segment so the crop reads as part of a landscape, not a slab in the sky
+  shell_thickness_m: 12.0     # source: display choice (F6 A1) — the default ground is a thin crust; this is the rim depth at the DEM edge so it reads as rock, not paper. Not a geological layer: strata live behind the Underground X-ray toggle.
+  density_steps: [1.0, 0.5, 0.25]  # source: display choice (F9) — how much of the scout network the Layers box draws.
+                              # A VIEW filter: it never changes plan.counts, the hardware cost, or any reported statistic.
+                              # Gateway and anchors are never thinned (they are the mesh backbone); only 1A/1B/1C thin out.
+  graphics:                   # source: display choice (F6 A4) — look only; nothing here touches S(x,y,t) or Z
+    max_pixel_ratio: 2        # source: display choice — cap device pixel ratio so 4K/Retina stays interactive
+    exposure: 1.00            # source: display choice (F7) — dropped with the deep-green ramp; ACES at 1.06 lifted the dark stops back to the pale green Adarsh asked to get rid of
+    sun_intensity: 1.00       # source: display choice (F7) — warm sun, strong enough to shape hills without washing the ramp out
+    fill_intensity: 0.18      # source: display choice (F7) — opens the shadow side just enough to keep low ground readable
+    hemi_intensity: 0.30      # source: display choice (F7) — sky ambient; keep an eye on this, it is what stops dark reading as muddy
+    under_intensity: 0.34     # source: display choice (F6 A2) — light from below so the shell underside is readable
+    sky:                      # source: display choice — equirectangular gradient, top to bottom
+      zenith: "#04070e"       # source: display choice
+      upper: "#152036"        # source: display choice
+      horizon: "#3d4a63"      # source: display choice — lifted; fog takes its colour from here, so a dark horizon greys out distant ground
+      lower: "#171618"        # source: display choice
+      nadir: "#080706"        # source: display choice — what you see looking up from under the ground
+
+node_models:
+  visual_scale: 9.0         # source: display choice (F7) — node models are drawn this many times true size; a real 0.6 m tilt scout is sub-pixel at the 250 m segment view
+  stand_sample_r_m: 1.0     # source: display choice (F7) — footprint radius sampled for the stand height; a node stands on the highest ground under it, so slopes never swallow its uphill side
+  stand_clearance_m: 0.05   # source: display choice (F7) — lift above that ground, in model units
+  detail_distance_m: 350.0  # source: OPEN — design choice (camera distance in metres within which fine 1C extensometer wire is rendered)
+  pick_radius_m: 6.0        # source: OPEN — design choice (hit target radius in metres <= half scout_nn_min_m 20m)
+  backup_dash_m: [4.0, 3.0] # source: OPEN — design choice (dash length and gap length in metres for backup radio link)
+  selection_ring_m: [2.5, 3.5] # source: OPEN — design choice (inner and outer radius in metres for selection ground ring)
+  pad:
+    scout_radius_m: 0.6     # source: OPEN — design choice (mounting pad radius for scout nodes)
+    scout_height_m: 0.1     # source: OPEN — design choice (pad thickness for scout nodes)
+    anchor_radius_m: 0.9    # source: OPEN — design choice (mounting pad radius for anchor mast)
+    anchor_height_m: 0.15   # source: OPEN — design choice (anchor pad thickness)
+    gateway_radius_m: 1.8   # source: OPEN — design choice (gateway foundation pad radius)
+    gateway_height_m: 0.25  # source: OPEN — design choice (gateway pad thickness)
+  tier_1a:
+    stake_radius_m: 0.04    # source: OPEN — design choice (slim stake tube radius)
+    capsule_radius_m: 0.14  # source: OPEN — design choice (round tilt-meter capsule radius)
+    capsule_height_m: 0.25  # source: OPEN — design choice (round tilt-meter capsule height)
+    solar_plate_m: [0.35, 0.03, 0.25]  # source: OPEN — design choice (width, thickness, length of small tilted solar plate)
+    tilt_deg: 25.0          # source: OPEN — design choice (solar plate tilt angle)
+  tier_1b:
+    pad_size_m: 0.8         # source: OPEN — design choice (square pad side length)
+    box_size_m: [0.35, 0.3, 0.25]  # source: OPEN — design choice (enclosure box dimensions [w, h, d])
+    antenna_stake_radius_m: 0.025  # source: OPEN — design choice (antenna stake tube radius)
+    rod_radius_m: 0.025     # source: OPEN — design choice (strain rod tube radius)
+    pin_radius_m: 0.06      # source: OPEN — design choice (anchor pin radius at far end of rod)
+    pin_height_m: 0.25      # source: OPEN — design choice (anchor pin height)
+  tier_1c:
+    post_radius_m: 0.05     # source: OPEN — design choice (short post radius)
+    post_height_m: 0.6      # source: OPEN — design choice (short post height)
+    box_size_m: [0.45, 0.35, 0.3]  # source: OPEN — design choice (larger instrument enclosure on first post)
+    antenna_stake_radius_m: 0.025  # source: OPEN — design choice (antenna stake tube radius)
+    post2_disc_m: [0.2, 0.08] # source: OPEN — design choice (mounting disc radius and height under post 2)
+    wire_radius_m: 0.008    # source: OPEN — design choice (thin taut extensometer wire visual radius)
+  anchor:
+    mast_radius_m: 0.08     # source: OPEN — design choice (router mast tube radius)
+    router_box_m: [0.35, 0.45, 0.25]  # source: OPEN — design choice (weatherproof router box dimensions)
+    whip_length_m: 0.8      # source: OPEN — design choice (omnidirectional LoRa whip antenna length)
+    whip_radius_m: 0.015    # source: OPEN — design choice (whip antenna radius)
+  gateway:
+    base_width_m: 2.2       # source: OPEN — design choice (lattice tower base footprint width)
+    top_width_m: 0.8        # source: OPEN — design choice (lattice tower top width)
+    leg_radius_m: 0.06      # source: OPEN — design choice (structural leg tube radius)
+    dish_radius_m: 0.8      # source: OPEN — design choice (backhaul dish radius)
+    dish_depth_frac: 0.35   # source: OPEN — design choice (dish depth as a fraction of its radius)
+    dish_drop_m: 0.6        # source: OPEN — design choice (dish centre this far below the tower top)
+    feed_radius_m: 0.025    # source: OPEN — design choice (dish feed boom radius)
+    brace_radius_m: 0.03    # source: OPEN — design choice (tower lattice cross brace tube radius)
+  beacon:
+    radius_m: 0.18          # source: OPEN — design choice (status beacon sphere radius)

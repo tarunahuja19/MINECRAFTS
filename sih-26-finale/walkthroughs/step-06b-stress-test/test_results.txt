@@ -1,0 +1,75 @@
+# stress_test.py
+
+== 1. Physics  S(x,y,t) ==
+PASS  closed form == numeric Knothe integral               max error 1.8e-12 mm
+PASS  same, slow face + fast settling (c/v = 0.4)          max error 9.4e-10 mm
+PASS  690 d hourly grid: finite and >= 0                   0 bad cells
+PASS  ground only sinks (monotone in time)                 worst rise 1.5e-13 mm
+PASS  no jumps in time                                     max sink in one hour 0.37 mm
+PASS  no cliffs between 5 m cells                          max 37.6 mm, bound 38.7
+PASS  symmetric across the panel                           max asymmetry 0.0e+00 mm
+PASS  long time -> static full-panel trough                max diff 0.0e+00 mm
+WARN  peak subsidence vs field max 1267 mm                 model 930 mm (-27%) - DEC-1 open
+PASS  horizontal movement points into the trough           u(-100)=223 mm, u(+100)=-223 mm
+PASS  strain: compression centre, tension at ribs          centre -972, max tension 3171 ustrain
+PASS  strain integrates to zero net stretch                0.000 mm
+PASS  180 extreme mine configs: no NaN / overflow          0 configs produced NaN
+
+== 2. World state (terrain truth) ==
+PASS  no cell ever rises (dz <= 0)                         0 rising deltas
+PASS  node Z from grid tracks physics                      max 0.52 mm
+
+== 3. Sizing + radio ==
+PASS  spacing 10 m, 1 children/anchor                      refuses loudly: 155 anchors exceed the anchor ID range 1-99
+PASS  spacing 10 m, 2 children/anchor                      155 scouts, 78 anchors, INR 614,200
+PASS  spacing 10 m, 8 children/anchor                      155 scouts, 20 anchors, INR 411,200
+PASS  spacing 10 m, 16 children/anchor                     155 scouts, 11 anchors, INR 379,700
+PASS  spacing 25 m, 1 children/anchor                      63 scouts, 63 anchors, INR 366,900
+PASS  spacing 25 m, 2 children/anchor                      63 scouts, 32 anchors, INR 258,400
+PASS  spacing 25 m, 8 children/anchor                      63 scouts, 9 anchors, INR 177,900
+PASS  spacing 25 m, 16 children/anchor                     63 scouts, 5 anchors, INR 163,900
+PASS  spacing 50 m, 1 children/anchor                      33 scouts, 33 anchors, INR 197,500
+PASS  spacing 50 m, 2 children/anchor                      33 scouts, 17 anchors, INR 141,500
+PASS  spacing 50 m, 8 children/anchor                      33 scouts, 5 anchors, INR 99,500
+PASS  spacing 50 m, 16 children/anchor                     33 scouts, 3 anchors, INR 92,500
+PASS  spacing 100 m, 1 children/anchor                     19 scouts, 19 anchors, INR 119,300
+PASS  spacing 100 m, 2 children/anchor                     19 scouts, 10 anchors, INR 87,800
+PASS  spacing 100 m, 8 children/anchor                     19 scouts, 3 anchors, INR 63,300
+PASS  spacing 100 m, 16 children/anchor                    19 scouts, 2 anchors, INR 59,800
+PASS  spacing 400 m, 1 children/anchor                     7 scouts, 7 anchors, INR 52,500
+PASS  spacing 400 m, 2 children/anchor                     7 scouts, 4 anchors, INR 42,000
+PASS  spacing 400 m, 8 children/anchor                     7 scouts, 2 anchors, INR 35,000
+PASS  spacing 400 m, 16 children/anchor                    7 scouts, 2 anchors, INR 35,000
+WARN  identical longitudinal nodes share one tier          longitudinal line tiers {'1C': 3, '1B': 19} (percentile tie split)
+PASS  loss probability 0.0                                 delivery 33/33
+PASS  loss probability 1.0                                 delivery 0/33
+PASS  weak transmitter fails the link-margin check         2/33 delivered at -60 dBm
+PASS  dedup on (node_id, epoch) survives reboots           65970 unique of 65970 delivered
+
+== 4. Sensors + provenance ==
+PASS  tilt/strain fit the 16-bit radio payload             peak 6725 (limit 32767)
+PASS  survey line at x=1250 m tags nodes real/pinned       day 210 tags {'real': 10, 'synthetic': 23}
+WARN  survey line at x=130 m tags nodes real/pinned        day 210 tags {'synthetic': 33}
+
+== 5. Full run, determinism, mine swap, replay ==
+PASS  same seed -> byte-identical nodes.csv                3c151019680e
+PASS  different seed -> different noise                    1018d7ad267f
+PASS  rows = scouts x epochs                               2376 rows
+PASS  only real / pinned / synthetic tags                  ['', 'synthetic']
+PASS  run --days 0                                         0 epochs
+PASS  run --days 0.0417                                    1 epochs
+PASS  run --days 0.5                                       12 epochs
+PASS  swap mine yaml -> Illinois runs, no code change      {'gateway': 1, 'anchor': 4, '1A': 2, '1C': 23, '1B': 2}, INR 94,800
+WARN  Illinois 1C share near the configured top third      85% of scouts are 1C (percentile ties)
+PASS  1500 d past panel end: replay == model exactly       peak 930 mm
+
+RESULT: 49 pass, 4 warn, 0 fail
+
+# 690-day re-run vs handoff sample (sha256 of nodes.csv)
+rerun   12e3eff4c0a4c6751c4e69f33964af8fa8d963527cd24c36b3396a9d08937ba2
+handoff 12e3eff4c0a4c6751c4e69f33964af8fa8d963527cd24c36b3396a9d08937ba2
+
+# pytest
+........................................................................ [ 58%]
+...................................................                      [100%]
+123 passed in 45.09s

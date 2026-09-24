@@ -1,0 +1,72 @@
+{
+  "rows": 33168,
+  "monuments": 48,
+  "days": 691,
+  "subsidence_provenance": {
+    "pinned": 32885,
+    "real": 283
+  },
+  "value_columns": {
+    "real_or_pinned": 1,
+    "derived_from_real_anchored_surface": 5,
+    "model_only": 1
+  },
+  "gp_hyperparameters": {
+    "signal_sigma_mm": 44.6,
+    "length_scale_y_m": 20.0,
+    "length_scale_t_days": 768.1,
+    "noise_sigma_mm": 35.0
+  },
+  "leave_one_survey_day_out": [
+    {
+      "held_out_day": 210,
+      "n": 47,
+      "physics_only_rms_mm": 56.9,
+      "physics_plus_gp_rms_mm": 42.7
+    },
+    {
+      "held_out_day": 300,
+      "n": 47,
+      "physics_only_rms_mm": 52.1,
+      "physics_plus_gp_rms_mm": 39.5
+    },
+    {
+      "held_out_day": 540,
+      "n": 47,
+      "physics_only_rms_mm": 46.3,
+      "physics_plus_gp_rms_mm": 28.2
+    },
+    {
+      "held_out_day": 570,
+      "n": 47,
+      "physics_only_rms_mm": 46.3,
+      "physics_plus_gp_rms_mm": 28.7
+    },
+    {
+      "held_out_day": 600,
+      "n": 47,
+      "physics_only_rms_mm": 46.3,
+      "physics_plus_gp_rms_mm": 29.5
+    },
+    {
+      "held_out_day": 690,
+      "n": 48,
+      "physics_only_rms_mm": 62.5,
+      "physics_plus_gp_rms_mm": 51.4
+    }
+  ],
+  "cv_rms_mm": {
+    "physics_only": 52.1,
+    "physics_plus_gp": 37.7
+  },
+  "monotone_fixes": 2438,
+  "largest_clamped_rise_mm": 3.75,
+  "pinned_fit": {
+    "subsidence_factor": 0.45,
+    "tan_beta": 2.5676,
+    "time_coefficient_per_day": 0.02358,
+    "inflection_offset_m": 58.96,
+    "survey_origin_offset_m": 13.47,
+    "survey_line_x_m": 258.0
+  }
+}

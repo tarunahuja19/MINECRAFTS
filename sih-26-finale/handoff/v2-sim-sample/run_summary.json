@@ -1,0 +1,88 @@
+{
+  "sign_convention": "negative_down",
+  "data_label": "synthetic simulator output, not field measurements",
+  "config_hash": "64f94a54f12c6412",
+  "rng_seed": 20260913,
+  "fit": {
+    "mine": "adriyala_lw1",
+    "source_doi": "10.18311/jmmf/2022/32099",
+    "rms_residual_mm": 52.14,
+    "knothe_r_squared": 0.9845
+  },
+  "provenance_source": "10.18311/jmmf/2022/32099",
+  "days": 690.0,
+  "epochs": 16560,
+  "timestep_s": 3600.0,
+  "nodes_per_tier": {
+    "gateway": 1,
+    "anchor": 82,
+    "1A": 12,
+    "1B": 133,
+    "1C": 182
+  },
+  "scouts": 327,
+  "cost_inr": {
+    "per_tier": {
+      "gateway": [
+        1,
+        15000,
+        15000
+      ],
+      "anchor": [
+        82,
+        3500,
+        287000
+      ],
+      "1A": [
+        12,
+        1200,
+        14400
+      ],
+      "1B": [
+        133,
+        1800,
+        239400
+      ],
+      "1C": [
+        182,
+        2600,
+        473200
+      ]
+    },
+    "total": 1029000
+  },
+  "packets": 5415120,
+  "delivered": 5413014,
+  "delivery_rate": 0.999611,
+  "via_emergency": 108218,
+  "duty_cycle_pct": {
+    "scout": 0.1028,
+    "anchor": 0.5559,
+    "gateway": 0.1374
+  },
+  "provenance": {
+    "real": {
+      "count": 102,
+      "pct": 0.0005
+    },
+    "pinned": {
+      "count": 281418,
+      "pct": 1.5092
+    },
+    "synthetic": {
+      "count": 18365040,
+      "pct": 98.4902
+    }
+  },
+  "peak_subsidence_mm": 1204,
+  "grid": {
+    "shape": [
+      617,
+      167
+    ],
+    "cell_m": 5.0,
+    "origin_x_m": -292.101573453809,
+    "origin_y_m": -417.101573453809
+  },
+  "wall_time_s": 905.35
+}

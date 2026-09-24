@@ -1,0 +1,59 @@
+# What is built on the ground above the panel — the things a scenario is answered in terms of (WP9 §6).
+#
+# LAYOUT: ILLUSTRATIVE, NOT THE REAL ADRIYALA SURFACE.
+# Nobody surveyed a village here. These positions come from WP9 §6's example table and exist so that a
+# scenario can be answered as "House H1: slight -> severe" instead of "peak strain 5.3 mm/m", which is
+# true and useless to anyone who is not a subsidence engineer. Every sentence the lab prints about an
+# object therefore inherits this label, and gate L7 keeps the SCENARIO stamp on the result around it.
+#
+# FRAME: panel frame, metres. x runs along the panel from the start of extraction (x = 0) toward the
+# face; y = 0 is the panel centre-line, +y is one rib and -y the other. `panel:` picks which panel of a
+# multi-panel district the object belongs to (1-based, into panel.y_offsets_m in the mine config), so a
+# district that gains panels moves its villages with it instead of leaving them behind (hazard H8).
+# An object that lands outside the run's grid is an ERROR, never clamped: a clamped object silently
+# answers a question about different ground from the one that was asked.
+schema_version: 1
+layout: "illustrative, not the real Adriyala surface"
+
+defaults:
+  house:
+    width_m: 10.0        # source: WP9 §6 example village — single-storey dwelling frontage, and the
+                         # frontage the NCB change-of-length grade is computed over for this object.
+    depth_m: 8.0         # source: WP9 §6 example village.
+    structure_class: domestic   # source: DGMS (Tech) Circular 7 of 1997 limit class (domestic / industrial).
+  road:
+    width_m: 6.0         # source: WP9 §6 example village — single-lane village road.
+  pole:
+    height_m: 9.0        # source: WP9 §6 example village — low-tension distribution pole.
+
+objects:
+  # --- houses: a hamlet just outside the +y rib, where the tension zone sits ---
+  - {id: H1, type: house, panel: 1, x_m: 580.0,  y_m: 150.0, material: brick}
+  - {id: H2, type: house, panel: 1, x_m: 600.0,  y_m: 170.0, material: mud}
+  - {id: H3, type: house, panel: 1, x_m: 620.0,  y_m: 150.0, material: brick}
+  - {id: H4, type: house, panel: 1, x_m: 640.0,  y_m: 175.0, material: mud}
+  # H5 sits almost over the centre-line, in the compression zone - a different answer from H1-H4 for
+  # the same ground movement, which is the point of having it.
+  - {id: H5, type: house, panel: 1, x_m: 600.0,  y_m: -20.0, material: brick}
+  - {id: H6, type: house, panel: 1, x_m: 1500.0, y_m: 235.0, material: brick}
+  # H7 and H8 sit near where the face stands at day 300, so a sudden-sinking or crack scenario there
+  # visibly changes them rather than landing on ground that has already finished moving.
+  - {id: H7, type: house, panel: 1, x_m: 1150.0, y_m: 0.0,   material: brick}
+  - {id: H8, type: house, panel: 1, x_m: 1180.0, y_m: 140.0, material: mud}
+
+  # --- roads: one across the panel, one along it ---
+  - {id: R1, type: road, panel: 1, line: [[1200.0, -235.0], [1200.0, 235.0]]}
+  - {id: R2, type: road, panel: 1, line: [[300.0, -200.0], [2200.0, -200.0]]}
+
+  # --- poles: a line of them along the +y side, every 250 m ---
+  - {id: P1, type: pole, panel: 1, x_m: 400.0,  y_m: 150.0}
+  - {id: P2, type: pole, panel: 1, x_m: 650.0,  y_m: 150.0}
+  - {id: P3, type: pole, panel: 1, x_m: 900.0,  y_m: 150.0}
+  - {id: P4, type: pole, panel: 1, x_m: 1150.0, y_m: 150.0}
+  - {id: P5, type: pole, panel: 1, x_m: 1400.0, y_m: 150.0}
+  - {id: P6, type: pole, panel: 1, x_m: 1650.0, y_m: 150.0}
+  - {id: P7, type: pole, panel: 1, x_m: 1900.0, y_m: 150.0}
+  - {id: P8, type: pole, panel: 1, x_m: 2150.0, y_m: 150.0}
+  # T1 is a tower, i.e. a pole tall enough that a small tilt moves its top a long way - 30 m of height
+  # turns 1 mm/m of tilt into 30 mm of sideways movement at the top.
+  - {id: T1, type: pole, panel: 1, x_m: 1000.0, y_m: -235.0, height_m: 30.0, label: "transmission tower"}

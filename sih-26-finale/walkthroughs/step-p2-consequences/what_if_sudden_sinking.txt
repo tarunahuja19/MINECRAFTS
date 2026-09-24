@@ -1,0 +1,48 @@
+
+SCENARIO (HYPOTHETICAL) — not a forecast, not sent to the backend or to any model
+adriyala_lw1  ·  run 1a6a9a3a  ·  frozen at day 345  ·  face at 1380 m
+Zone 6 — 1250 to 1500 m along the panel  ·  sudden_sinking  ·  defaults
+
+  crack history: 8836 cells already cracked at day 345
+
+  CAN HAPPEN: ground within 60 m drops by up to 568 mm now, which is the sinking this spot still had left; it fades to nothing over the next 146 m
+
+  WHAT HAPPENS
+    · the ground sinks up to 568 mm more, tilting up to 10.3 mm/m
+    · 1822 cells crack that were not cracked before, the widest of them 53 mm
+    · 4000 of 10686 crack lines are drawn — the widest ones
+    · 2 of 19 things on the surface are worse off
+    · shaking peaks at 0.11 mm/s against a 15 mm/s limit for houses
+
+  CRACKS  (threshold 3.0 mm/m, one fissure per 8 m of stretched ground)
+    open after: 10995 cells · new: 1822 · widest: 53 mm · lines drawn: 4000 of 10686
+         53 mm at (1205, -2) m, running 90° — NEW
+         53 mm at (1205, -7) m, running 91° — NEW
+         53 mm at (1205, 3) m, running 89° — NEW
+         52 mm at (1205, -12) m, running 92° — NEW
+         52 mm at (1205, 8) m, running 88° — NEW
+
+  SHAKING  peak 0.11 mm/s at 175 Hz · limits {'domestic': 15.0, 'industrial': 25.0} · over the domestic limit: False
+
+  WHAT IS BUILT ON IT
+    · House H1 (brick): damage stays very slight — walls change length by 58 mm over a 10 m frontage. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · House H2 (mud): damage stays very slight — walls change length by 43 mm over a 10 m frontage. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · House H3 (brick): damage stays very slight — walls change length by 58 mm over a 10 m frontage. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · House H4 (mud): damage stays very slight — walls change length by 39 mm over a 10 m frontage. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · House H5 (brick): damage stays appreciable — walls change length by 121 mm over a 10 m frontage. Shaking here reaches 0.11 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · House H6 (brick): damage stays negligible — walls change length by 0 mm over a 10 m frontage. Shaking here reaches 0.08 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · House H7 (brick): damage stays slight — walls change length by 82 mm over a 10 m frontage. Shaking here reaches 0.11 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · House H8 (mud): damage stays very slight — walls change length by 37 mm over a 10 m frontage. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Road R1: widest crack in the road 53 mm (was 5 mm); the road tilts 5.6 mm/m. Shaking here reaches 0.11 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Road R2: widest crack in the road 0 mm (was 0 mm); the road tilts 0.8 mm/m. Shaking here reaches 0.09 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P1: top moves 37 mm sideways (was 37 mm) on a 9 m pole. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P2: top moves 37 mm sideways (was 37 mm) on a 9 m pole. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P3: top moves 34 mm sideways (was 34 mm) on a 9 m pole. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P4: top moves 23 mm sideways (was 23 mm) on a 9 m pole. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P5: top moves 3 mm sideways (was 1 mm) on a 9 m pole. Shaking here reaches 0.10 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P6: top moves 0 mm sideways (was 0 mm) on a 9 m pole. Shaking here reaches 0.08 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P7: top moves 0 mm sideways (was 0 mm) on a 9 m pole. Shaking here reaches 0.05 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · Pole P8: top moves 0 mm sideways (was 0 mm) on a 9 m pole. Shaking here reaches 0.03 mm/s, under the 15 mm/s domestic limit at 175 Hz
+    · transmission tower: top moves 5 mm sideways (was 5 mm) on a 30 m pole. Shaking here reaches 0.09 mm/s, under the 15 mm/s domestic limit at 175 Hz
+
+  (illustrative, not the real Adriyala surface)

@@ -1,0 +1,37 @@
+=== RENDERER TESTS ===
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /opt/miniconda3/envs/pinn-sandbox/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale
+plugins: anyio-4.15.1
+collecting ... collected 6 items
+
+renderer/tests/test_export_scene.py::test_80d_run_grid_changed_and_single_pass_equals_replay PASSED [ 16%]
+renderer/tests/test_export_scene.py::test_exported_grid_in_scene_json_equals_replay_slice PASSED [ 33%]
+renderer/tests/test_export_scene.py::test_face_x_never_above_panel_length PASSED [ 50%]
+renderer/tests/test_export_scene.py::test_no_physics_import_in_renderer PASSED [ 66%]
+renderer/tests/test_export_scene.py::test_index_html_contains_simulated PASSED [ 83%]
+renderer/tests/test_export_scene.py::test_export_v2_690d_real PASSED     [100%]
+
+============================== 6 passed in 20.76s ==============================
+
+=== MINE-SIM TESTS ===
+........................................................................ [ 55%]
+.........................................................                [100%]
+129 passed in 66.01s (0:01:06)
+
+=== VAULT HEALTH CHECK ===
+
+=================================================================
+  SIH 26 FINALE OBSIDIAN VAULT AUDIT REPORT: sih-26-finale-brain
+=================================================================
+Total Notes Indexed:           67
+Total Valid Internal Links:    439
+Broken Wikilinks:              0
+Orphan Notes (disconnected):   0
+Frontmatter Missing Fields:    0
+-----------------------------------------------------------------
+
+Vault Health Status: PERFECT (100% HEALTHY)
+=================================================================
+

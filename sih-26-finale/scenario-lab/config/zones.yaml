@@ -1,0 +1,33 @@
+# Zone definitions for the Scenario Lab (P1, 17 Sep 2026).
+#
+# A zone is how Adarsh picks where an event happens: "first select the zone with 1 to 10 or full and
+# then do it". It is a named slice of the district, not a pixel, so the same scenario can be re-run
+# and quoted without anyone having to remember a click coordinate.
+#
+# Every number here carries a source:, and gate L4 allows no numeric literal in lab/*.py.
+schema_version: 1
+
+n_zones: 10
+# source: scenario input — Adarsh's choice of 1..10 (session 26). The panel is 2500 m long, so ten
+# slices make each zone 250 m, i.e. the same as the panel width and a little under two influence
+# radii. That makes a zone roughly square and roughly one trough-width across, which is a size a
+# person can reason about. It is a UI granularity, not a physical constant.
+
+axis: x
+# source: design choice — zones slice along x, the face advance direction. The face travels along x,
+# so ground at different x is at genuinely different stages of sinking; slicing along y would put
+# ground in the same state into different zones and tell you nothing. Each zone spans the full
+# district width, so n_panels and y_offsets_m need no special case.
+
+boundary_fade_m: null
+# source: defaults to the influence radius r = depth / tan_beta (146 m here) when null, read from the
+# mine config rather than repeated. THIS NUMBER IS LOAD-BEARING, not cosmetic: a zone weight that
+# steps from 1 to 0 makes the scenario surface discontinuous at the zone edge, and every consequence
+# downstream takes derivatives of that surface — tilt spikes, curvature spikes harder, and B x
+# curvature lands far past the 3000 ue crack threshold. A boolean zone mask therefore draws a crack
+# around the outline of whatever zone you picked, which is an artefact of the menu, not the ground.
+# Fading over r instead keeps the surface smooth and matches the distance over which real subsidence
+# effects die away. See tests/gates/test_l8.py::test_hard_zone_mask_would_fake_a_crack.
+
+full_zone_id: full
+# source: naming choice — the id meaning "the whole district", Adarsh's "or full".

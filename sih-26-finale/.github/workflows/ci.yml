@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install "numpy>=2.0" "scipy>=1.10" "pyyaml>=6.0" "pytest>=7.3"
+          pip install -e mine-sim --no-deps
+
+      - name: Vault integrity (0 broken / 0 orphans / 0 frontmatter)
+        run: python sync_vault.py --check
+
+      - name: Unit tests and gates
+        working-directory: mine-sim
+        run: python -m pytest -q
+
+      - name: Stress test (physics, world, sizing, radio, provenance, run)
+        working-directory: mine-sim
+        run: python scripts/stress_test.py
+
+      - name: Real-anchored dataset rebuilds
+        working-directory: mine-sim
+        run: python scripts/build_anchored_dataset.py

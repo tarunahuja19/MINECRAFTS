@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scenario-lab"
+version = "0.1.0"
+description = "Scenario Lab (WP9) — freeze a finished run at a day and try 'what if' events on a copy"
+requires-python = ">=3.11"
+dependencies = ["numpy", "pyyaml"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lab*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,79 @@
+{
+  "mine": "adriyala_lw1",
+  "source_doi": "10.18311/jmmf/2022/32099",
+  "fitted_at": "2026-09-14",
+  "model": "physics.subsidence (Knothe, closed-form time lag, inflection-point offset)",
+  "params": {
+    "subsidence_factor": 0.45,
+    "tan_beta": 2.5676,
+    "time_coefficient_per_day": 0.02358,
+    "inflection_offset_m": 58.96,
+    "survey_origin_offset_m": 13.47,
+    "survey_line_x_m": 258.0
+  },
+  "fit": {
+    "rms_residual_mm": 52.14,
+    "max_residual_mm": 280.47,
+    "n_points": 283,
+    "n_epochs": 6,
+    "r_squared": 0.9845,
+    "r_squared_model": "knothe (the pinned params above)",
+    "peak_model_mm": 1201.7,
+    "peak_measured_mm": 1267.0
+  },
+  "identifiability": {
+    "subsidence_factor_scan": [
+      {
+        "a": 0.35,
+        "rms_mm": 61.27
+      },
+      {
+        "a": 0.4,
+        "rms_mm": 54.5
+      },
+      {
+        "a": 0.45,
+        "rms_mm": 52.14
+      },
+      {
+        "a": 0.5,
+        "rms_mm": 51.1
+      },
+      {
+        "a": 0.55,
+        "rms_mm": 50.58
+      },
+      {
+        "a": 0.6,
+        "rms_mm": 50.28
+      },
+      {
+        "a": 0.7,
+        "rms_mm": 49.99
+      },
+      {
+        "a": 0.8,
+        "rms_mm": 49.86
+      },
+      {
+        "a": 0.9,
+        "rms_mm": 49.79
+      }
+    ],
+    "rule": "smallest a within 5% of the best RMS",
+    "survey_line_x_note": "survey_line_x_m trades off against c: 200-650 m all give RMS ~52 mm (no survey before day 210). OPEN: the JMMF monitoring-layout figure fixes both."
+  },
+  "profile_function": {
+    "model": "JMMF Table 3 asymmetric profile function (comparison only, NOT used by physics.py)",
+    "s_max_mm": 1219.6,
+    "r_squared": 0.9859,
+    "rms_residual_mm": 49.69
+  },
+  "residual_by_flank": {
+    "dip_side_rms_mm": 59.12,
+    "rise_side_rms_mm": 46.84
+  },
+  "verdict": "Knothe with inflection offset is usable (RMS 52.1 mm, 50-150 mm band; Table 3 profile function 49.7 mm). Flag for Part 2 loss weighting. Peak 1202 mm vs measured 1267 mm.",
+  "notes": "Extracted from Ramalingeswarudu et al. (2022) Table 1, Table 2, Fig 6, Fig 7, Fig 12. Extraction height m = 3.6 m (Table 1). Working depth 375 m (Table 2 uses 410 m; depth span 366-458 m). Maximum measured subsidence 1.267 m (19.5% of seam thickness, 35.2% of extraction height).",
+  "history": "2026-09-13 fit: symmetric Knothe, no offset, static time factor: a 0.2609, tan_beta 3.0907, c 0.01309, RMS 177.5 mm, R^2 0.8201, peak 930 mm (-27%). Superseded 2026-09-14."
+}

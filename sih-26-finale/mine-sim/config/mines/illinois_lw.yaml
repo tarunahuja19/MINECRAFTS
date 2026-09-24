@@ -1,0 +1,23 @@
+schema_version: 1
+name: illinois_lw
+display_name: "Southern Illinois Longwall Study Panel (USBM / NIOSH)"
+
+geometry:
+  A1_panel_width_m: 215.0
+  A1_panel_length_m: 1800.0
+  A1b_inflection_offset_m: 0.0
+  A2_depth_m: 220.0
+  A3_seam_thickness_m: 2.15
+  seam_inclination_deg: 0.0
+  advance_direction_deg: 0.0
+
+knothe:
+  A4_subsidence_factor: 0.65
+  A5_tan_beta: 2.1
+  A7_time_coefficient_per_day: 0.025
+  A6_face_advance_m_per_day: 5.0
+
+pinning:
+  source: "UNVERIFIED — synthetic fixture"   # R0-2: could not be traced to a source PDF; config-swap test only
+  profiles_csv: data/fixtures/illinois_synthetic_profiles.csv
+  fitted_params: data/fitted/illinois_lw_params.json

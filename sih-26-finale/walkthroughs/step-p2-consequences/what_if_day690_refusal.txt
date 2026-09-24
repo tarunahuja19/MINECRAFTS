@@ -1,0 +1,8 @@
+
+SCENARIO (HYPOTHETICAL) — not a forecast, not sent to the backend or to any model
+adriyala_lw1  ·  run 1a6a9a3a  ·  frozen at day 690  ·  face at 2500 m
+Zone 6 — 1250 to 1500 m along the panel  ·  crack  ·  {'days_ahead': 45.0}
+
+  crack history: 18676 cells already cracked at day 690
+
+  CANNOT HAPPEN: the ground near here is not moving now: 0.013 mm/day over the last 7 days, under the 0.05 mm/day we can tell from rounding — there is no rate to carry forward

@@ -1,0 +1,18 @@
+plugins: anyio-4.15.1
+collecting ... collected 13 items
+
+renderer/tests/test_export_scene.py::test_80d_run_grid_changed_and_single_pass_equals_replay PASSED [  7%]
+renderer/tests/test_export_scene.py::test_exported_grid_in_scene_json_equals_replay_slice PASSED [ 15%]
+renderer/tests/test_export_scene.py::test_face_x_never_above_panel_length PASSED [ 23%]
+renderer/tests/test_export_scene.py::test_no_physics_import_in_renderer PASSED [ 30%]
+renderer/tests/test_export_scene.py::test_index_html_contains_simulated PASSED [ 38%]
+renderer/tests/test_export_scene.py::test_export_v2_690d_real PASSED     [ 46%]
+renderer/tests/test_export_scene.py::test_terrain_block_is_cell_aligned_with_world_grid PASSED [ 53%]
+renderer/tests/test_export_scene.py::test_plan_node_dz_is_read_from_world_grid PASSED [ 61%]
+renderer/tests/test_export_scene.py::test_scene_carries_antenna_heights_and_baselines_from_assumptions PASSED [ 69%]
+renderer/tests/test_export_scene.py::test_index_html_no_radio_links_checked_by_default PASSED [ 76%]
+renderer/tests/test_export_scene.py::test_terrain_extent_full_covers_the_dem PASSED [ 84%]
+renderer/tests/test_export_scene.py::test_world_grid_area_unchanged_by_terrain_extent PASSED [ 92%]
+renderer/tests/test_export_scene.py::test_config_has_zoom_keys_and_scene_carries_them PASSED [100%]
+
+============================= 13 passed in 16.80s ==============================

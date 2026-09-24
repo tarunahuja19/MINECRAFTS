@@ -1,0 +1,35 @@
+# Scenario event: the ground here keeps moving for another N days (WP9 §5 row 2, S0 §S2).
+# Every value under `inputs` is a SCENARIO INPUT — a user hypothesis, not a measurement at this mine
+# (Invariant 7). The constants are model choices and carry their own sources.
+schema_version: 1
+name: crack
+title: "The ground keeps moving for N more days"
+plain: "Take how fast this ground is sinking right now, carry on at that rate for N more days, and see what cracks."
+
+inputs:
+  days_ahead:
+    default: 30.0
+    min: 0.0
+    max: 180.0
+    unit: d
+    source: "scenario input — not a forecast and not measured at this mine; the user asks 'what if it carried on this long'"
+  nearby_radius_m:
+    default: 150.0
+    min: 10.0
+    max: 500.0
+    unit: m
+    source: "scenario input — how far around the chosen spot the ground is assumed to keep moving with it"
+
+constants:
+  rate_window_days:
+    value: 7.0
+    unit: d
+    source: "model choice — the current sinking rate is measured over the last week of the run rather than
+      one day, because a one-day difference on a grid that rounds to whole millimetres is mostly rounding.
+      Long enough to be a rate, short enough to still be 'now' while the face advances 11 m/day."
+  min_rate_mm_per_day:
+    value: 0.05
+    unit: mm/d
+    source: "model choice — below this the ground is not measurably moving, so 'carry on at this rate' has
+      nothing to carry on from and the event refuses instead of multiplying rounding noise by N days.
+      0.05 mm/d over the 7-day window is 0.35 mm, under the int-mm world grid's own rounding."

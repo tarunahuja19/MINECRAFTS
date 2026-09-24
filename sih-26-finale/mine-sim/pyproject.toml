@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minesim"
+version = "0.1.0"
+description = "Part 1 mine subsidence simulator and synthetic data generator"
+readme = "AGENTS.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "pyyaml>=6.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pytest>=7.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.3.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

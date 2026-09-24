@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /opt/miniconda3/envs/pinn-sandbox/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale/mine-sim
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 12 items
+
+tests/unit/test_world.py::test_t0_flat_and_int32 PASSED                  [  8%]
+tests/unit/test_world.py::test_shape_axes_and_cell_centres PASSED        [ 16%]
+tests/unit/test_world.py::test_monotone_dense_epochs_and_matches_model PASSED [ 25%]
+tests/unit/test_world.py::test_no_drift_after_long_run PASSED            [ 33%]
+tests/unit/test_world.py::test_z_at_cell_centre_and_between PASSED       [ 41%]
+tests/unit/test_world.py::test_z_at_tracks_physics PASSED                [ 50%]
+tests/unit/test_world.py::test_trough_follows_the_face PASSED            [ 58%]
+tests/unit/test_world.py::test_no_operator_controls PASSED               [ 66%]
+tests/gates/test_g06.py::test_g06_full_and_partial_replay_exact PASSED   [ 75%]
+tests/gates/test_g06.py::test_g06_negative_float_accumulation_fails PASSED [ 83%]
+tests/gates/test_g13.py::test_g13_z0_unchanged_by_a_run PASSED           [ 91%]
+tests/gates/test_g13.py::test_g13_negative_node_z0_is_frozen PASSED      [100%]
+
+============================= 12 passed in 17.43s ==============================

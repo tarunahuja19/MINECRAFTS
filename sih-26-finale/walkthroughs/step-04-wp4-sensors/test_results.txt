@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /opt/miniconda3/envs/pinn-sandbox/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale/mine-sim
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 13 items
+
+tests/unit/test_sensors.py::test_value_rejects_bad_tag PASSED            [  7%]
+tests/unit/test_sensors.py::test_tier_fields PASSED                      [ 15%]
+tests/unit/test_sensors.py::test_non_scouts_rejected PASSED              [ 23%]
+tests/unit/test_sensors.py::test_derived_values_always_synthetic PASSED  [ 30%]
+tests/unit/test_sensors.py::test_noise_differs_and_seed_reproduces PASSED [ 38%]
+tests/unit/test_sensors.py::test_signs_outside_the_rib PASSED            [ 46%]
+tests/unit/test_sensors.py::test_baseline_effect PASSED                  [ 53%]
+tests/unit/test_sensors.py::test_tilt_drift_dominates_low_gradient_1a PASSED [ 61%]
+tests/unit/test_sensors.py::test_battery_drains PASSED                   [ 69%]
+tests/unit/test_sensors.py::test_adriyala_is_all_synthetic_until_survey_line_sourced PASSED [ 76%]
+tests/unit/test_sensors.py::test_real_pinned_synthetic_rules PASSED      [ 84%]
+tests/gates/test_g04.py::test_g04_thirty_day_run_all_tagged PASSED       [ 92%]
+tests/gates/test_g04.py::test_g04_negative_bad_tag_detected PASSED       [100%]
+
+============================== 13 passed in 8.97s ==============================

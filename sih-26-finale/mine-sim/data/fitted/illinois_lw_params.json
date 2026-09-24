@@ -1,0 +1,23 @@
+{
+  "mine": "illinois_lw",
+  "source_doi": "USBM RI 9194",
+  "fitted_at": "2026-09-13",
+  "params": {
+    "subsidence_factor": 0.65,
+    "tan_beta": 2.0947,
+    "time_coefficient_per_day": 0.02509
+  },
+  "fit": {
+    "rms_residual_mm": 4.64,
+    "max_residual_mm": 12.71,
+    "n_points": 150,
+    "n_epochs": 6,
+    "r_squared": 0.9999
+  },
+  "residual_by_flank": {
+    "dip_side_rms_mm": 4.64,
+    "rise_side_rms_mm": 4.64
+  },
+  "verdict": "Knothe is a good driver (< 50 mm). Flat seam, symmetric trough.",
+  "notes": "USBM RI 9194 study, southern Illinois longwall panel."
+}

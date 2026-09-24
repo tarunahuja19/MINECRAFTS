@@ -1,0 +1,99 @@
+# stress_test.py
+
+== 1. Physics  S(x,y,t) ==
+PASS  offset d=58.96 m == Knothe on the effective panel    max diff 0.0e+00 mm
+PASS  closed form == numeric Knothe integral               max error 1.8e-08 mm
+PASS  same, slow face + fast settling (c/v = 0.4)          max error 2.0e-09 mm
+PASS  690 d hourly grid: finite and >= 0                   0 bad cells
+PASS  ground only sinks (monotone in time)                 worst rise 2.6e-13 mm
+PASS  no jumps in time                                     max sink in one hour 0.87 mm
+PASS  no cliffs between 5 m cells                          max 55.3 mm, bound 55.5
+PASS  symmetric across the panel                           max asymmetry 0.0e+00 mm
+PASS  long time -> static full-panel trough                max diff 0.0e+00 mm
+PASS  peak at the survey line, day 690, vs field 1267 mm   model 1203 mm (-5.0%) - was 930 mm (-27%)
+PASS  horizontal movement points into the trough           u(-100)=512 mm, u(+100)=-512 mm
+PASS  strain: compression centre, tension at ribs          centre -4132, max tension 5807 ustrain
+PASS  strain integrates to zero net stretch                -0.000 mm
+PASS  180 extreme mine configs: no NaN / overflow          0 configs produced NaN
+
+== 2. World state (terrain truth) ==
+PASS  no cell ever rises (dz <= 0)                         0 rising deltas
+PASS  node Z from grid tracks physics                      max 1.04 mm
+
+== 3. Sizing + radio ==
+PASS  spacing 10 m, 1 children/anchor                      refuses loudly: 111 anchors exceed the anchor ID range 1-99
+PASS  spacing 10 m, 2 children/anchor                      111 scouts, 56 anchors, INR 377,000
+PASS  spacing 10 m, 8 children/anchor                      111 scouts, 15 anchors, INR 233,500
+PASS  spacing 10 m, 16 children/anchor                     111 scouts, 8 anchors, INR 209,000
+PASS  spacing 25 m, 1 children/anchor                      47 scouts, 47 anchors, INR 249,700
+PASS  spacing 25 m, 2 children/anchor                      47 scouts, 24 anchors, INR 169,200
+PASS  spacing 25 m, 8 children/anchor                      47 scouts, 7 anchors, INR 109,700
+PASS  spacing 25 m, 16 children/anchor                     47 scouts, 4 anchors, INR 99,200
+PASS  spacing 50 m, 1 children/anchor                      25 scouts, 25 anchors, INR 139,300
+PASS  spacing 50 m, 2 children/anchor                      25 scouts, 13 anchors, INR 97,300
+PASS  spacing 50 m, 8 children/anchor                      25 scouts, 4 anchors, INR 65,800
+PASS  spacing 50 m, 16 children/anchor                     25 scouts, 2 anchors, INR 58,800
+PASS  spacing 100 m, 1 children/anchor                     15 scouts, 15 anchors, INR 91,100
+PASS  spacing 100 m, 2 children/anchor                     15 scouts, 8 anchors, INR 66,600
+PASS  spacing 100 m, 8 children/anchor                     15 scouts, 2 anchors, INR 45,600
+PASS  spacing 100 m, 16 children/anchor                    15 scouts, 2 anchors, INR 45,600
+PASS  spacing 400 m, 1 children/anchor                     5 scouts, 5 anchors, INR 42,300
+PASS  spacing 400 m, 2 children/anchor                     5 scouts, 3 anchors, INR 35,300
+PASS  spacing 400 m, 8 children/anchor                     5 scouts, 2 anchors, INR 31,800
+PASS  spacing 400 m, 16 children/anchor                    5 scouts, 2 anchors, INR 31,800
+PASS  W2 identical far-field nodes share one tier          tiers ['1A']
+PASS  W3 every tilt-only 1A node can see its tilt          15/15 1A nodes
+PASS  loss probability 0.0                                 delivery 25/25
+PASS  loss probability 1.0                                 delivery 0/25
+PASS  weak transmitter fails the link-margin check         3/25 delivered at -60 dBm
+PASS  dedup on (node_id, epoch) survives reboots           49978 unique of 49978 delivered
+
+== 4. Sensors + provenance ==
+PASS  tilt/strain fit the 16-bit radio payload             peak 13157 (limit 32767)
+PASS  W1 nodes on the survey line carry real values        day 210 tags {'real': 9, 'synthetic': 16}
+PASS  W1 real value vs simulated terrain at that node      worst gap 54 mm (was 1,198)
+
+== 5. Full run, determinism, mine swap, replay ==
+PASS  same seed -> byte-identical nodes.csv                996a04e080c5
+PASS  different seed -> different noise                    5f3a80da2315
+PASS  rows = scouts x epochs                               1800 rows
+PASS  only real / pinned / synthetic tags                  ['', 'pinned', 'synthetic']
+PASS  run --days 0                                         0 epochs
+PASS  run --days 0.0417                                    1 epochs
+PASS  run --days 0.5                                       12 epochs
+PASS  swap mine yaml -> Illinois runs, no code change      {'gateway': 1, 'anchor': 4, '1B': 23, '1C': 4}, INR 80,800
+PASS  W2 Illinois: 1C is a band, not most of the network   15% of scouts are 1C (was 85%)
+PASS  1500 d past panel end: replay == model exactly       peak 1204 mm
+
+RESULT: 55 pass, 0 warn, 0 fail
+
+# build_anchored_dataset.py
+{
+  "rows": 33168,
+  "subsidence_provenance": {
+    "pinned": 32885,
+    "real": 283
+  },
+  "gp_hyperparameters": {
+    "signal_sigma_mm": 44.6,
+    "length_scale_y_m": 20.0,
+    "length_scale_t_days": 768.1,
+    "noise_sigma_mm": 35.0
+  },
+  "cv_rms_mm": {
+    "physics_only": 52.1,
+    "physics_plus_gp": 37.7
+  },
+  "monotone_fixes": 2438,
+  "largest_clamped_rise_mm": 3.75
+}
+{'held_out_day': 210, 'n': 47, 'physics_only_rms_mm': 56.9, 'physics_plus_gp_rms_mm': 42.7}
+{'held_out_day': 300, 'n': 47, 'physics_only_rms_mm': 52.1, 'physics_plus_gp_rms_mm': 39.5}
+{'held_out_day': 540, 'n': 47, 'physics_only_rms_mm': 46.3, 'physics_plus_gp_rms_mm': 28.2}
+{'held_out_day': 570, 'n': 47, 'physics_only_rms_mm': 46.3, 'physics_plus_gp_rms_mm': 28.7}
+{'held_out_day': 600, 'n': 47, 'physics_only_rms_mm': 46.3, 'physics_plus_gp_rms_mm': 29.5}
+{'held_out_day': 690, 'n': 48, 'physics_only_rms_mm': 62.5, 'physics_plus_gp_rms_mm': 51.4}
+
+# pytest
+.........................................................                [100%]
+129 passed in 41.89s

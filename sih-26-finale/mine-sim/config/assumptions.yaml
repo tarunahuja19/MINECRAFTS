@@ -1,0 +1,204 @@
+schema_version: 1
+
+mine: adriyala_lw1          # selects config/mines/<name>.yaml
+
+sensing:
+  A8_strain_rod_baseline_m: 10.0
+  A9_extensometer_baseline_m: 30.0
+  A10_detection_threshold_mm: 10.0
+
+layout:
+  source: plan              # source: F0 decision DF3 (15 Sep); v1 = old sizing algorithm (travelling cross)
+  spacing_m: 50.0           # was 40.0; see 10-build-order §0 (v1 layout only)
+  max_children_per_anchor: 5   # Adarsh, 17 Sep (session 22): was 8. Contract amendment logged in
+                               # changelog/2026-09-17-claude-code-children-per-anchor-5.md. Nominal fan-out is
+                               # cap-1 = 4, so scouts/4 anchors are planned instead of scouts/7.
+  # Tiers: three natural-break bands of peak strain (no threshold to set): high 1C, mid 1B, low 1A.
+  tilt_detection_snr: 3.0           # OPEN — design choice: a tilt-only 1A node needs peak tilt >= 3x its noise floor
+
+radio:
+  A11_band: IN865
+  A11_bandwidth_khz: 125
+  A12_scout_sf: 7
+  A13_anchor_sf: 8
+  A12_coding_rate: "4/5"
+  A12_preamble_symbols: 8
+  A12_explicit_header: true
+  A12_crc: true
+  A14_duty_cycle_ceiling_pct: 1.0     # self-imposed engineering ceiling, not law
+  A16_superframe_period_s: 60.0
+  A17_local_channels: 4
+  A17_backbone_channels: 2
+  A15_antenna_height_m:
+    scout: 2.0
+    anchor: 2.0
+    gateway: 10.0
+  A11_frequency_mhz: 866.0            # OPEN — guess, replace with hardware spec sheet (IN865 band centre)
+  tx_power_dbm: 14.0                  # OPEN — guess, replace with hardware spec sheet
+  sensitivity_dbm:                    # OPEN — guess, replace with hardware spec sheet (SX1276-class, BW125)
+    7: -123.0
+    8: -126.0
+    9: -129.0
+  link_margin_db_min: 10.0            # OPEN — guess, replace with hardware spec sheet
+  bernoulli_loss_prob: 0.02           # OPEN — guess, replace with field packet-loss measurement
+
+power:
+  A18_scout_battery_mah: 6000
+  A19_current_ma: {tx: 120.0, rx: 11.0, sense: 20.0, sleep: 0.02}
+  A20_target_life_days: 365
+
+cost:                        # informational only — A22 budget cap deleted
+  A21_unit_inr: {tier_1a: 1200, tier_1b: 1800, tier_1c: 2600, anchor: 3500, gateway: 15000}
+
+sensors:
+  # Every value below is OPEN — guess, replace with hardware spec sheet.
+  # Pipeline per reading: ideal -> quantise(resolution) -> + bias -> + temp_drift_per_c * dT -> + N(0, noise_sigma)
+  subsidence:                         # all tiers, mm (levelling reference)
+    resolution: 1.0                   # OPEN — guess, replace with hardware spec sheet
+    bias: 0.0                         # OPEN — guess, replace with hardware spec sheet
+    temp_drift_per_c: 0.05            # OPEN — guess, replace with hardware spec sheet
+    noise_sigma: 1.5                  # OPEN — guess, replace with hardware spec sheet
+  tier_1a:
+    tilt:                             # MPU-6050 class, microradians; drift is the largest term by design
+      resolution: 61.0                # OPEN — guess, replace with hardware spec sheet (1/16384 g per LSB)
+      bias: 500.0                     # OPEN — guess, replace with hardware spec sheet
+      temp_drift_per_c: 300.0         # OPEN — guess, replace with hardware spec sheet
+      noise_sigma: 100.0              # OPEN — guess, replace with hardware spec sheet
+  tier_1b:
+    strain:                           # foil gauge on A8 rod, microstrain
+      resolution: 1.0                 # OPEN — guess, replace with hardware spec sheet
+      bias: 20.0                      # OPEN — guess, replace with hardware spec sheet
+      temp_drift_per_c: 12.0          # OPEN — guess, replace with hardware spec sheet
+      noise_sigma: 5.0                # OPEN — guess, replace with hardware spec sheet
+    displacement:                     # slide potentiometer, mm
+      resolution: 0.1                 # OPEN — guess, replace with hardware spec sheet
+      bias: 0.5                       # OPEN — guess, replace with hardware spec sheet
+      temp_drift_per_c: 0.02          # OPEN — guess, replace with hardware spec sheet
+      noise_sigma: 0.2                # OPEN — guess, replace with hardware spec sheet
+  tier_1c:
+    strain:                           # wire extensometer over A9, microstrain
+      resolution: 3.0                 # OPEN — guess, replace with hardware spec sheet
+      bias: 10.0                      # OPEN — guess, replace with hardware spec sheet
+      temp_drift_per_c: 12.0          # OPEN — guess, replace with hardware spec sheet
+      noise_sigma: 3.0                # OPEN — guess, replace with hardware spec sheet
+  battery:
+    full_mv: 4200.0                   # OPEN — guess, replace with hardware spec sheet
+    empty_mv: 3000.0                  # OPEN — guess, replace with hardware spec sheet
+    noise_sigma: 5.0                  # OPEN — guess, replace with hardware spec sheet
+  temperature_amplitude_c: 10.0       # OPEN — guess, replace with site temperature record (half day/night swing)
+  temperature_period_days: 1.0        # OPEN — guess, replace with site temperature record
+  monument_position_tolerance_m: 2.5  # OPEN — guess; node within this distance of a survey monument counts as "at" it
+
+sim:
+  timestep_s: 3600.0
+  duration_days: 690
+  grid_cell_m: 5.0
+  rng_seed: 20260913
+
+placement:
+  # v3 node planner over the real terrain (src/minesim/placement.py, F3 15-16 Sep). Tiers keep the v1 meaning:
+  # strain bands by natural breaks -> 1C (highest), 1B, 1A (lowest, tilt-only where tilt is detectable).
+  min_node_spacing_m: 20.0       # source: geotechnical-grid-spacing-vs-radio-range-v2 §2.1 — scouts 15-25 m, ground failure is local; hard minimum between any two nodes (was scout_spacing_m)
+  spacing_by_tier_m:             # OPEN — design choice; 1C/1B from the geotechnical spacing note (scouts 15-25 m where ground fails, looser where strain is lower), 1A on the bowl floor
+    1C: 25.0
+    1B: 50.0
+    1A: 100.0
+  min_anchor_spacing_m: 80.0     # OPEN — design choice: cluster centres closer than this are merged and re-split once, and
+                                 # no two SITED anchors may stand closer than this (enforced in site_anchors, session 22)
+  max_anchor_offset_m: 120.0     # OPEN — design choice: an anchor may stand this far from its cluster centre to honour
+                                 # min_anchor_spacing_m. Siting used to search only min_node_spacing_m (20 m) — too small a
+                                 # ring to step out of a neighbour's way, so anchors landed 41 m apart (session-19 defect).
+                                 # Measured 17 Sep: 20 m -> 41.2 m worst pair, 80 m -> 72.1 m, 120 m -> 80.0 m (clean).
+                                 # Costs path length only: max scout link 150 m, median 36 m, against 43.7 dB of margin.
+                                 # min_anchor_spacing_m. Siting used to search only min_node_spacing_m (20 m), which was too
+                                 # small a ring to step out of a neighbour's way, so anchors landed 41 m apart. Scout links
+                                 # have ~43 dB of margin, so the extra path length is free.
+  sector: full                   # full = whole footprint that moves during the run (-2r .. L+2r, |y| <= W/2 + 2r); survey_window = static window (survey line x ± window/2), not moved in v3
+  plan_cell_m: 10.0              # planning raster; nodes are jittered inside cells so the layout is never grid-bound
+  plan_every_days: 10            # peak strain / tilt taken over the run at this cadence
+  max_install_slope_deg: 20.0    # OPEN — design choice: steeper natural ground cannot host a monument pad
+  gateway_standoff_m: [500.0, 1000.0]  # source: same doc §2.3 — gateway on stable ground outside the angle of draw
+  fresnel_clearance: 0.6         # source: standard 60 % first-Fresnel-zone clearance rule for a clear radio link
+  dem_zoom: 13                   # terrain tile zoom (~18 m/px at this latitude; SRTM native ~30 m)
+  dem_cell_m: 15.0               # DEM stored at this spacing in panel coordinates
+  dem_margin_m: 900.0            # DEM covers the deformation footprint plus this margin. Sized so the ENTIRE gateway
+                                 # candidate ring fits inside: _site_gateway searches every DEM cell, and the ring is
+                                 # bounded by gateway_standoff_m[1] = 1000 m from moving ground. Measured at day 690,
+                                 # moving ground (S >= 10 mm) spans x [-80, 2575], y [-200, 205], so the ring needs
+                                 # x [-1080, 3575], y [-1200, 1205]; margin 900 gives x [-1192, 3692], y [-1317, 1317].
+                                 # Was 3000 (F2, 15 Sep), which fetched 62.2 km2 to export 4.8 km2. 900 -> 12.9 km2 and
+                                 # the grid stays cell-aligned with the old one, so placement is unchanged. F11, 17 Sep.
+                                 # Do NOT lower below ~900 without re-deriving the ring: 400 clips it and moves the gateway.
+
+# ---------------------------------------------------------------------------------------------
+# Surface cracking (F10, 17 Sep). Ground fissures, NOT structure damage - the two are different
+# scales and the old sandbox conflated them. See src/minesim/cracks.py for the derivation.
+# Every value below is a placeholder with a rationale. None is a measurement. Keep the OPEN text.
+# ---------------------------------------------------------------------------------------------
+cracks:
+  tensile_strain_threshold_ue: 3000.0   # OPEN — VERIFY: major principal tensile strain at which a visible
+                                        # surface fissure first opens. Literature spread for cohesive cover is
+                                        # ~2000-5000 ue and it falls with thinner or weathered cover. The
+                                        # Adriyala cover is not characterised in 10.18311/jmmf/2022/32099.
+  crack_spacing_m: 8.0                  # OPEN — VERIFY: spacing between successive tension cracks, i.e. the
+                                        # gauge length whose extension localises into one fissure. Replaces the
+                                        # old sandbox's undocumented 2.0 m (its bare `* 1000.0 * 2.0`).
+  partial_closure_fraction: 0.35        # OPEN — VERIFY: residual opening once the compression zone behind the
+                                        # face has passed over an already-open crack. A fissure narrows; it
+                                        # does not heal, so this is a floor, never zero.
+  export_cell_m: 10.0                   # source: export choice — cell size of the crack/PPV field written by
+                                        # scripts/export_cracks.py to out/cracks/. Coarser than the 5 m world grid
+                                        # because the export walks the whole run to build the latched crack state.
+                                        # It lived as a bare `cell = 10.0` in that script until S7; the Scenario Lab
+                                        # resamples from this grid to its own, so the number has to be readable.
+  dgms_tensile_strain_limit_ue: 5300.0  # OPEN — VERIFY, and verify hard. The old sandbox used 5.3 mm/m as a
+                                        # "DGMS tensile limit" in four places (its tests/test_strain_calibration.py
+                                        # :124 and :46, tests/test_render_placement.py :251 and :329), which is where
+                                        # its `strain_ue > 5300 -> flag 2` came from. So it is a CLAIMED regulatory
+                                        # threshold, not an invented number - but the claim is unsourced and we have
+                                        # not found the circular. DGMS is known to publish blast PPV limits (see
+                                        # vibration.dgms_limits_mm_s); a statutory tensile STRAIN limit is plausible
+                                        # but unconfirmed. Carried so the number is not lost, labelled so nobody
+                                        # mistakes it for something we checked. Do not quote it in a demo until
+                                        # someone has read the circular.
+
+# ---------------------------------------------------------------------------------------------
+# Structure damage (F10). Classified on CHANGE OF LENGTH (strain x frontage), not on raw strain.
+# ---------------------------------------------------------------------------------------------
+damage:
+  ncb_edges_mm: [30.0, 60.0, 120.0, 180.0, 300.0]  # source: NCB Subsidence Engineers' Handbook change-of-length
+                                        # classification: negligible / very slight / slight / appreciable /
+                                        # severe / very severe. OPEN — VERIFY edition and exact edges against
+                                        # the printed table before this appears in any demo.
+  default_structure_length_m: 10.0      # OPEN — VERIFY: assumed single-storey masonry dwelling frontage.
+
+# ---------------------------------------------------------------------------------------------
+# Ground vibration (F10). Telemetry only: nothing here writes S(x,y,t), the world grid or node Z.
+# Blasting does not cause subsidence, and this model must never be wired up as though it does.
+# ---------------------------------------------------------------------------------------------
+vibration:
+  blast_k: 800.0                        # OPEN — VERIFY: site constant K in PPV = K (D/sqrt(W))^-B. Indian coal
+                                        # measures spread is roughly 400-1200; needs a site trial blast to pin.
+  blast_b: 1.5                          # OPEN — VERIFY: site exponent B, typically 1.4-1.6.
+  first_fall_advance_m: 40.0            # OPEN — VERIFY: face advance before the first main roof fall.
+  periodic_weighting_interval_m: 20.0   # OPEN — VERIFY: advance between periodic weighting events thereafter.
+  caving_ppv_at_100m_mm_s: 0.8          # OPEN — VERIFY: PPV at the surface 100 m from a caving event. Small,
+                                        # but this is the source genuinely driven by our own face advance.
+  machinery_floor_mm_s: 0.08            # OPEN — VERIFY: steady background from shearer and conveyor.
+  trigger_fraction: 0.8                 # OPEN — VERIFY: a vibration event may tip ground already above this
+                                        # fraction of the cracking threshold over it. It may NOT crack ground
+                                        # that is not already near failure, and may NOT alter S.
+  bands_hz:                             # source: dominant-frequency bands carried over from the old sandbox
+    truck: [8.0, 20.0]                  # (sih26/simulation/sandbox/sensors.py:151-154) - these were sound.
+    conveyor: [49.0, 51.0]
+    blast: [40.0, 80.0]
+    microseismic: [100.0, 250.0]        # roof caving; the band that matters for early warning
+  dgms_limits_mm_s:                     # source: DGMS (Tech) Circular No. 7 of 1997, banded by dominant
+    domestic:                           # frequency. OPEN — VERIFY every number against the circular.
+      below_8hz: 5.0
+      8_to_25hz: 10.0
+      above_25hz: 15.0
+    industrial:
+      below_8hz: 10.0
+      8_to_25hz: 20.0
+      above_25hz: 25.0

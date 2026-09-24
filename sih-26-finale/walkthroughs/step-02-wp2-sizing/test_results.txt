@@ -1,0 +1,46 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /opt/miniconda3/envs/pinn-sandbox/bin/python3.11
+cachedir: .pytest_cache
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale/mine-sim
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 36 items
+
+tests/unit/test_sizing.py::test_counts_follow_geometry PASSED            [  2%]
+tests/unit/test_sizing.py::test_spacing_sensitivity PASSED               [  5%]
+tests/unit/test_sizing.py::test_transverse_covers_extent PASSED          [  8%]
+tests/unit/test_sizing.py::test_longitudinal_covers_window PASSED        [ 11%]
+tests/unit/test_sizing.py::test_child_index_unique_and_in_range PASSED   [ 13%]
+tests/unit/test_sizing.py::test_backup_parent_differs PASSED             [ 16%]
+tests/unit/test_sizing.py::test_id_ranges PASSED                         [ 19%]
+tests/unit/test_sizing.py::test_tier_1c_nearer_the_strain_peak_than_1a PASSED [ 22%]
+tests/unit/test_sizing.py::test_every_scout_tier_present PASSED          [ 25%]
+tests/unit/test_sizing.py::test_cost_breakdown_sums PASSED               [ 27%]
+tests/unit/test_sizing.py::test_z0_is_static_baseline PASSED             [ 30%]
+tests/unit/test_sizing.py::test_deterministic PASSED                     [ 33%]
+tests/unit/test_sizing.py::test_relaxation_steps_empty_in_v1 PASSED      [ 36%]
+tests/unit/test_config.py::test_sensors_block_loads PASSED               [ 38%]
+tests/unit/test_config.py::test_radio_link_keys_load PASSED              [ 41%]
+tests/unit/test_config.py::test_existing_fields_unchanged PASSED         [ 44%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>0] PASSED   [ 47%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>1] PASSED   [ 50%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>2] PASSED   [ 52%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>3] PASSED   [ 55%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>4] PASSED   [ 58%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>5] PASSED   [ 61%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>6] PASSED   [ 63%]
+tests/unit/test_config.py::test_null_raises_unpinned[<lambda>7] PASSED   [ 66%]
+tests/gates/test_g02.py::test_g02_single_config_parameter PASSED         [ 69%]
+tests/gates/test_g02.py::test_g02_negative_defaulted_count_fails PASSED  [ 72%]
+tests/gates/test_g02.py::test_g02_negative_renamed_parameter_fails PASSED [ 75%]
+tests/gates/test_g03.py::test_g03_cost_present PASSED                    [ 77%]
+tests/gates/test_g03.py::test_g03_negative_empty_breakdown_fails PASSED  [ 80%]
+tests/gates/test_g12.py::test_g12_absurd_costs_still_give_a_valid_layout PASSED [ 83%]
+tests/gates/test_g12.py::test_g12_no_cost_branch_in_sizing PASSED        [ 86%]
+tests/gates/test_g12.py::test_g12_negative_budget_branch_detected PASSED [ 88%]
+tests/gates/test_g15.py::test_g15_spacing_change_changes_count PASSED    [ 91%]
+tests/gates/test_g15.py::test_g15_second_mine_gives_valid_different_layout PASSED [ 94%]
+tests/gates/test_g15.py::test_g15_no_assumption_literals_in_sizing PASSED [ 97%]
+tests/gates/test_g15.py::test_g15_negative_literal_detected PASSED       [100%]
+
+============================== 36 passed in 3.16s ==============================

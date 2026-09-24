@@ -1,0 +1,13 @@
+base libe mine is nothing, 
+second we wouyld showing mines, for now the whole and will dicvide it later so for clealry understnsd
+number of nodes is not fixed and desgin and needed by algorith 
+backend stack and all is not your concern 
+make sureyou dont focus on ml part jst if some points and things to ml guy let me knbow 
+nodes.csv has the wrirten data, but here would befiles covering the terrian data as well
+and a file covering the chganges of the terrian so you can go back and all that shits but ya, keep that in mind, now go for the simplest in every part of the idea
+righ now for 4.2 try to simualte the data when i start click and try to write it and send the packets, and then alter on we will adding a lot of tuff one by one whcih allows you try things on that terran as extra ands as you have already done it below for divison and allows
+for the data sourcs, what does elevation and resoltion mean here, what do you m,ena 30m 
+land cover, 10m also explain 
+could be any mine ywer can take as base not just adriyaala and also explain for otyhers the reosltion part
+the data which is not present cant use already present data ot there to generate them 
+fix the budget asnd all as i am thinknig you are consitrinig yourself to number fo nodes rather thna using nodes ased on thier proepry and plan and if you dobt have udate info on nodes ask me 

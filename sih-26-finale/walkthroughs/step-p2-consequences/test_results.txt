@@ -1,0 +1,26 @@
+scenario-lab:
+.....................................................                    [100%]
+125 passed in 58.66s
+
+mine-sim (unchanged by P2 apart from the new cracks.export_cell_m key):
+198 passed, 1 skipped in 208.68s
+
+renderer (untouched):
+19 passed in 94.35s
+
+vault:
+Broken Wikilinks 0 | Orphan Notes 0 | Frontmatter Missing 0 -> PERFECT
+
+gate L8 measurements, day 690 (scenario-lab/tests/gates/test_l8.py):
+L8-6 crack width, lab vs export: median 1.37%, p95 6.24% over 4675 cells cracked in both
+L8-6 NCB grade, lab vs export:   differs on 0.14% of 25564 overlapping cells
+L8-6 null scenario new cracks:   0
+L8-7 crack line bearing:         median 0.00 deg from perpendicular to the exported strain, 4000 lines
+L8-7 mutation check:             inverting the quarter turn fails L8-7 and nothing else
+
+export_cracks.py, four days in one walk of the latch:
+day 172: 950 cracked cells, widest 23.48 mm
+day 345: 2209 cracked cells, widest 28.36 mm
+day 517: 3457 cracked cells, widest 28.49 mm
+day 690: 4669 cracked cells, widest 28.49 mm
+wall time for all four: 2.5 s

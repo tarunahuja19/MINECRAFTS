@@ -1,0 +1,77 @@
+================================================================================
+TEST RESULTS FOR STEP F1 — NO WIRES + DISTINCT NODE DESIGNS
+Date: 2026-09-15
+Branch: fix-the-system
+Python: /opt/miniconda3/envs/pinn-sandbox/bin/python3.11
+================================================================================
+
+--------------------------------------------------------------------------------
+1. RENDERER TEST SUITE (renderer/tests)
+Command: PYTHONPATH=. /opt/miniconda3/envs/pinn-sandbox/bin/python3.11 -m pytest renderer/tests
+--------------------------------------------------------------------------------
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale
+plugins: anyio-4.15.1
+collected 10 items
+
+renderer/tests/test_export_scene.py ..........                           [100%]
+
+============================= 10 passed in 15.13s ==============================
+
+Passed tests:
+- test_80d_run_grid_changed_and_single_pass_equals_replay
+- test_exported_grid_in_scene_json_equals_replay_slice
+- test_face_x_never_above_panel_length
+- test_no_physics_import_in_renderer
+- test_index_html_contains_simulated
+- test_export_v2_690d_real
+- test_terrain_block_is_cell_aligned_with_world_grid
+- test_plan_node_dz_is_read_from_world_grid
+- test_scene_carries_antenna_heights_and_baselines_from_assumptions
+- test_index_html_no_radio_links_checked_by_default
+
+Result: 10 PASSED, 0 FAILED
+
+
+--------------------------------------------------------------------------------
+2. MINE-SIM TEST SUITE (mine-sim/tests)
+Command: cd mine-sim && /opt/miniconda3/envs/pinn-sandbox/bin/python3.11 -m pytest
+--------------------------------------------------------------------------------
+============================= test session starts ==============================
+platform darwin -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/adarshagarwala/Documents/sih26/sih-26-finale/mine-sim
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collected 138 items
+
+tests/gates/test_g00.py .........                                        [  6%]
+tests/gates/test_g01.py .                                                [  7%]
+tests/gates/test_g02.py ...                                              [  9%]
+tests/gates/test_g03.py ..                                               [ 10%]
+tests/gates/test_g04.py ..                                               [ 12%]
+tests/gates/test_g06.py ..                                               [ 13%]
+tests/gates/test_g07.py ...                                              [ 15%]
+tests/gates/test_g12.py ...                                              [ 18%]
+tests/gates/test_g13.py ..                                               [ 19%]
+tests/gates/test_g15.py ....                                             [ 22%]
+tests/unit/test_config.py ...........                                    [ 30%]
+tests/unit/test_physics.py .....................                         [ 45%]
+tests/unit/test_placement.py .........                                   [ 52%]
+tests/unit/test_radio.py ..................                              [ 65%]
+tests/unit/test_run.py .                                                 [ 65%]
+tests/unit/test_sensors.py ............                                  [ 74%]
+tests/unit/test_sizing.py ................                               [ 86%]
+tests/unit/test_stream.py ...........                                    [ 94%]
+tests/unit/test_world.py ........                                        [100%]
+
+======================== 138 passed in 79.40s (0:01:19) ========================
+
+Result: 138 PASSED, 0 FAILED
+
+================================================================================
+SUMMARY
+- Renderer pytest count: 10 passed
+- mine-sim pytest count: 138 passed
+- Total tests: 148 passed, 0 failed
+================================================================================
