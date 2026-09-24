@@ -15,6 +15,9 @@ document.getElementById('tab-bar').addEventListener('click', function (e) {
   if (tab === 'map' && mapView.getMap()) {
     mapView.getMap().invalidateSize();
   }
+  if (tab === 'sim' && typeof simTab !== 'undefined' && simTab.onTabShown) {
+    simTab.onTabShown();
+  }
 });
 
 // Ensure map tab is flex by default
@@ -73,6 +76,14 @@ document.getElementById('tab-map').style.display = 'flex';
   // Phase 6 — Info Tab Interactive Reference
   if (typeof infoTab !== 'undefined' && infoTab.init) {
     infoTab.init();
+  }
+
+  // Phase 7 — Simulation Tab & Live Status
+  if (typeof simLive !== 'undefined' && simLive.init) {
+    simLive.init();
+  }
+  if (typeof simTab !== 'undefined' && simTab.init) {
+    simTab.init();
   }
 
   var viewSwitcher = document.getElementById('panel-view-switcher');

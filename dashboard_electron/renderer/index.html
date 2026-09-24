@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
   <link rel="stylesheet" href="css/hmi.css">
   <link rel="stylesheet" href="css/terrain-3d.css">
+  <link rel="stylesheet" href="css/sim-tab.css">
 </head>
 <body>
   <div id="app">
@@ -24,6 +25,7 @@
     <!-- TAB BAR — 32px, §4.10 -->
     <div id="tab-bar">
       <button class="tab-btn active" data-tab="map">MAP</button>
+      <button class="tab-btn" data-tab="sim">SIMULATION</button>
       <button class="tab-btn" data-tab="nodes">NODES</button>
       <button class="tab-btn" data-tab="alarms">ALARMS<span class="tab-badge" id="alarm-badge">0</span></button>
       <button class="tab-btn" data-tab="history">HISTORY</button>
@@ -437,6 +439,195 @@
 
             <div id="panel-alarm-detail" style="display:none; border-bottom: 2px solid var(--border-bevel-dark);"></div>
             <div id="panel-node-detail" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMULATION TAB -->
+      <div id="tab-sim" class="tab-view" style="display:none; flex:1; height:100%;">
+        <div class="sim-container">
+          <!-- Left Column: SIM CONTROL (320px) -->
+          <div id="sim-left">
+            <div class="panel-header">
+              <span>SIMULATION CONTROL</span>
+              <span class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">LAB 8010</span>
+            </div>
+            <div class="sim-control-body">
+              <!-- Day Slider Section -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">TEMPORAL DRIFT CONTROL</div>
+                <div class="sim-row">
+                  <span class="sim-label">MINING DAY:</span>
+                  <span class="sim-val-display" id="sim-day-display">Day 172</span>
+                </div>
+                <input type="range" id="sim-day-slider" class="sim-slider" min="0" max="690" step="1" value="172">
+                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-secondary); font-family:monospace;">
+                  <span>0d (INIT)</span>
+                  <span>172d (BENCH)</span>
+                  <span>690d (FINAL)</span>
+                </div>
+              </div>
+
+              <!-- Spatial Domain Section -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">SPATIAL SECTOR / ZONE</div>
+                <div class="sim-row" style="margin-bottom:4px;">
+                  <span class="sim-label">MONITORING SECTOR:</span>
+                </div>
+                <select id="sim-segment-select" class="sim-select">
+                  <option value="full">Full district</option>
+                  <option value="face">Face position</option>
+                  <option value="3" selected>Zone 3 (Active Face)</option>
+                </select>
+                <label class="sim-checkbox-label" style="margin-top:4px;">
+                  <input type="checkbox" id="sim-isolate-checkbox">
+                  <span>Isolate view to sector</span>
+                </label>
+              </div>
+
+              <!-- Freeze Action -->
+              <button id="btn-sim-freeze" class="sim-btn-freeze">FREEZE</button>
+
+              <!-- Hypothetical Event Selection -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">HYPOTHETICAL EVENT INJECTION</div>
+                <div class="sim-scenario-grid">
+                  <button class="sim-scenario-btn active" data-type="crack">CRACK</button>
+                  <button class="sim-scenario-btn" data-type="sudden_sinking">SINK</button>
+                  <button class="sim-scenario-btn" data-type="edge_collapse">COLLAPSE</button>
+                  <button class="sim-scenario-btn" data-type="blast" disabled title="W5/W6">BLAST</button>
+                  <button class="sim-scenario-btn" data-type="sinkhole" disabled title="W5/W6" style="grid-column: span 2;">SINKHOLE</button>
+                </div>
+              </div>
+
+              <!-- Days Ahead Projection -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">FORWARD PROJECTION HORIZON</div>
+                <div class="sim-row">
+                  <span class="sim-label">DAYS AHEAD:</span>
+                  <input type="number" id="sim-days-ahead" class="sim-input-number" min="1" max="365" value="60">
+                </div>
+              </div>
+
+              <!-- Run Scenario Button -->
+              <button id="btn-sim-run-scenario" class="sim-btn-run">RUN SCENARIO</button>
+            </div>
+          </div>
+
+          <!-- Center Column: SIM VIEWPORT -->
+          <div id="sim-viewport">
+            <!-- 3D Toolbar -->
+            <div class="sim-toolbar">
+              <span style="font-size:10px; font-weight:bold; color:var(--text-secondary); letter-spacing:0.04em;">VIEW:</span>
+              <button id="sim-cam-tilt65" class="sim-timeline-btn active">65° ISO</button>
+              <button id="sim-cam-tilt0" class="sim-timeline-btn">TOP 2D</button>
+              <button id="sim-cam-tilt78" class="sim-timeline-btn">78° STEEP</button>
+
+              <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 4px;"></div>
+
+              <span style="font-size:10px; font-weight:bold; color:var(--text-secondary); letter-spacing:0.04em;">Z-EXAG:</span>
+              <button id="sim-exag-1" class="sim-timeline-btn">1x</button>
+              <button id="sim-exag-3" class="sim-timeline-btn active">3x</button>
+              <button id="sim-exag-5" class="sim-timeline-btn">5x</button>
+
+              <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+                <span id="sim-coords" style="font-family:monospace; font-size:10px; color:var(--text-mono);">Lat: 18.6435 | Lng: 79.5725</span>
+              </div>
+            </div>
+
+            <!-- Viewport Canvas Wrap -->
+            <div class="sim-canvas-wrap">
+              <div id="sim-maplibre-map"></div>
+
+              <!-- HUD Overlay (SECTOR, FACE, DEEPEST, NODES MOVING) -->
+              <div class="sim-hud-stats">
+                <div class="sim-hud-line">
+                  <span style="color:var(--text-secondary);">SECTOR:</span>
+                  <span class="sim-hud-val" id="sim-hud-sector">Zone 3</span>
+                </div>
+                <div class="sim-hud-line">
+                  <span style="color:var(--text-secondary);">ACTIVE FACE:</span>
+                  <span class="sim-hud-val" id="sim-hud-face">-- m</span>
+                </div>
+                <div class="sim-hud-line">
+                  <span style="color:var(--text-secondary);">MAX SINKING:</span>
+                  <span class="sim-hud-val" id="sim-hud-deepest">0.0 mm</span>
+                </div>
+                <div class="sim-hud-line">
+                  <span style="color:var(--text-secondary);">NODES MOVING:</span>
+                  <span class="sim-hud-val" id="sim-hud-nodes-moving">--</span>
+                </div>
+              </div>
+
+              <!-- Floating Scenario Banner -->
+              <div id="sim-scenario-banner" class="sim-scenario-banner" style="display:none;">
+                HYPOTHETICAL SCENARIO LAB &bull; FROZEN AT DAY <span id="sim-banner-day">172</span> (WHAT-IF MODE)
+              </div>
+            </div>
+
+            <!-- Bottom Timeline Scrub Bar -->
+            <div class="sim-timeline-bar">
+              <button id="sim-btn-play" class="sim-timeline-btn">▶ PLAY</button>
+              <div class="sim-speed-group">
+                <button class="sim-timeline-btn sim-speed-btn active" data-speed="1">1x</button>
+                <button class="sim-timeline-btn sim-speed-btn" data-speed="10">10x</button>
+                <button class="sim-timeline-btn sim-speed-btn" data-speed="50">50x</button>
+                <button class="sim-timeline-btn sim-speed-btn" data-speed="100">100x</button>
+              </div>
+
+              <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 2px;"></div>
+
+              <button id="sim-btn-step-prev-d" class="sim-timeline-btn" title="Step back 1 day">-1d</button>
+              <button id="sim-btn-step-next-d" class="sim-timeline-btn" title="Step forward 1 day">+1d</button>
+              <button id="sim-btn-step-prev-h" class="sim-timeline-btn" title="Step back 1 hour">-1h</button>
+              <button id="sim-btn-step-next-h" class="sim-timeline-btn" title="Step forward 1 hour">+1h</button>
+
+              <label class="sim-checkbox-label" style="font-size:10px; font-weight:bold; margin-left:4px;">
+                <input type="checkbox" id="sim-loop-checkbox" checked>
+                <span>LOOP</span>
+              </label>
+
+              <div style="flex:1; display:flex; align-items:center; gap:8px; margin-left:10px;">
+                <input type="range" id="sim-timeline-slider" class="sim-slider" min="0" max="690" step="1" value="172">
+                <span id="sim-timeline-day-val" class="sim-val-display" style="white-space:nowrap; min-width:55px;">Day 172</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: INSPECTOR & SCENARIO RESULT (340px) -->
+          <div id="sim-right">
+            <!-- Empty state until day is frozen -->
+            <div id="sim-empty-state" class="sim-empty-state">
+              <div>
+                <div style="font-size:13px; color:#A4B8C4; margin-bottom:6px;">FREEZE A DAY TO BEGIN</div>
+                <div style="font-size:10.5px; font-weight:normal; color:var(--text-secondary); line-height:1.4;">
+                  Select a mining day &amp; sector on the left, then click <b>FREEZE</b> to inspect geological state and simulate failure scenarios.
+                </div>
+              </div>
+            </div>
+
+            <!-- Content container shown once day is frozen -->
+            <div id="sim-right-content" class="sim-right-content" style="display:none;">
+              <!-- Top: Node Telemetry Inspector -->
+              <div id="sim-inspector-panel">
+                <div class="panel-header">
+                  <span>SENSOR TELEMETRY INSPECTOR</span>
+                </div>
+                <div id="sim-inspector-body" class="sim-panel-scroll">
+                  <!-- Populated when user clicks sensor pins or freezes -->
+                </div>
+              </div>
+
+              <!-- Bottom: Scenario Result Display -->
+              <div id="sim-scenario-result-panel">
+                <div class="panel-header" style="background:#1F1212; border-top:1px solid var(--border-bevel-dark);">
+                  <span style="color:#FFB4B4;">SCENARIO CONSEQUENCE ANALYSIS</span>
+                </div>
+                <div id="sim-scenario-result-body" class="sim-panel-scroll">
+                  <!-- Populated when scenario is run or refusal returned -->
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1341,6 +1532,10 @@
 
   <!-- Report -->
   <script src="js/report/export-report.js"></script>
+
+  <!-- Simulation tab & live status modules -->
+  <script src="js/sim/sim-live.js"></script>
+  <script src="js/sim/sim-tab.js"></script>
 
   <!-- App init -->
   <script src="js/app.js"></script>
