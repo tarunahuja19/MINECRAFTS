@@ -24,6 +24,16 @@ var mapView = (function () {
     return [ORIGIN_LAT + y / M_PER_DEG_LAT, ORIGIN_LON + x / M_PER_DEG_LON];
   }
 
+  // [lat, lon] -> panel-frame metres [east, north]. Exact inverse of
+  // xyToLatLon. sim-select.js already calls this for selection xRange/yRange
+  // (previously missing, so every selection silently fell back to a fixed
+  // +/-150 m box); the Simulation tab embed uses the same projection.
+  function latLonToXY(lat, lon) {
+    var north = (lat - ORIGIN_LAT) * M_PER_DEG_LAT;
+    var east = (lon - ORIGIN_LON) * M_PER_DEG_LON;
+    return [east, north];
+  }
+
   // The simulation window is 600 x 600 m centred on the panel centre
   // (constants.WINDOW_SIZE_M), so the visible box is +/-300 m on each axis.
   var WINDOW_HALF_M = 300;
@@ -236,6 +246,7 @@ var mapView = (function () {
     // metres through this one function instead of trusting whatever lat/lon a
     // record happens to carry. See geo.py for the authoritative definition.
     xyToLatLon: xyToLatLon,
+    latLonToXY: latLonToXY,
     WINDOW_HALF_M: WINDOW_HALF_M
   };
 })();

@@ -1,0 +1,153 @@
+/**
+ * Embed mode: run the 3D viewport inside the operator dashboard's Simulation
+ * tab (as an iframe), cropped to the operator's selected region.
+ *
+ * URL params (all optional; `embed=1` switches the App into viewport-only
+ * layout):
+ *   xmin, xmax, ymin, ymax — panel-frame metres of the selected region.
+ *   nodes                  — comma-separated numeric node ids to render.
+ *   day                    — parent mining-day label (display only).
+ *   exag                   — initial vertical exaggeration.
+ *   label                  — parent selection label (display only).
+ *
+ * After load, the parent drives the viewport via postMessage commands
+ * (`EmbedParentCommand`, source `R4_SIM_EMBED_SOURCE`) so the iframe never
+ * needs a reload when the selection changes. Events flow back with source
+ * `R4_SIM_VIEWPORT_SOURCE` (`EmbedChildEvent`).
+ */
+
+export interface EmbedClipBounds {
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+}
+
+export interface EmbedParams {
+  isEmbed: boolean;
+  clip: EmbedClipBounds | null;
+  nodeIds: number[] | null;
+  day: number | null;
+  exag: number | null;
+  label: string | null;
+}
+
+export const R4_SIM_EMBED_SOURCE = "r4-sim-embed";
+export const R4_SIM_VIEWPORT_SOURCE = "r4-sim-viewport";
+
+export type EmbedParentCommand =
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "set-bounds"; bounds: EmbedClipBounds | null; nodes?: number[] | null; label?: string | null }
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "set-view"; pitchDeg: number; bearingDeg: number }
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "recenter"; bounds?: EmbedClipBounds | null }
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "set-exag"; value: number }
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "set-day"; day: number }
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "select-node"; id: number | null }
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "start" }
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "pause" }
+  | {
+      source: typeof R4_SIM_EMBED_SOURCE;
+      cmd: "trigger";
+      type: "collapse" | "tilt" | "vibration";
+      cx: number;
+      cy: number;
+      sev: number;
+      rad: number;
+    };
+
+export type EmbedChildEvent =
+  | { source: typeof R4_SIM_VIEWPORT_SOURCE; event: "ready" }
+  | { source: typeof R4_SIM_VIEWPORT_SOURCE; event: "node-select"; id: number | null }
+  | {
+      source: typeof R4_SIM_VIEWPORT_SOURCE;
+      event: "status";
+      connected: boolean;
+      running: boolean;
+      tDays: number;
+      nodes: number;
+    };
+
+function num(v: string | null): number | null {
+  if (v === null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function parseEmbedParams(search?: string): EmbedParams {
+  const empty: EmbedParams = {
+    isEmbed: false,
+    clip: null,
+    nodeIds: null,
+    day: null,
+    exag: null,
+    label: null,
+  };
+  let params: URLSearchParams;
+  try {
+    params =
+      typeof search === "string"
+        ? new URLSearchParams(search.startsWith("?") ? search : `?${search}`)
+        : new URLSearchParams(window.location.search);
+  } catch {
+    return empty;
+  }
+
+  const isEmbed = params.get("embed") === "1";
+  if (!isEmbed) return empty;
+
+  const xMin = num(params.get("xmin"));
+  const xMax = num(params.get("xmax"));
+  const yMin = num(params.get("ymin"));
+  const yMax = num(params.get("ymax"));
+  const clip =
+    xMin !== null && xMax !== null && yMin !== null && yMax !== null && xMax > xMin && yMax > yMin
+      ? { xMin, xMax, yMin, yMax }
+      : null;
+
+  let nodeIds: number[] | null = null;
+  const rawNodes = params.get("nodes");
+  if (rawNodes !== null && rawNodes !== "") {
+    const ids = rawNodes
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    nodeIds = ids.length > 0 ? Array.from(new Set(ids)) : [];
+  }
+
+  return {
+    isEmbed: true,
+    clip,
+    nodeIds,
+    day: num(params.get("day")),
+    exag: num(params.get("exag")),
+    label: params.get("label"),
+  };
+}
+
+/**
+ * Child-event payloads without the source tag. Written out instead of
+ * `Omit<EmbedChildEvent, "source">` because Omit does not distribute over the
+ * union and would only accept the properties common to every variant.
+ */
+export type EmbedChildPayload =
+  | { event: "ready" }
+  | { event: "node-select"; id: number | null }
+  | {
+      event: "status";
+      connected: boolean;
+      running: boolean;
+      tDays: number;
+      nodes: number;
+    };
+
+/** Post an event to the embedding parent. No-op outside an iframe. */
+export function postEmbedEvent(msg: EmbedChildPayload): void {
+  try {
+    if (typeof window === "undefined" || window.parent === window) return;
+    window.parent.postMessage(
+      { ...msg, source: R4_SIM_VIEWPORT_SOURCE },
+      "*",
+    );
+  } catch {
+    // Parent unreachable (navigated away) — nothing to report to.
+  }
+}

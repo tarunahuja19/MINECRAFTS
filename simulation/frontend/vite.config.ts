@@ -4,6 +4,10 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Relative asset URLs so the production build also works when served from
+  // the dashboard tile server's /sim/ subpath (the Simulation tab's fallback
+  // embed source). The dev server is unaffected.
+  base: './',
   server: {
     port: 5173,
     proxy: {

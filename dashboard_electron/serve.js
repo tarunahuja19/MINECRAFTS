@@ -31,6 +31,13 @@ const mimeTypes = {
 // one warm run the 3D view works with no network at all.
 const TILE_CACHE_DIR = path.join(root, 'tiles');
 
+// Production build of the 3D sandbox frontend (simulation/frontend/dist,
+// rebuilt with `npm run build` in simulation/frontend). Served at /sim/ as
+// the Simulation tab's fallback embed source when the Vite dev server on
+// :5173 is not running. Missing dist simply 404s and the tab falls back to
+// its MapLibre view.
+const SIM_DIST_DIR = path.join(root, '..', 'simulation', 'frontend', 'dist');
+
 const TILE_UPSTREAMS = {
   // ESRI World Imagery. Note the y/x order is deliberately swapped relative to
   // the request path: ESRI serves .../tile/{z}/{y}/{x}.
@@ -154,6 +161,34 @@ const server = http.createServer((req, res) => {
   const tileMatch = reqPath.match(/^\/tiles\/([a-z]+)\/(\d+)\/(\d+)\/(\d+)\.png$/);
   if (tileMatch) {
     return handleTile(req, res, tileMatch[1], tileMatch[2], tileMatch[3], tileMatch[4]);
+  }
+
+  // 3D sandbox production build (Simulation tab embed fallback).
+  if (reqPath === '/sim' || reqPath === '/sim/') {
+    reqPath = '/sim/index.html';
+  }
+  if (reqPath === '/sim/index.html' || reqPath.startsWith('/sim/assets/') ||
+      reqPath === '/sim/favicon.svg' || reqPath === '/sim/icons.svg' ||
+      reqPath === '/sim/adriyala_dem_regional.json') {
+    var simRel = reqPath.slice('/sim/'.length);
+    var simPath = path.normalize(path.join(SIM_DIST_DIR, simRel));
+    if (!simPath.startsWith(SIM_DIST_DIR)) {
+      res.statusCode = 403;
+      return res.end('Forbidden');
+    }
+    fs.readFile(simPath, (err, data) => {
+      if (err) {
+        res.statusCode = 404;
+        return res.end('3D sandbox build not found: run `npm run build` in simulation/frontend');
+      }
+      var simExt = path.extname(simPath).toLowerCase();
+      res.setHeader('Content-Type', mimeTypes[simExt] || 'application/octet-stream');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.end(data);
+    });
+    return;
   }
 
   const filePath = path.normalize(path.join(root, reqPath));

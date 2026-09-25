@@ -12,6 +12,9 @@ var simLive = (function () {
   var pollTimer = null;
   var currentSimState = 'STOPPED';
 
+  var ws = null;
+  var reconnectTimer = null;
+
   function getHost() {
     return window.location.hostname || 'localhost';
   }
@@ -20,11 +23,75 @@ var simLive = (function () {
     return 'http://' + getHost() + ':8080';
   }
 
+  function connectWs() {
+    if (typeof WebSocket === 'undefined') return;
+    if (ws && (ws.readyState === 1 || ws.readyState === 0)) {
+      return;
+    }
+    var wsUrl = 'ws://' + getHost() + ':8080/ws';
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (e) {
+      scheduleReconnect();
+      return;
+    }
+
+    ws.onopen = function () {
+      console.log('[sim-live] Connected to backend /ws');
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+    };
+
+    ws.onmessage = function (event) {
+      try {
+        var msg = JSON.parse(event.data);
+        if (!msg) return;
+        if (msg.type === 'simulation_status' || msg.event === 'simulation_status') {
+          applyStatus(msg.data || msg);
+        } else if (msg.type === 'packet_available') {
+          updateLedBlink();
+          if (currentSimState !== 'RUNNING') {
+            applyStatus({ is_running: true, is_paused: false, state: 'RUNNING' });
+          }
+        }
+      } catch (e) {
+        // non-json frame
+      }
+    };
+
+    ws.onclose = function () {
+      scheduleReconnect();
+    };
+
+    ws.onerror = function () {
+      if (ws) {
+        try { ws.close(); } catch (_) {}
+      }
+    };
+  }
+
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(function () {
+      reconnectTimer = null;
+      reconnect();
+    }, 3000);
+  }
+
+  function reconnect() {
+    connectWs();
+  }
+
   function init() {
     // 1. Initial status poll
     pollStatus();
 
-    // 2. Start recurring 5s timer
+    // 2. Connect WebSocket
+    connectWs();
+
+    // 3. Start recurring 5s timer
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(pollStatus, pollIntervalMs);
 

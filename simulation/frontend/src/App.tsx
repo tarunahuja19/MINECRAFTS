@@ -17,6 +17,13 @@ import {
 import { setGeoOrigin } from "./utils/geo";
 import { classifyTerrainZone } from "./utils/proceduralTerrain";
 import { sampleBaseGroundY, sampleSlopeDegrees } from "./utils/terrainSampler";
+import {
+  parseEmbedParams,
+  postEmbedEvent,
+  R4_SIM_EMBED_SOURCE,
+  type EmbedClipBounds,
+  type EmbedParentCommand,
+} from "./embed";
 import type {
   InitPayload,
   NeighborDistance,
@@ -47,6 +54,20 @@ export const App: React.FC = () => {
   // start and pause, which is worse. A ref is read at call time instead.
   const isRunningRef = useRef<boolean>(false);
   const viewportRef = useRef<MineViewportHandle | null>(null);
+
+  // Embed mode (?embed=1): the App runs inside the operator dashboard's
+  // Simulation tab as a cropped viewport, driven by the parent over
+  // postMessage. Parsed once — later updates arrive as set-bounds commands.
+  const embedParams = useMemo(() => parseEmbedParams(), []);
+  const isEmbed = embedParams.isEmbed;
+  const [embedClip, setEmbedClip] = useState<EmbedClipBounds | null>(embedParams.clip);
+  const [embedNodes, setEmbedNodes] = useState<number[] | null>(embedParams.nodeIds);
+  const [embedDay, setEmbedDay] = useState<number | null>(embedParams.day);
+  const [embedLabel, setEmbedLabel] = useState<string | null>(embedParams.label);
+  const embedClipRef = useRef<EmbedClipBounds | null>(embedParams.clip);
+  useEffect(() => {
+    embedClipRef.current = embedClip;
+  }, [embedClip]);
 
   // Mesh & Static Environment Data
   const [z0Mesh, setZ0Mesh] = useState<number[][]>([]);
@@ -113,7 +134,9 @@ export const App: React.FC = () => {
   const [isSessionClosed, setIsSessionClosed] = useState<boolean>(false);
 
   // Visual Styling & Viewport Controls
-  const [exaggeration, setExaggeration] = useState<number>(15.0);
+  const [exaggeration, setExaggeration] = useState<number>(
+    embedParams.exag ?? 15.0,
+  );
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [wireframe, setWireframe] = useState<boolean>(false);
   const [showMeshTopology, setShowMeshTopology] = useState<boolean>(false);
@@ -608,8 +631,108 @@ export const App: React.FC = () => {
   // orbit controls stay live throughout — looking around reads nothing.
   const handleSelectNode = (id: number | null) => {
     if (!isRunning) return;
-    setSelectedNodeId(id === selectedNodeId ? null : id);
+    const next = id === selectedNodeId ? null : id;
+    setSelectedNodeId(next);
+    if (isEmbed) postEmbedEvent({ event: "node-select", id: next });
   };
+
+  // Latest-handler refs for the embed postMessage listener below. The
+  // listener subscribes once; reading through refs keeps it on the current
+  // closures (run state, event speed) without resubscribing per render.
+  // Assigned in an effect (same as isRunningRef above), never during render.
+  const triggerEventRef = useRef(handleTriggerEvent);
+  const startRef = useRef(handleStart);
+  const pauseRef = useRef(handlePause);
+  useEffect(() => {
+    triggerEventRef.current = handleTriggerEvent;
+    startRef.current = handleStart;
+    pauseRef.current = handlePause;
+  });
+
+  // Embed bridge: parent dashboard commands (set-bounds, set-view, recenter,
+  // set-exag, set-day, select-node, start/pause, trigger).
+  useEffect(() => {
+    if (!isEmbed) return;
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data as EmbedParentCommand | null;
+      if (!d || (d as { source?: unknown }).source !== R4_SIM_EMBED_SOURCE) return;
+      switch (d.cmd) {
+        case "set-bounds":
+          setEmbedClip(d.bounds ?? null);
+          setEmbedNodes(d.nodes ?? null);
+          if (d.label !== undefined) setEmbedLabel(d.label);
+          break;
+        case "set-view":
+          viewportRef.current?.setView(d.pitchDeg, d.bearingDeg);
+          break;
+        case "recenter": {
+          const b = d.bounds ?? embedClipRef.current;
+          if (b) viewportRef.current?.focusOnBounds(b);
+          else viewportRef.current?.resetCamera();
+          break;
+        }
+        case "set-exag":
+          if (Number.isFinite(d.value)) setExaggeration(d.value);
+          break;
+        case "set-day":
+          if (Number.isFinite(d.day)) setEmbedDay(d.day);
+          break;
+        case "select-node":
+          setSelectedNodeId(d.id);
+          break;
+        case "start":
+          startRef.current();
+          break;
+        case "pause":
+          pauseRef.current();
+          break;
+        case "trigger": {
+          // Move the targeting beacon to the injected event so the parent's
+          // RUN SCENARIO visibly lands where the ground is about to move.
+          const elev = sampleBaseGroundY(d.cx, d.cy);
+          const slope = sampleSlopeDegrees(d.cx, d.cy);
+          setTargetLocation({
+            x: d.cx,
+            y: d.cy,
+            label: `Scenario (${d.cx.toFixed(0)}m, ${d.cy.toFixed(0)}m)`,
+            elev,
+            slopeDeg: slope,
+            zoneName: classifyTerrainZone(elev, slope),
+          });
+          setCollapseRadiusM(d.rad);
+          triggerEventRef.current(d.type, d.cx, d.cy, d.sev, d.rad);
+          break;
+        }
+        default:
+          break;
+      }
+    };
+    window.addEventListener("message", onMessage);
+    postEmbedEvent({ event: "ready" });
+    return () => {
+      window.removeEventListener("message", onMessage);
+    };
+  }, [isEmbed]);
+
+  // In embed there is no START button of our own — the viewport arms itself
+  // once the socket is up so parent scenario triggers land on a live clock.
+  // Idempotent: repeated calls just re-state the run intent.
+  useEffect(() => {
+    if (!isEmbed || !isConnected) return;
+    if (!isRunningRef.current) startRef.current();
+  }, [isEmbed, isConnected]);
+
+  // Lightweight status heartbeat so the parent can reflect link/run state.
+  useEffect(() => {
+    if (!isEmbed) return;
+    postEmbedEvent({
+      event: "status",
+      connected: isConnected,
+      running: isRunning,
+      tDays,
+      nodes: nodes.length > 0 ? nodes.length : FALLBACK_NODES.length,
+    });
+  }, [isEmbed, isConnected, isRunning, tDays, nodes.length]);
 
   // Camera Presets
   const handleResetCamera = () => {
@@ -672,6 +795,120 @@ export const App: React.FC = () => {
         <div style={{ fontSize: "14px", color: "#8BA0A8", maxWidth: "480px", lineHeight: "1.6" }}>
           Simulation has stopped and the database has been completely wiped to baseline.
           It is safe to close this browser tab.
+        </div>
+      </div>
+    );
+  }
+
+  // Viewport-only layout for the dashboard Simulation tab: no menu bar,
+  // no inspector rail, no console drawer — the parent owns all chrome and
+  // drives this frame over postMessage. Orbit, node picking, the targeting
+  // beacon, terrain legend and live physics all stay active.
+  if (isEmbed) {
+    const shownNodes = nodes && nodes.length > 0 ? nodes : FALLBACK_NODES;
+    const visibleCount = embedNodes !== null
+      ? embedNodes.length
+      : embedClip
+        ? shownNodes.filter(
+            (n) =>
+              n.x >= embedClip.xMin &&
+              n.x <= embedClip.xMax &&
+              n.y >= embedClip.yMin &&
+              n.y <= embedClip.yMax,
+          ).length
+        : shownNodes.length;
+    return (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#05090D", overflow: "hidden" }}>
+        <div
+          style={{
+            height: "26px",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "0 10px",
+            background: "#0A1118",
+            borderBottom: "1px solid #1B2A34",
+            fontFamily: "monospace",
+            fontSize: "10px",
+            color: "#8BA0A8",
+            letterSpacing: "0.04em",
+          }}
+        >
+          <span
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              background: isConnected ? "#00E676" : "#FF5252",
+              boxShadow: isConnected ? "0 0 6px rgba(0,230,118,0.8)" : "none",
+            }}
+          />
+          <span style={{ color: "#D4D8DC", fontWeight: "bold" }}>3D SUBSIDENCE VIEWPORT</span>
+          {embedLabel && (
+            <span style={{ color: "#00E676", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {embedLabel}
+            </span>
+          )}
+          <span style={{ marginLeft: "auto" }}>
+            {embedDay !== null ? `DAY ${Math.round(embedDay)}` : `T+${tDays.toFixed(2)}D`}
+          </span>
+          <span>{visibleCount} NODES</span>
+          <span style={{ color: isRunning ? "#00E676" : "#FFA500" }}>
+            {isRunning ? "LIVE" : "HELD"}
+          </span>
+        </div>
+        <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
+          {toastMessage && (
+            <div
+              style={{
+                position: "absolute",
+                top: "10px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 50,
+                background: "rgba(10,17,24,0.94)",
+                border: "1px solid #2E3E4A",
+                color: "#E0E6ED",
+                padding: "5px 12px",
+                fontSize: "11px",
+                fontWeight: 600,
+                fontFamily: "monospace",
+                pointerEvents: "none",
+                borderRadius: "3px",
+                whiteSpace: "nowrap",
+                maxWidth: "90%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {toastMessage}
+            </div>
+          )}
+          <MineViewport
+            ref={viewportRef}
+            z0Mesh={z0Mesh}
+            baseBowlMesh={baseBowlMesh}
+            elevMinM={elevMinM}
+            windowSizeM={windowSizeM}
+            elevMaxM={elevMaxM}
+            timeScalar={timeScalar}
+            perturbations={perturbations}
+            latestPacket={latestPacket}
+            nodes={nodes}
+            nodeTelemetry={nodeTelemetry}
+            exaggeration={exaggeration}
+            selectedNodeId={selectedNodeId}
+            targetLocation={targetLocation}
+            collapseRadiusM={collapseRadiusM}
+            showMeshTopology={showMeshTopology}
+            vibrationActive={vibrationActive}
+            onSelectNode={handleSelectNode}
+            onTerrainClick={handleTerrainClick}
+            wireframe={wireframe}
+            clipBounds={embedClip}
+            nodeFilter={embedNodes}
+          />
         </div>
       </div>
     );

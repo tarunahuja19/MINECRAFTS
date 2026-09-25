@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import type { Perturbation, SimulationPacket } from "../types";
+import type { EmbedClipBounds } from "../embed";
 import { SeismicWaveOverlay } from "./SeismicWaveOverlay";
 import { evaluateNaturalElevation } from "../utils/proceduralTerrain";
 import { globalGeomechanics, CUMULATIVE_DEPTH_MAX_M } from "../utils/geomechanicsEngine";
@@ -103,6 +104,12 @@ interface TerrainMeshProps {
   wireframe?: boolean;
   vibrationActive?: boolean;
   onTerrainClick?: (x: number, y: number, elev: number) => void;
+  /**
+   * Embed-mode sub-window (panel-frame metres). When set, only this region
+   * is meshed — the full 160x160 grid is spent on the selection instead of
+   * the whole panel, so a small sector renders sharper, not coarser.
+   */
+  clipBounds?: EmbedClipBounds | null;
 }
 
 export const TerrainMesh: React.FC<TerrainMeshProps> = ({
@@ -118,6 +125,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   wireframe = false,
   vibrationActive = false,
   onTerrainClick,
+  clipBounds = null,
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
 
@@ -136,12 +144,49 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   const hasRealMesh = !!z0Mesh && z0Mesh.length > 0;
   const realMeshN = hasRealMesh ? z0Mesh!.length : 0;
 
-  // 1. Create base PlaneGeometry once
+  // The meshed rectangle in panel-frame metres: the whole window by default,
+  // or the embed selection when the dashboard crops the view. Point selections
+  // expand to a minimum span so there is always ground to look at.
+  const viewWindow = useMemo(() => {
+    const full = {
+      x0: -windowSizeM / 2.0,
+      y0: -windowSizeM / 2.0,
+      w: windowSizeM,
+      h: windowSizeM,
+    };
+    if (
+      !clipBounds ||
+      !Number.isFinite(clipBounds.xMin) ||
+      !Number.isFinite(clipBounds.xMax) ||
+      !Number.isFinite(clipBounds.yMin) ||
+      !Number.isFinite(clipBounds.yMax) ||
+      clipBounds.xMax <= clipBounds.xMin ||
+      clipBounds.yMax <= clipBounds.yMin
+    ) {
+      return full;
+    }
+    const MIN_SPAN_M = 60;
+    const cx = (clipBounds.xMin + clipBounds.xMax) / 2.0;
+    const cy = (clipBounds.yMin + clipBounds.yMax) / 2.0;
+    const w = Math.max(clipBounds.xMax - clipBounds.xMin, MIN_SPAN_M);
+    const h = Math.max(clipBounds.yMax - clipBounds.yMin, MIN_SPAN_M);
+    return { x0: cx - w / 2.0, y0: cy - h / 2.0, w, h };
+  }, [clipBounds, windowSizeM]);
+
+  // 1. Create base PlaneGeometry once per meshed rectangle
   const geometry = useMemo(() => {
-    const geom = new THREE.PlaneGeometry(windowSizeM, windowSizeM, gridSize - 1, gridSize - 1);
+    const geom = new THREE.PlaneGeometry(viewWindow.w, viewWindow.h, gridSize - 1, gridSize - 1);
     geom.rotateX(-Math.PI / 2);
     return geom;
-  }, [windowSizeM, gridSize]);
+  }, [viewWindow, gridSize]);
+
+  // A new clip rectangle replaces the geometry; release the old GPU buffers
+  // instead of leaking one 160x160 mesh per selection change.
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
 
   // Datum used to recentre real DEM elevations (~196-370m AMSL) around the
   // scene origin. Vertex Y is written as (trueElevation - datum) so the
@@ -168,12 +213,15 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     const half = windowSizeM / 2.0;
     let idx = 0;
     for (let iy = 0; iy < gridSize; iy++) {
-      const y = -half + (iy * windowSizeM) / (gridSize - 1);
-      const v = iy / (gridSize - 1);
+      const y = viewWindow.y0 + (iy * viewWindow.h) / (gridSize - 1);
       for (let ix = 0; ix < gridSize; ix++) {
-        const x = -half + (ix * windowSizeM) / (gridSize - 1);
+        const x = viewWindow.x0 + (ix * viewWindow.w) / (gridSize - 1);
         if (hasRealMesh) {
-          const u = ix / (gridSize - 1);
+          // Normalised against the FULL window, not the meshed rectangle:
+          // the clip is a sub-range of the server DEM, so (u, v) must address
+          // the same grid the full view samples from.
+          const u = (x + half) / windowSizeM;
+          const v = (y + half) / windowSizeM;
           arr[idx++] = sampleGrid(z0Mesh!, realMeshN, u, v);
         } else {
           arr[idx++] = evaluateNaturalElevation(x, y);
@@ -181,7 +229,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
       }
     }
     return arr;
-  }, [gridSize, windowSizeM, hasRealMesh, z0Mesh, realMeshN]);
+  }, [gridSize, windowSizeM, viewWindow, hasRealMesh, z0Mesh, realMeshN]);
 
   // Publish the live DEM + datum so NodeMarkers and TargetBeacon place
   // themselves on THIS surface. Previously they each called
@@ -201,10 +249,10 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   const elevationShading = useMemo(() => {
     if (!hasRealMesh) return null;
     const sortedAsc = buildElevationCdf(baseElevations);
-    const spacingM = windowSizeM / (gridSize - 1);
+    const spacingM = (viewWindow.w + viewWindow.h) / 2.0 / (gridSize - 1);
     const { shade, slopeDeg } = hillshade(baseElevations, gridSize, spacingM);
     return { sortedAsc, shade, slopeDeg };
-  }, [hasRealMesh, baseElevations, windowSizeM, gridSize]);
+  }, [hasRealMesh, baseElevations, viewWindow, gridSize]);
 
   // 3. Compute live vertex elevations, physical drop, and color shading
   useEffect(() => {
@@ -255,14 +303,13 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     const rampColor = new THREE.Color();
 
     const tempColor = new THREE.Color();
-    const half = windowSizeM / 2.0;
     const nowSec = performance.now() / 1000.0;
 
     let vIdx = 0;
     for (let iy = 0; iy < gridSize; iy++) {
-      const yCoord = -half + (iy * windowSizeM) / (gridSize - 1);
+      const yCoord = viewWindow.y0 + (iy * viewWindow.h) / (gridSize - 1);
       for (let ix = 0; ix < gridSize; ix++) {
-        const xCoord = -half + (ix * windowSizeM) / (gridSize - 1);
+        const xCoord = viewWindow.x0 + (ix * viewWindow.w) / (gridSize - 1);
         const z0 = baseElevations[vIdx];
 
         // Evaluate live continuum geomechanics deformation & strain
@@ -524,7 +571,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     perturbations,
     exaggeration,
     gridSize,
-    windowSizeM,
+    viewWindow,
   ]);
 
   // Handle terrain click to pick exact (x, y) target coordinates

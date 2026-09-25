@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { NodeDef, NodeTelemetry, NodeTier, Perturbation, SegmentState, SimulationPacket } from "../types";
+import type { EmbedClipBounds } from "../embed";
 import { globalGeomechanics } from "../utils/geomechanicsEngine";
 import { sampleBaseGroundY } from "../utils/terrainSampler";
 import { ADRIYALA } from "../utils/geomechanicsEngine";
@@ -22,6 +23,13 @@ interface NodeMarkersProps {
   onSelectNode: (id: number) => void;
   showMeshTopology?: boolean;
   windowSizeM?: number;
+  /**
+   * Embed-mode allowlist of node ids. An explicit (possibly empty) list wins;
+   * null falls back to the spatial clip below, then to all nodes.
+   */
+  nodeFilter?: number[] | null;
+  /** Embed-mode spatial filter (panel-frame metres), used when nodeFilter is null. */
+  clipBounds?: EmbedClipBounds | null;
 }
 
 const STATE_COLORS: Record<SegmentState, string> = {
@@ -137,8 +145,30 @@ export const NodeMarkers: React.FC<NodeMarkersProps> = ({
   selectedNodeId,
   onSelectNode,
   showMeshTopology = true,
+  nodeFilter = null,
+  clipBounds = null,
 }) => {
-  const activeNodes = nodes && nodes.length > 0 ? nodes : FALLBACK_NODES;
+  const activeNodes = useMemo(() => {
+    const base = nodes && nodes.length > 0 ? nodes : FALLBACK_NODES;
+    // Explicit allowlist from the parent (an empty selection honestly renders
+    // zero nodes rather than leaking the full district into a cropped view).
+    if (nodeFilter !== null && nodeFilter !== undefined) {
+      if (nodeFilter.length === 0) return [];
+      const allow = new Set(nodeFilter);
+      return base.filter((n) => allow.has(n.id));
+    }
+    // No allowlist: keep whatever falls inside the rendered terrain clip.
+    if (clipBounds) {
+      return base.filter(
+        (n) =>
+          n.x >= clipBounds.xMin &&
+          n.x <= clipBounds.xMax &&
+          n.y >= clipBounds.yMin &&
+          n.y <= clipBounds.yMax,
+      );
+    }
+    return base;
+  }, [nodes, nodeFilter, clipBounds]);
 
   const nowSec = performance.now() / 1000.0;
   const UP_VECTOR = useMemo(() => new THREE.Vector3(0, 1, 0), []);
