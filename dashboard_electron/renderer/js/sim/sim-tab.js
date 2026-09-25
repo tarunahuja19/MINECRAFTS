@@ -28,7 +28,7 @@ var simTab = (function () {
   var M_PER_DEG_LON = 105308.0;
 
   var map = null;
-  var currentDay = 172;
+  var currentDay = 0;
   var currentSegment = '3';
   var isIsolated = false;
   var selectedScenarioType = 'crack'; // 'crack', 'sudden_sinking', 'edge_collapse'
@@ -43,6 +43,26 @@ var simTab = (function () {
   var isPlaying = false;
   var playTimer = null;
   var playSpeed = 1; // 1x, 10x, 50x, 100x
+
+  function onDayChange(newDay) {
+    currentDay = parseFloat(newDay);
+    var daySlider = document.getElementById('sim-day-slider');
+    var dayDisplay = document.getElementById('sim-day-display');
+    var timelineSlider = document.getElementById('sim-timeline-slider');
+    var timelineDisplay = document.getElementById('sim-timeline-day-val');
+
+    if (daySlider) daySlider.value = currentDay;
+    if (timelineSlider) timelineSlider.value = currentDay;
+    if (dayDisplay) dayDisplay.textContent = 'Day ' + Math.round(currentDay);
+    if (timelineDisplay) timelineDisplay.textContent = 'Day ' + Math.round(currentDay);
+
+    if (sandboxSession) {
+      sandboxSession.day = currentDay;
+      var sandboxDayEl = document.getElementById('sim-sandbox-day');
+      if (sandboxDayEl) sandboxDayEl.textContent = Math.round(currentDay);
+    }
+    console.log('[SIM_TAB_TIMELINE] Day ' + Math.round(currentDay));
+  }
 
   function init() {
     setupDomListeners();
@@ -65,22 +85,14 @@ var simTab = (function () {
       console.warn('[sim-tab] initMapLibre caught error:', err);
     }
     loadSegments();
+    onDayChange(0);
+    startPlay();
   }
 
   function setupDomListeners() {
     // 1. Day slider in left panel
     var daySlider = document.getElementById('sim-day-slider');
-    var dayDisplay = document.getElementById('sim-day-display');
     var timelineSlider = document.getElementById('sim-timeline-slider');
-    var timelineDisplay = document.getElementById('sim-timeline-day-val');
-
-    function onDayChange(newDay) {
-      currentDay = parseFloat(newDay);
-      if (daySlider) daySlider.value = currentDay;
-      if (timelineSlider) timelineSlider.value = currentDay;
-      if (dayDisplay) dayDisplay.textContent = 'Day ' + Math.round(currentDay);
-      if (timelineDisplay) timelineDisplay.textContent = 'Day ' + Math.round(currentDay);
-    }
 
     if (daySlider) {
       daySlider.addEventListener('input', function (e) {
@@ -543,11 +555,15 @@ var simTab = (function () {
 
     // Sector label
     var sectorName = 'Zone ' + segId;
-    if (segId === 'full') sectorName = 'Full District';
-    if (segId === 'face') sectorName = 'Active Face';
-    segmentsData.forEach(function (s) {
-      if (String(s.id) === String(segId)) sectorName = s.label || sectorName;
-    });
+    if (sandboxSession) {
+      sectorName = 'SANDBOX ' + sandboxSession.id;
+    } else {
+      if (segId === 'full') sectorName = 'Full District';
+      if (segId === 'face') sectorName = 'Active Face';
+      segmentsData.forEach(function (s) {
+        if (String(s.id) === String(segId)) sectorName = s.label || sectorName;
+      });
+    }
 
     if (sectorEl) sectorEl.textContent = sectorName;
     if (faceEl && snap.face_x_m !== undefined) {
@@ -1077,7 +1093,9 @@ var simTab = (function () {
 
   async function fetchAndPaintGeology(payload, bounds) {
     var seg = currentSegment || '3';
-    var day = currentDay || 172;
+    var day = (sandboxSession && sandboxSession.day != null)
+      ? Math.round(sandboxSession.day)
+      : Math.round(currentDay);
 
     var snapData = null;
     try {
@@ -1391,14 +1409,19 @@ var simTab = (function () {
     sandboxSession = {
       id: sessionId,
       selection: JSON.parse(JSON.stringify(payload || {})),
-      day: currentDay,
+      day: 0,
       nodes: clonedNodes,
       createdAt: Date.now()
     };
     window.__simSandboxSession = sandboxSession;
 
+    onDayChange(0);
+
     renderSessionChip(sandboxSession);
     renderSandboxBanner(sandboxSession);
+    if (!isPlaying) {
+      startPlay();
+    }
     updateStageStatus('cloning', 'done');
 
     // Stage 2: Camera
@@ -1483,8 +1506,12 @@ var simTab = (function () {
     var dayAheadInput = document.getElementById('sim-days-ahead');
     var daysAhead = dayAheadInput ? parseFloat(dayAheadInput.value || 60) : 60;
 
+    var day = (sandboxSession && sandboxSession.day != null)
+      ? Math.round(sandboxSession.day)
+      : Math.round(currentDay);
+
     var payload = {
-      day: currentDay,
+      day: day,
       segment: currentSegment,
       type: selectedScenarioType,
       params: {
@@ -1644,21 +1671,34 @@ var simTab = (function () {
     });
   }
 
-  function togglePlay() {
-    isPlaying = !isPlaying;
+  function startPlay() {
+    isPlaying = true;
     var btnPlay = document.getElementById('sim-btn-play');
     if (btnPlay) {
-      btnPlay.innerHTML = isPlaying ? '❚❚ PAUSE' : '▶ PLAY';
-      btnPlay.classList.toggle('active', isPlaying);
+      btnPlay.innerHTML = '❚❚ PAUSE';
+      btnPlay.classList.add('active');
     }
+    restartPlayTimer();
+  }
 
+  function stopPlay() {
+    isPlaying = false;
+    var btnPlay = document.getElementById('sim-btn-play');
+    if (btnPlay) {
+      btnPlay.innerHTML = '▶ PLAY';
+      btnPlay.classList.remove('active');
+    }
+    if (playTimer) {
+      clearInterval(playTimer);
+      playTimer = null;
+    }
+  }
+
+  function togglePlay() {
     if (isPlaying) {
-      restartPlayTimer();
+      stopPlay();
     } else {
-      if (playTimer) {
-        clearInterval(playTimer);
-        playTimer = null;
-      }
+      startPlay();
     }
   }
 
@@ -1674,21 +1714,11 @@ var simTab = (function () {
         if (shouldLoop) {
           nextDay = 0;
         } else {
-          togglePlay();
+          stopPlay();
           return;
         }
       }
-      currentDay = nextDay;
-
-      var daySlider = document.getElementById('sim-day-slider');
-      var dayDisplay = document.getElementById('sim-day-display');
-      var timelineSlider = document.getElementById('sim-timeline-slider');
-      var timelineDisplay = document.getElementById('sim-timeline-day-val');
-
-      if (daySlider) daySlider.value = currentDay;
-      if (timelineSlider) timelineSlider.value = currentDay;
-      if (dayDisplay) dayDisplay.textContent = 'Day ' + Math.round(currentDay);
-      if (timelineDisplay) timelineDisplay.textContent = 'Day ' + Math.round(currentDay);
+      onDayChange(nextDay);
     }, intervalMs);
   }
 
@@ -1710,7 +1740,13 @@ var simTab = (function () {
     getMap: function () { return map; },
     getSandboxSession: function () { return sandboxSession; },
     handleSandboxCreate: handleSandboxCreate,
-    recenterToSessionBounds: recenterToSessionBounds
+    recenterToSessionBounds: recenterToSessionBounds,
+    startPlay: startPlay,
+    stopPlay: stopPlay,
+    togglePlay: togglePlay,
+    onDayChange: onDayChange,
+    getCurrentDay: function () { return currentDay; },
+    isPlaying: function () { return isPlaying; }
   };
 })();
 

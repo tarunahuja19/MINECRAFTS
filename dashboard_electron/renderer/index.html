@@ -470,9 +470,9 @@
                 <div class="sim-section-title">TEMPORAL DRIFT CONTROL</div>
                 <div class="sim-row">
                   <span class="sim-label">MINING DAY:</span>
-                  <span class="sim-val-display" id="sim-day-display">Day 172</span>
+                  <span class="sim-val-display" id="sim-day-display">Day 0</span>
                 </div>
-                <input type="range" id="sim-day-slider" class="sim-slider" min="0" max="690" step="1" value="172">
+                <input type="range" id="sim-day-slider" class="sim-slider" min="0" max="690" step="1" value="0">
                 <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-secondary); font-family:monospace;">
                   <span>0d (INIT)</span>
                   <span>172d (BENCH)</span>
@@ -580,13 +580,13 @@
 
               <!-- Floating Scenario Banner -->
               <div id="sim-scenario-banner" class="sim-scenario-banner" style="display:none;">
-                HYPOTHETICAL SCENARIO LAB &bull; FROZEN AT DAY <span id="sim-banner-day">172</span> (WHAT-IF MODE)
+                HYPOTHETICAL SCENARIO LAB &bull; FROZEN AT DAY <span id="sim-banner-day">0</span> (WHAT-IF MODE)
               </div>
 
               <!-- Floating Sandbox Banner -->
               <div id="sim-sandbox-banner" class="sim-sandbox-banner" style="display:none;">
                 <span class="sim-sandbox-pulse-dot"></span>
-                <span>SANDBOX ACTIVE &bull; SESSION <b id="sim-sandbox-session-id">--</b> &bull; DAY <span id="sim-sandbox-day">172</span> &bull; <span id="sim-sandbox-nodes-count">0</span> CLONED NODES</span>
+                <span>SANDBOX ACTIVE &bull; SESSION <b id="sim-sandbox-session-id">--</b> &bull; DAY <span id="sim-sandbox-day">0</span> &bull; <span id="sim-sandbox-nodes-count">0</span> CLONED NODES</span>
               </div>
 
               <!-- Loading Overlay with Stages (Cloning -> Camera -> Trough -> Nodes -> Links) -->
@@ -651,8 +651,8 @@
               </label>
 
               <div style="flex:1; display:flex; align-items:center; gap:8px; margin-left:10px;">
-                <input type="range" id="sim-timeline-slider" class="sim-slider" min="0" max="690" step="1" value="172">
-                <span id="sim-timeline-day-val" class="sim-val-display" style="white-space:nowrap; min-width:55px;">Day 172</span>
+                <input type="range" id="sim-timeline-slider" class="sim-slider" min="0" max="690" step="1" value="0">
+                <span id="sim-timeline-day-val" class="sim-val-display" style="white-space:nowrap; min-width:55px;">Day 0</span>
               </div>
             </div>
           </div>
