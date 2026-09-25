@@ -103,9 +103,10 @@ async function runTest() {
       const msg = JSON.parse(raw);
       if (msg.method === 'Runtime.consoleAPICalled') {
         const text = msg.params.args.map(a => a.value || a.description || JSON.stringify(a)).join(' ');
-        if (text.includes('[SEND_TO_SIM') || text.includes('[SIM_TAB]') || text.includes('[SIM_SANDBOX]')) {
-          console.log('[BROWSER_LOG]', text);
-        }
+        console.log('[BROWSER_LOG]', text);
+      }
+      if (msg.method === 'Runtime.exceptionThrown') {
+        console.log('[BROWSER_EXCEPTION]', JSON.stringify(msg.params));
       }
       if (msg.id && pending.has(msg.id)) {
         const { resolve, reject } = pending.get(msg.id);
@@ -361,16 +362,27 @@ async function runTest() {
     `);
 
     let scenarioDone = false;
-    for (let i = 0; i < 25; i++) {
-      await sleep(400);
-      scenarioDone = await evaluate(`
+    for (let i = 0; i < 40; i++) {
+      await sleep(500);
+      const pollState = await evaluate(`
         (function() {
           var btn = document.getElementById('btn-sim-run-scenario');
           var resBody = document.getElementById('sim-scenario-result-body');
-          return btn && btn.textContent === 'RUN SCENARIO' && !btn.disabled && resBody && resBody.innerHTML.trim().length > 30;
+          return {
+            text: btn ? btn.textContent : null,
+            disabled: btn ? btn.disabled : null,
+            resLen: resBody ? resBody.innerHTML.trim().length : 0,
+            resSnippet: resBody ? resBody.innerHTML.slice(0, 60) : null
+          };
         })()
       `);
-      if (scenarioDone) break;
+      if (pollState.text === 'RUN SCENARIO' && !pollState.disabled && pollState.resLen > 30) {
+        scenarioDone = true;
+        break;
+      }
+      if (i % 5 === 0) {
+        console.log('[STEP 5 poll]', i, pollState);
+      }
     }
     if (!scenarioDone) throw new Error('Scenario run did not finish in time!');
 
