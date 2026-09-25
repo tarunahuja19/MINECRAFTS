@@ -170,12 +170,20 @@
                           <button class="hud-btn" id="btn-basemap-topo" title="Topographic contours — read the surface relief under the panel">TOPO</button>
                         </div>
                         <div class="map-btn-group">
-                          <button class="hud-btn" id="btn-cursor-mode" title="3D Area Selection Tool (ON: Click & drag to select 3D area, OFF: Navigate 2D map)" style="display:inline-flex; align-items:center; justify-content:center; padding:4px 7px; min-width:28px;">
+                          <button class="hud-btn tool-btn" id="btn-cursor-mode" title="3D Area Selection Tool (ON: Click & drag to select 3D area, OFF: Navigate 2D map)">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:block;">
-                              <path d="M5 2 L5 18 L9.2 14 L13.5 22 L16.2 20.6 L11.8 12.6 L17.5 12.6 Z"/>
+                              <path d="M5 2 L5 18 L9.2 14 L13.5 22 L16.2 20.6 L11.8 12.6 Z"/>
                             </svg>
+                            <span class="hud-btn-label">3D</span>
                           </button>
-                          <button class="hud-btn" id="btn-send-to-sim" title="Send Selection to Simulation Sandbox (Select an area on the 2D map first)" disabled>
+                          <button class="hud-btn tool-btn" id="btn-sim-select" title="SIM Area Selection Tool (ON: drag to select, auto-sends to Simulation Sandbox)">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:block;">
+                              <path d="M5 2 L5 18 L9.2 14 L13.5 22 L16.2 20.6 L11.8 12.6 Z"/>
+                            </svg>
+                            <span class="hud-btn-label">SIM</span>
+                            <span class="hud-badge" id="sim-select-badge" style="display:none">0</span>
+                          </button>
+                          <button class="hud-btn" id="btn-send-to-sim" title="Send Selection to Simulation Sandbox (Select an area on the 2D map first)" disabled style="display:none;">
                             <span>SEND TO SIM</span>
                             <span class="hud-badge" id="send-to-sim-badge">0</span>
                           </button>
@@ -1546,6 +1554,7 @@
   <script src="js/map/selection-store.js"></script>
   <script src="js/map/area-select-3d.js"></script>
   <script src="js/map/send-to-sim.js"></script>
+  <script src="js/map/sim-select.js"></script>
   <script src="js/map/trough-overlay.js"></script>
   <script src="js/map/confidence-badge.js"></script>
   <script src="js/map/lastgasp-marker.js"></script>

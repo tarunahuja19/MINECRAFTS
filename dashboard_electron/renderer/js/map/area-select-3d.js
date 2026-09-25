@@ -123,6 +123,7 @@ var areaSelect3D = (function () {
       cursorBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         setCursorMode(!isCursorModeActive);
+        if (isCursorModeActive && typeof simSelect !== 'undefined' && simSelect.setSimMode) simSelect.setSimMode(false);
       });
     }
 
@@ -199,6 +200,7 @@ var areaSelect3D = (function () {
     var container = map.getContainer();
 
     container.addEventListener('mousedown', function (e) {
+      if (typeof simSelect !== 'undefined' && simSelect.isSimModeActive && simSelect.isSimModeActive()) return;
       // Left click only
       if (e.button !== 0) return;
       if (isControlOrMarker(e.target)) return;

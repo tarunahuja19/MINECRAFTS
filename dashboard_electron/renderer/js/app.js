@@ -43,6 +43,9 @@ document.getElementById('tab-map').style.display = 'flex';
   if (typeof sendToSim !== 'undefined' && sendToSim.init) {
     sendToSim.init();
   }
+  if (typeof simSelect !== 'undefined' && simSelect.init) {
+    simSelect.init(map);
+  }
 
   nodeDetail.init();
 
