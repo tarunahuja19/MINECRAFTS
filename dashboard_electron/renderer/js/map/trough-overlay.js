@@ -210,6 +210,21 @@ var troughOverlay = (function () {
     },
     isFeatureEnabled: function () {
       return ENABLE_SUBSIDENCE_BOWL;
+    },
+    getState: function () {
+      var overlayIds = Object.keys(overlays);
+      var totalPolygons = 0;
+      overlayIds.forEach(function (k) {
+        var l = overlays[k];
+        totalPolygons += Array.isArray(l) ? l.length : 1;
+      });
+      return {
+        enabled: Boolean(ENABLE_SUBSIDENCE_BOWL),
+        activeAlarmId: activeAlarmId,
+        overlayCount: overlayIds.length,
+        polygonCount: totalPolygons
+      };
     }
   };
 })();
+

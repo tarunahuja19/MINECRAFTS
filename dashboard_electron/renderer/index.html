@@ -175,6 +175,10 @@
                               <path d="M5 2 L5 18 L9.2 14 L13.5 22 L16.2 20.6 L11.8 12.6 L17.5 12.6 Z"/>
                             </svg>
                           </button>
+                          <button class="hud-btn" id="btn-send-to-sim" title="Send Selection to Simulation Sandbox (Select an area on the 2D map first)" disabled>
+                            <span>SEND TO SIM</span>
+                            <span class="hud-badge" id="send-to-sim-badge">0</span>
+                          </button>
                         </div>
                         <!-- Grid controls (toggleable 8x8 sector grid and labels) -->
                         <div class="map-btn-group" id="grid-controls-group">
@@ -530,6 +534,13 @@
               <button id="sim-exag-3" class="sim-timeline-btn active">3x</button>
               <button id="sim-exag-5" class="sim-timeline-btn">5x</button>
 
+              <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 4px;"></div>
+
+              <button id="sim-recenter-btn" class="sim-timeline-btn" title="Re-fit sim camera to session bounds">⤢ RECENTER</button>
+
+              <!-- Sandbox Session Chip -->
+              <div id="sim-session-chip-container" style="display:inline-flex; align-items:center; margin-left:8px;"></div>
+
               <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
                 <span id="sim-coords" style="font-family:monospace; font-size:10px; color:var(--text-mono);">Lat: 18.6435 | Lng: 79.5725</span>
               </div>
@@ -562,6 +573,50 @@
               <!-- Floating Scenario Banner -->
               <div id="sim-scenario-banner" class="sim-scenario-banner" style="display:none;">
                 HYPOTHETICAL SCENARIO LAB &bull; FROZEN AT DAY <span id="sim-banner-day">172</span> (WHAT-IF MODE)
+              </div>
+
+              <!-- Floating Sandbox Banner -->
+              <div id="sim-sandbox-banner" class="sim-sandbox-banner" style="display:none;">
+                <span class="sim-sandbox-pulse-dot"></span>
+                <span>SANDBOX ACTIVE &bull; SESSION <b id="sim-sandbox-session-id">--</b> &bull; DAY <span id="sim-sandbox-day">172</span> &bull; <span id="sim-sandbox-nodes-count">0</span> CLONED NODES</span>
+              </div>
+
+              <!-- Loading Overlay with Stages (Cloning -> Camera -> Trough -> Nodes -> Links) -->
+              <div id="sim-loading-overlay" class="sim-loading-overlay" style="display:none;">
+                <div class="sim-loading-card">
+                  <div class="sim-loading-header">
+                    <div class="sim-loading-spinner"></div>
+                    <div class="sim-loading-title">INITIALIZING SIMULATION SANDBOX</div>
+                  </div>
+                  <div class="sim-loading-subtitle" id="sim-loading-status-text">Preparing isolated clone environment...</div>
+                  <div class="sim-loading-stages" id="sim-loading-stages">
+                    <div class="sim-stage-item" data-stage="cloning">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Cloning</span>
+                      <span class="sim-stage-detail">Deep-copying selected node records</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="camera">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Camera</span>
+                      <span class="sim-stage-detail">Framing MapLibre 3D camera to selection bounds</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="trough">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Trough</span>
+                      <span class="sim-stage-detail">Pulling :8010 subsidence &amp; crack models</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="nodes">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Nodes</span>
+                      <span class="sim-stage-detail">Rendering markers from cloned nodes</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="links">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Links</span>
+                      <span class="sim-stage-detail">Synthesizing neighbour mesh &amp; gateway N31 links</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1488,7 +1543,9 @@
   <script src="js/map/real-terrain-3d.js"></script>
   <script src="js/map/terrain-3d-window.js"></script>
   <script src="js/map/map-tabs.js"></script>
+  <script src="js/map/selection-store.js"></script>
   <script src="js/map/area-select-3d.js"></script>
+  <script src="js/map/send-to-sim.js"></script>
   <script src="js/map/trough-overlay.js"></script>
   <script src="js/map/confidence-badge.js"></script>
   <script src="js/map/lastgasp-marker.js"></script>

@@ -408,6 +408,10 @@ var areaSelect3D = (function () {
 
     window.__selectedGridSector = selectionData;
 
+    if (typeof selectionStore !== 'undefined' && typeof selectionStore.set === 'function') {
+      selectionStore.set(selectionData);
+    }
+
     // Launch in 3D tab
     if (typeof mapTabs !== 'undefined' && typeof mapTabs.open3DTab === 'function') {
       mapTabs.open3DTab(selectionData);

@@ -40,6 +40,9 @@ document.getElementById('tab-map').style.display = 'flex';
   terrain3DWindow.init();
   mapTabs.init();
   areaSelect3D.init(map);
+  if (typeof sendToSim !== 'undefined' && sendToSim.init) {
+    sendToSim.init();
+  }
 
   nodeDetail.init();
 

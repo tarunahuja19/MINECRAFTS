@@ -595,3 +595,215 @@
 .sim-objects-table tr.worse {
   background: rgba(255, 34, 34, 0.08);
 }
+
+/* ============================================================
+   SANDBOX SESSION & LOADING OVERLAY STYLES
+   ============================================================ */
+
+/* Session Chip in Toolbar */
+.sim-session-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  background: #0E241A;
+  border: 1px solid #00E676;
+  border-radius: 12px;
+  color: #00FF88;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: bold;
+  box-shadow: 0 0 8px rgba(0, 230, 118, 0.25);
+  cursor: default;
+  user-select: none;
+  animation: simChipGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes simChipGlow {
+  0% { box-shadow: 0 0 4px rgba(0, 230, 118, 0.2); }
+  50% { box-shadow: 0 0 10px rgba(0, 230, 118, 0.45); }
+  100% { box-shadow: 0 0 4px rgba(0, 230, 118, 0.2); }
+}
+
+.sim-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00E676;
+  box-shadow: 0 0 5px #00E676;
+}
+
+/* Floating Sandbox Banner */
+.sim-sandbox-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8, 26, 18, 0.94);
+  border: 1px solid #00E676;
+  border-radius: 3px;
+  color: #E2FFF0;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  padding: 5px 14px;
+  z-index: 25;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7), 0 0 12px rgba(0, 230, 118, 0.35);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sim-sandbox-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00E676;
+  box-shadow: 0 0 8px #00E676;
+  animation: simPulse 1.4s infinite ease-in-out;
+}
+
+/* Loading Overlay with Stages */
+.sim-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 14, 20, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.sim-loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sim-loading-card {
+  background: #0E1820;
+  border: 1px solid #1E3848;
+  border-top: 3px solid #00E676;
+  border-radius: 4px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 230, 118, 0.15);
+  width: 360px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sim-loading-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sim-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(0, 230, 118, 0.2);
+  border-top-color: #00E676;
+  border-radius: 50%;
+  animation: simSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes simSpin {
+  to { transform: rotate(360deg); }
+}
+
+.sim-loading-title {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  color: #E0F2E9;
+}
+
+.sim-loading-subtitle {
+  font-size: 11px;
+  color: #8CA0AE;
+  line-height: 1.35;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-bevel-dark);
+}
+
+.sim-loading-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-stage-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #4A5E6B;
+  transition: all 0.2s ease;
+}
+
+.sim-stage-item .sim-stage-icon {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+  color: #4A5E6B;
+}
+
+.sim-stage-item .sim-stage-label {
+  font-family: Consolas, monospace;
+  font-weight: bold;
+  color: inherit;
+  min-width: 58px;
+}
+
+.sim-stage-item .sim-stage-detail {
+  font-size: 10px;
+  color: #6C8290;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sim-stage-item.active {
+  background: rgba(0, 230, 118, 0.08);
+  border-left: 2px solid #00E676;
+  color: #00FF88;
+}
+
+.sim-stage-item.active .sim-stage-icon {
+  color: #00FF88;
+  animation: simPulse 1s infinite;
+}
+
+.sim-stage-item.active .sim-stage-detail {
+  color: #B4E8CC;
+}
+
+.sim-stage-item.done {
+  color: #A4B8C4;
+}
+
+.sim-stage-item.done .sim-stage-icon {
+  color: #00FF88;
+  font-weight: bold;
+}
+
+.sim-stage-item.done .sim-stage-label {
+  color: #E0EBF2;
+}
+
+.sim-stage-item.done .sim-stage-detail {
+  color: #6A808E;
+}
+
