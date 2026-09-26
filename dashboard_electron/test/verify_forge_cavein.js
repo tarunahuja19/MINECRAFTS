@@ -223,8 +223,12 @@ async function run() {
   if (!forgeCtx) throw new Error('FORGE iframe JS context not found');
 
   // Spy on the iframe's globalGeomechanics.triggerCollapse (same Vite module
-  // instance App.tsx imported) and on its fetches.
-  await evaluate(`import('/src/utils/geomechanicsEngine.ts').then(function (m) {
+  // instance App.tsx imported) and on its fetches. A long-running Vite that has
+  // hot-reloaded the file serves App.tsx a `?t=` URL, which is a different
+  // module instance, so import whichever URL the page actually loaded last.
+  await evaluate(`import(performance.getEntriesByType('resource').map(function (e) { return e.name; })
+      .filter(function (n) { return /\\/src\\/utils\\/geomechanicsEngine\\.ts/.test(n); }).pop()
+      || '/src/utils/geomechanicsEngine.ts').then(function (m) {
     var g = m.globalGeomechanics;
     window.__tc = 0;
     var orig = g.triggerCollapse;
