@@ -13,7 +13,7 @@
  *   VIBRATION / CAVE-IN + per-event params, FIRE EVENT), middle 3D region
  *   view (embedded app clipped to the selection; local-preview triggers +
  *   crack lines), right dashboard (district health dots + clone list +
- *   sandbox notifications + consequence results). MAP SIM-box selections
+ *   sandbox notifications + consequence results). MAP SIM selections
  *   auto-open it.
  * - Talks to Scenario Lab server on :8010 (GET /api/segments, GET /api/snapshot, POST /api/scenario).
  * - Reads node records via nodeMarkers.getNodeData (single-node inspect) and
@@ -41,8 +41,30 @@ var simTab = (function () {
   var sandboxSession = null;
   var isLabAvailable = true;
   var inTabNotifications = [];
-  var isPlaying = false;
   var simLiveBadgeTimer = null;
+
+  function isSimTabVisible() {
+    var tabSim = document.getElementById('tab-sim');
+    return !!(tabSim && tabSim.style.display !== 'none');
+  }
+
+  function startSimLiveBadgePolling() {
+    if (simLiveBadgeTimer) return;
+    simLiveBadgeTimer = setInterval(function () {
+      if (!isSimTabVisible()) {
+        stopSimLiveBadgePolling();
+        return;
+      }
+      updateSimLiveBadge();
+    }, 5000);
+  }
+
+  function stopSimLiveBadgePolling() {
+    if (simLiveBadgeTimer) {
+      clearInterval(simLiveBadgeTimer);
+      simLiveBadgeTimer = null;
+    }
+  }
 
   // Latest-telemetry cache, same rule as MAP node-sensors.js (scan fixture
   // history from the end, cache per node) so SIM/FORGE show the same numbers.
@@ -58,7 +80,11 @@ var simTab = (function () {
         return res.json();
       })
       .then(function (data) {
-        var seconds = (data && data.t_sim_seconds) || 0;
+        var seconds = data ? data.t_sim_seconds : undefined;
+        if (typeof seconds !== 'number' || !Number.isFinite(seconds)) {
+          badge.textContent = 'LIVE · —';
+          return;
+        }
         var day = (seconds / 86400).toFixed(1);
         badge.textContent = 'LIVE · Day ' + day;
       })
@@ -112,10 +138,7 @@ var simTab = (function () {
       bus.on('system-reset', function () {
         if (sandboxSession) {
           console.log('[SIM_TAB] system-reset ignored: sandbox session ' + sandboxSession.id + ' is active and isolated');
-          return;
         }
-        // The PLAY button (and its stopPlay()) was removed in B0; nothing
-        // sets isPlaying true anymore, so there is nothing to stop here.
       });
       bus.on('selection-changed', function () {
         updateGateState();
@@ -151,11 +174,11 @@ var simTab = (function () {
     renderForgeHealth();
     var inspectorBody = document.getElementById('sim-inspector-body');
     if (inspectorBody && !inspectorBody.innerHTML.trim()) {
-      inspectorBody.innerHTML = '<div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No nodes in active sandbox session. Draw a SIM box on MAP to begin.</div><div id="sim-active-node-detail-container"></div>';
+      inspectorBody.innerHTML = '<div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No nodes in active sandbox session. Draw a SIM area on MAP to begin.</div><div id="sim-active-node-detail-container"></div>';
     }
     var notifBody = document.getElementById('sim-notifications-body');
     if (notifBody && !notifBody.innerHTML.trim()) {
-      notifBody.innerHTML = '<div class="sim-empty-notif" style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No scenario alarms. Draw a SIM box on MAP and run an experiment to observe consequences.</div>';
+      notifBody.innerHTML = '<div class="sim-empty-notif" style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No scenario alarms. Draw a SIM area on MAP and run an experiment to observe consequences.</div>';
     }
     if (typeof bus !== 'undefined' && typeof bus.on === 'function') {
       bus.on('nodes-loaded', function () {
@@ -163,18 +186,21 @@ var simTab = (function () {
       });
     }
     updateGateState();
-    updateSimLiveBadge();
-    if (simLiveBadgeTimer) clearInterval(simLiveBadgeTimer);
-    simLiveBadgeTimer = setInterval(updateSimLiveBadge, 5000);
+    // Live badge polling starts on onTabShown('sim')
   }
 
   function setupDomListeners() {
+    var tabBar = document.getElementById('tab-bar');
+    if (tabBar) {
+      tabBar.addEventListener('click', function (e) {
+        var btn = e.target.closest('.tab-btn');
+        if (btn && btn.dataset.tab !== 'sim') {
+          stopSimLiveBadgePolling();
+        }
+      });
+    }
 
-    // 2. Zone picker REMOVED: the region comes ONLY from the MAP SIM-box
-    // selection (currentSegment stays '3' as the lab snapshot-values scope).
-
-    // 3. Isolate checkbox REMOVED (UI cleanup): SIM always shows the full
-    // district, FORGE always frames the selection.
+    // FORGE always uses the full terrain and all nodes.
 
     // 4. FREEZE button
     var btnFreeze = document.getElementById('btn-sim-freeze');
@@ -1003,7 +1029,7 @@ var simTab = (function () {
     // Closing the session also releases the SIM-channel MAP selection that
     // created it: the SIM/SEND badges drop their counts, the gate banner
     // returns, and the readout falls back to the select-nodes prompt. The 3D
-    // channel is untouched (close only undoes what a SIM-box send did).
+    // channel is untouched (close only undoes what a SIM area send did).
     try {
       if (typeof selectionStore !== 'undefined' && typeof selectionStore.clear === 'function') {
         selectionStore.clear('sim');
@@ -2075,7 +2101,10 @@ var simTab = (function () {
     updateGateState();
     renderForgeHealth();
     if (tab === 'sim') {
+      startSimLiveBadgePolling();
       updateSimLiveBadge();
+    } else {
+      stopSimLiveBadgePolling();
     }
     // Lazy-load the shown tab's 3D slot on first visit (perf: a slot costs
     // no WebGL until its tab opens; the hidden slot's frame loop suspends
@@ -2108,8 +2137,7 @@ var simTab = (function () {
     nodeStateColor: nodeStateColor,
     recenterToSessionBounds: recenterToSessionBounds,
     updateSimLiveBadge: updateSimLiveBadge,
-    getCurrentDay: function () { return currentDay; },
-    isPlaying: function () { return isPlaying; }
+    getCurrentDay: function () { return currentDay; }
   };
 })();
 

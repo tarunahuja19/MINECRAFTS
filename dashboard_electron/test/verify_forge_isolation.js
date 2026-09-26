@@ -38,12 +38,33 @@ function code(src) {
 }
 
 console.log('\n=== 1. FORGE dashboard modules never address the live system ===');
-['sim-tab.js', 'sim-embed.js'].forEach(function (f) {
-  const src = code(fs.readFileSync(path.join(SIM_JS, f), 'utf8'));
-  ok(!/:8000\b/.test(src), f + ' has no :8000 (engine) address');
-  ok(!/:8080\b/.test(src), f + ' has no :8080 (backend) address');
-  ok(!/\/control\b/.test(src), f + ' has no /control call');
-});
+// sim-embed.js must have no :8000, no :8080, and no /control
+const embedSrc = code(fs.readFileSync(path.join(SIM_JS, 'sim-embed.js'), 'utf8'));
+ok(!/:8000\b/.test(embedSrc), 'sim-embed.js has no :8000 (engine) address');
+ok(!/:8080\b/.test(embedSrc), 'sim-embed.js has no :8080 (backend) address');
+ok(!/\/control\b/.test(embedSrc), 'sim-embed.js has no /control call');
+
+// sim-tab.js must have no :8000, no /control, and its only :8080 access is read-only GET /api/simulation/status
+const simSrc = code(fs.readFileSync(path.join(SIM_JS, 'sim-tab.js'), 'utf8'));
+ok(!/:8000\b/.test(simSrc), 'sim-tab.js has no :8000 (engine) address');
+ok(!/\/control\b/.test(simSrc), 'sim-tab.js has no /control call');
+
+// Check that any path attached to :8080 or /api/simulation/ is strictly /api/simulation/status
+const simApiPaths = (simSrc.match(/\/api\/simulation\/[a-zA-Z0-9_\/-]+/g) || []);
+const invalidSimApiPaths = simApiPaths.filter(p => p !== '/api/simulation/status');
+ok(simApiPaths.length > 0 && invalidSimApiPaths.length === 0,
+  'sim-tab.js backend :8080 path is strictly /api/simulation/status');
+
+// Check any full URL or port attachment with :8080 (e.g. :8080/path)
+const port8080Paths = (simSrc.match(/:8080\/[a-zA-Z0-9_\/-]+/g) || []).map(s => s.replace(':8080', ''));
+const invalid8080Paths = port8080Paths.filter(p => p !== '/api/simulation/status');
+ok(invalid8080Paths.length === 0,
+  'sim-tab.js has no :8080 path other than /api/simulation/status');
+
+// Check that sim-tab.js never sends POST/PUT/DELETE/PATCH to :8080 or /api/simulation/status
+const nonGetToward8080 = /fetch\s*\([^)]*(:8080|apiBase|\/api\/simulation\/status)[^)]*method\s*:\s*['"](POST|PUT|DELETE|PATCH)['"]/i.test(simSrc)
+  || /fetch\s*\([^)]*method\s*:\s*['"](POST|PUT|DELETE|PATCH)['"][^)]*(:8080|apiBase|\/api\/simulation\/status)/i.test(simSrc);
+ok(!nonGetToward8080, 'sim-tab.js uses only GET toward :8080');
 
 console.log('\n=== 2. App.tsx guards every engine write on engineReadOnly ===');
 const app = fs.readFileSync(APP_TSX, 'utf8');
