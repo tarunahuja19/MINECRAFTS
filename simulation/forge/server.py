@@ -159,6 +159,8 @@ async def forge_frame(req: ForgeFrameRequest):
                 "tilt_y": tilt_y_urad,
                 "strain": strain_ue,
                 "displacement": disp_mm,
+                # Vertical ground drop at the node (bowl + cave-ins), for the FORGE node card.
+                "subsidence_mm": round(float(total_channels["s"][iy, ix]) * 1000.0, 1),
                 "vib_rms": 0,
                 "vib_peak": 0,
                 "vib_fdom": 0.0,

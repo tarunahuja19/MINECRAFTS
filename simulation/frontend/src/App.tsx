@@ -154,6 +154,8 @@ export const App: React.FC = () => {
     zoneName: "TRANSITION_SLOPE",
   });
   const [collapseRadiusM, setCollapseRadiusM] = useState<number>(75);
+  // FORGE hides the beacon ring between a FIRE / RESET and the next preview.
+  const [beaconHidden, setBeaconHidden] = useState<boolean>(false);
 
   // Modals & Panels
   const [activeExplainerKey, setActiveExplainerKey] = useState<InfoKey | null>(null);
@@ -742,6 +744,7 @@ export const App: React.FC = () => {
       slopeDeg: slope,
       zoneName: zone,
     });
+    setBeaconHidden(false);
     if (engineReadOnly) {
       postEmbedEvent({ event: "terrain-target", x: clickX, y: clickY, elev, slopeDeg: slope, zoneName: zone });
     }
@@ -876,9 +879,12 @@ export const App: React.FC = () => {
         }
         case "forge-preview": {
           if (!engineReadOnly) break;
+          // {x: null} (or any unusable value) clears the preview ring.
           if (d.x == null || d.y == null || d.radius_m == null || d.radius_m <= 0 || !Number.isFinite(d.x) || !Number.isFinite(d.y) || !Number.isFinite(d.radius_m)) {
+            setBeaconHidden(true);
             break;
           }
+          setBeaconHidden(false);
           const elev = sampleBaseGroundY(d.x, d.y);
           const slope = sampleSlopeDegrees(d.x, d.y);
           setTargetLocation({
@@ -1137,7 +1143,7 @@ export const App: React.FC = () => {
             nodeTelemetry={nodeTelemetry}
             exaggeration={exaggeration}
             selectedNodeId={selectedNodeId}
-            targetLocation={targetLocation}
+            targetLocation={beaconHidden ? null : targetLocation}
             collapseRadiusM={collapseRadiusM}
             showMeshTopology={showMeshTopology}
             vibrationPulse={vibrationPulse}
@@ -1215,7 +1221,7 @@ export const App: React.FC = () => {
               nodeTelemetry={nodeTelemetry}
               exaggeration={exaggeration}
               selectedNodeId={selectedNodeId}
-              targetLocation={targetLocation}
+              targetLocation={beaconHidden ? null : targetLocation}
               collapseRadiusM={collapseRadiusM}
               showMeshTopology={showMeshTopology}
               vibrationPulse={vibrationPulse}

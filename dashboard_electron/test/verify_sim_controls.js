@@ -131,7 +131,7 @@ async function run() {
   let backendProc = null;
   let chromeProc = null;
   let tempProfile = null;
-  const testPool = new Pool({ database: TEST_DB });
+  const testPool = new Pool({ connectionString: TEST_DATABASE_URL });
 
   const cleanup = async () => {
     if (chromeProc) {

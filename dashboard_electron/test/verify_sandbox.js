@@ -371,15 +371,13 @@ async function runTest() {
         const pollState = await evaluate(`
           (function() {
             var btn = document.getElementById('btn-sim-run-scenario');
-            var resBody = document.getElementById('sim-scenario-result-body');
             return {
               text: btn ? btn.textContent : null,
-              disabled: btn ? btn.disabled : null,
-              resLen: resBody ? resBody.innerHTML.trim().length : 0
+              disabled: btn ? btn.disabled : null
             };
           })()
         `);
-        if ((pollState.text === 'FIRE EVENT' || pollState.text === 'RUN EXPERIMENT') && !pollState.disabled && pollState.resLen > 30) {
+        if (pollState.text === 'FIRE EVENT' && !pollState.disabled) {
           return;
         }
       }
@@ -393,8 +391,10 @@ async function runTest() {
       })()
     `);
     console.log('[STEP 5] Commands after CRACK:', cmds);
-    if (cmds.forge.indexOf('set-cracks') === -1) {
-      throw new Error('CRACK did not post set-cracks to the FORGE slot!');
+    // B3: FORGE no longer asks the :8010 lab for crack lines. CRACK becomes a
+    // FORGE timeline event in B2d; until then FIRE posts nothing for it.
+    if (cmds.forge.indexOf('set-cracks') !== -1) {
+      throw new Error('CRACK posted lab set-cracks to the FORGE slot (B3 removed the :8010 path)!');
     }
 
     console.log('[STEP 5] Running CAVE-IN...');

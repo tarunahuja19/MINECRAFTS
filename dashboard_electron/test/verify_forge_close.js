@@ -242,14 +242,13 @@ async function main() {
     assert.ok(el('sim-session-chip-container').innerHTML.includes('SANDBOX'));
     assert.strictEqual(el('btn-sim-close-session').disabled, false);
 
-    // Detail card labels clone MEMBERSHIP, not mere session existence: a
-    // health dot outside the selection must read MONITORED, never ISOLATED.
+    // B3: the FORGE node card replaced the clone list. Selecting a node
+    // fills it (FORGE always covers every node, session or not). The card
+    // takes node positions from the fixture layout.
+    const layout = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'nodes.json'), 'utf8');
+    run('var fixtureProvider = { getNodes: function () { return ' + layout + '; } };');
     run('simTab.selectNode("N01")');
-    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('(CLONED)'));
-    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('ISOLATED'));
-    run('simTab.selectNode("N31")');
-    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('MONITORED'));
-    assert.ok(!el('sim-active-node-detail-container').innerHTML.includes('CLONED'));
+    assert.ok(el('forge-node-detail').innerHTML.includes('NODE N01'), 'FORGE node card shows N01');
 
     run('simTab.closeSandboxSession();');
     await sleep(50);
@@ -261,11 +260,8 @@ async function main() {
     assert.strictEqual(el('sim-gate-banner').style.display, 'none');
     assert.strictEqual(el('btn-sim-run-scenario').disabled, false);
     assert.ok(el('sim-region-readout').textContent.includes('Entire Mine Domain'));
-    assert.strictEqual(el('sim-nodes-count-badge').textContent, '0 CLONED');
-    assert.ok(el('sim-inspector-body').innerHTML.includes('No nodes in active sandbox session'));
-    run('simTab.selectNode("N01")');
-    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('MONITORED'),
-      'no session => MONITORED');
+    run('simTab.selectNode("N31")');
+    assert.ok(el('forge-node-detail').innerHTML.includes('NODE N31'), 'no session: FORGE node card still works');
 
     // Camera & selection reset contract (prevents view lock on forge close)
     const forgeSlot = run('simEmbed.getSlotInfo("forge")');

@@ -1254,56 +1254,93 @@ body.sim-paused #tab-alarms {
   z-index: 5;
 }
 
+/* FORGE right column (B3): health strip, node card, mini map + alarms.
+   Every colour comes from the current FORGE frame's node_states. */
 #forge-health-panel {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  max-height: 220px;
   border-bottom: 2px solid var(--border-bevel-dark);
-  overflow: hidden;
 }
 
-#forge-health-body {
-  flex-direction: row;
+.forge-health-counts {
+  display: flex;
+  gap: 10px;
+  padding: 4px 8px 2px;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.forge-health-counts b { color: var(--text-primary); }
+.forge-health-counts .c-ok b { color: #00CC44; }
+.forge-health-counts .c-warn b { color: #FFA500; }
+.forge-health-counts .c-crit b { color: #FF2222; }
+
+.forge-health-dots {
+  display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  align-content: flex-start;
+  gap: 3px;
+  padding: 3px 8px 6px;
 }
 
 .forge-health-dot {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.forge-health-dot.selected { outline: 2px solid #FFFFFF; outline-offset: 1px; }
+
+#forge-node-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 150px;
+  border-bottom: 2px solid var(--border-bevel-dark);
+}
+
+.forge-node-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+.forge-node-card .k { color: var(--text-secondary); }
+.forge-node-card .v { font-family: Consolas, monospace; color: var(--text-primary); text-align: right; }
+.forge-node-card .title { grid-column: 1 / -1; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; }
+.forge-state-pill { font-size: 9px; padding: 1px 5px; border: 1px solid currentColor; border-radius: 2px; }
+
+#forge-map-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+}
+
+#forge-minimap-wrap {
+  flex-shrink: 0;
+  padding: 6px;
+  background: #05090D;
+}
+#forge-minimap { width: 100%; height: auto; display: block; aspect-ratio: 1 / 1; }
+#forge-minimap .node { cursor: pointer; }
+
+#forge-alarm-list {
+  flex: 1;
+  min-height: 60px;
+  gap: 0;
+  padding: 2px 0;
   font-family: Consolas, monospace;
   font-size: 9.5px;
-  font-weight: bold;
-  color: var(--text-primary);
-  background: var(--bg-chrome);
-  border: 1px solid var(--border-bevel-dark);
-  border-radius: 2px;
-  padding: 2px 5px 2px 3px;
-  cursor: default;
-  white-space: nowrap;
 }
+.forge-alarm-row { flex-shrink: 0; padding: 2px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.forge-alarm-row.CRITICAL { color: #FF6B6B; }
+.forge-alarm-row.WARNING { color: #FFB84D; }
+.forge-alarm-row.ACTIVE { color: #7FD99A; }
 
-.forge-health-dot i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-#tab-forge #sim-inspector-panel {
-  flex-shrink: 0;
-  max-height: 300px;
-  min-height: 120px;
-}
-
-#tab-forge #sim-scenario-result-panel {
-  flex: 1;
-  min-height: 220px;
-}
+.forge-empty { color: var(--text-secondary); font-size: 10.5px; padding: 6px 8px; }
 
 /* SIM data inspector (selection-proof district readings) */
 #sim-data-inspector-panel {

@@ -715,7 +715,7 @@
           <div id="sim-left">
             <div class="panel-header">
               <span>SCENARIO FORGE</span>
-              <span class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">LAB 8010</span>
+              <span class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">FORGE :8020</span>
             </div>
             <div class="sim-control-body">
               <!-- Engine Status Section (690d slider removed; math runs dynamically) -->
@@ -924,56 +924,46 @@
 
           <!-- Right Column: FORGE DASHBOARD (health board + clones + alarms + results, 360px). -->
           <div id="forge-right">
+            <!-- Everything in this column is coloured by the current FORGE frame's node_states (:8020). -->
             <div id="forge-health-panel">
               <div class="panel-header">
-                <span style="color:#00FF88;">DISTRICT HEALTH — ALL NODES</span>
+                <span style="color:#00FF88;">FORGE HEALTH</span>
                 <span id="forge-health-badge" class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">-- NODES</span>
               </div>
-              <div id="forge-health-body" class="sim-panel-scroll">
-                <!-- Populated with one dot per district node -->
+              <div id="forge-health-counts" class="forge-health-counts">
+                <span class="c-ok">OK <b data-k="ACTIVE">--</b></span>
+                <span class="c-warn">WARNING <b data-k="WARNING">--</b></span>
+                <span class="c-crit">CRITICAL <b data-k="CRITICAL">--</b></span>
               </div>
+              <div id="forge-health-body" class="forge-health-dots"></div>
             </div>
 
-            <div id="sim-inspector-panel">
+            <div id="forge-node-panel">
               <div class="panel-header" style="border-top:1px solid var(--border-bevel-dark);">
-                <span id="sim-inspector-header-title">SANDBOX CLUSTER NODES</span>
-                <span id="sim-nodes-count-badge" class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">0 CLONED</span>
+                <span>NODE DETAIL</span>
               </div>
-              <div id="sim-inspector-body" class="sim-panel-scroll">
-                <div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No nodes in active sandbox session. Draw a SIM box on MAP to begin.</div>
-                <div id="sim-active-node-detail-container"></div>
+              <div id="forge-node-detail" class="sim-panel-scroll">
+                <div class="forge-empty">Click a node</div>
               </div>
             </div>
 
-            <div id="sim-notifications-panel">
+            <div id="forge-map-panel">
+              <div class="panel-header" style="border-top:1px solid var(--border-bevel-dark);">
+                <span>FORGE MAP</span>
+                <span id="forge-map-badge" class="panel-badge" style="background:#1B445A; color:#A4B8C4; border:1px solid #3A5566;">SITE</span>
+              </div>
+              <div id="forge-minimap-wrap">
+                <svg id="forge-minimap" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet"></svg>
+              </div>
               <div class="panel-header" style="background:#182026; border-top:1px solid var(--border-bevel-dark);">
-                <span style="color:#FFA500;">SANDBOX SCENARIO ALARMS</span>
-                <span id="sim-notifications-badge" class="panel-badge" style="background:#2A2010; color:#FFA500; border:1px solid #FFA500;">OFFLINE FEED</span>
+                <span style="color:#FFA500;">FORGE ALARMS</span>
+                <span id="forge-alarm-badge" class="panel-badge" style="background:#2A2010; color:#FFA500; border:1px solid #FFA500;">0</span>
               </div>
-              <div id="sim-notifications-body" class="sim-panel-scroll">
-                <div class="sim-empty-notif" style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No scenario alarms. Draw a SIM box on MAP and run an experiment to observe consequences.</div>
+              <div id="forge-alarm-list" class="sim-panel-scroll">
+                <div class="forge-empty">No FORGE alarms yet.</div>
               </div>
             </div>
 
-            <div id="sim-scenario-result-panel">
-              <div class="panel-header" style="background:#1F1212; border-top:1px solid var(--border-bevel-dark);">
-                <span style="color:#FFB4B4;">SCENARIO CONSEQUENCE ANALYSIS</span>
-              </div>
-              <div id="sim-scenario-result-body" class="sim-panel-scroll">
-                <div class="sim-card">
-                  <div class="sim-card-header">
-                    <div style="font-size:11px; color:#00FF88; font-weight:bold;">SANDBOX ISOLATION VERIFIED</div>
-                    <span class="sim-badge-success">OFF-LINE COPY</span>
-                  </div>
-                  <div style="font-size:10.5px; color:var(--text-primary); line-height:1.4;">
-                    Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press FIRE EVENT — the consequence forecast for this isolated segment appears here.
-                  </div>
-                  <div style="font-size:9.5px; color:var(--text-secondary); line-height:1.35; margin-top:2px;">
-                    This simulation runs in an isolated sandbox. Events injected here will <b>NOT</b> alter active sensor thresholds or alert logs on the live dashboard.
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
