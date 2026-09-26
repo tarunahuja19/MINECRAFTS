@@ -368,3 +368,35 @@ def test_seed_round_trip(client):
         assert rebuilt_pf.t_init_days == original_failure["t_init_days"]
         assert math.isclose(rebuilt_pf.t_collapse_days, original_failure["t_collapse_days"], rel_tol=1e-6)
         assert math.isclose(rebuilt_pf.duration_days, original_failure["duration_days"], rel_tol=1e-6)
+
+
+def test_tilt_is_an_offset_cave_in(client):
+    """A tilt event is computed exactly as the cave-in it describes."""
+    cave = {"type": "cave_in", "x": 200.0, "y": 50.0, "radius_m": 100.0, "depth_m": 0.5,
+            "day": 20.0, "duration_h": 4.8}
+    tilt = dict(cave, kind="tilt", target_x=100.0, target_y=50.0, rate_mm_per_m=5.0, direction_deg=0.0)
+    a = client.post("/forge/frame", json={"day": 40.0, "events": [cave]}).json()
+    b = client.post("/forge/frame", json={"day": 40.0, "events": [tilt]}).json()
+    assert a["terrain"] == b["terrain"]
+    assert a["node_states"] == b["node_states"]
+    assert [n["subsidence_mm"] for n in a["nodes"]] == [n["subsidence_mm"] for n in b["nodes"]]
+
+
+def test_vibration_window(client):
+    """Vibration adds its PPV to every node only inside [day, day + duration_s]."""
+    vib = {"type": "vibration", "day": 10.0, "ppv_mm_s": 12.0, "duration_s": 3600.0}
+    during = client.post("/forge/frame", json={"day": 10.02, "events": [vib]}).json()
+    before = client.post("/forge/frame", json={"day": 9.99, "events": [vib]}).json()
+    after = client.post("/forge/frame", json={"day": 10.05, "events": [vib]}).json()
+    assert during["vib_mm_s"] == 12.0
+    assert all(n["vib_rms"] == 12.0 and n["vib_peak"] == 17.4 for n in during["nodes"])
+    assert before["vib_mm_s"] == 0 and after["vib_mm_s"] == 0
+    # No ground and no node-state change (Session.apply_vibration moves no ground).
+    quiet = client.post("/forge/frame", json={"day": 10.02, "events": []}).json()
+    assert during["terrain"] == quiet["terrain"]
+    assert during["node_states"] == quiet["node_states"]
+    # Range ignores vibrations.
+    assert client.post("/forge/range", json={"events": [vib]}).json() == {"end_day": 120}
+    # PPV must be positive.
+    bad = dict(vib, ppv_mm_s=0)
+    assert client.post("/forge/frame", json={"day": 10.0, "events": [bad]}).status_code == 422

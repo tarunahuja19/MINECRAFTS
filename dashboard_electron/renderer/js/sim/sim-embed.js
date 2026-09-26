@@ -460,9 +460,9 @@ var simEmbed = (function () {
       var slot = slots.forge;
       if (slot) postToSlot(slot, { cmd: 'forge-frame', frame: frame });
     },
-    sendForgeEffect: function (type, cx, cy, rad, depth) {
+    sendForgeEffect: function (type, cx, cy, rad, depth, ppv) {
       var slot = slots.forge;
-      if (slot) postToSlot(slot, { cmd: 'forge-effect', type: type, cx: cx, cy: cy, rad: rad, depth: depth });
+      if (slot) postToSlot(slot, { cmd: 'forge-effect', type: type, cx: cx, cy: cy, rad: rad, depth: depth, ppv: ppv });
     },
     // Radius preview ring (drawing only). x = null clears it.
     sendForgePreview: function (x, y, radiusM) {

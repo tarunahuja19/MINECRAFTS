@@ -211,7 +211,7 @@ var simTab = (function () {
         badge.textContent = slider.value + ' ' + (badge.getAttribute('data-unit') || '');
       };
       slider.addEventListener('input', paint);
-      if (/-radius$/.test(slider.id)) {
+      if (/-radius$/.test(slider.id) || slider.id === 'sim-tilt-dir') {
         slider.addEventListener('input', sendForgePreview);
       }
       paint();
@@ -593,7 +593,15 @@ var simTab = (function () {
   }
 
   function forgeEventLine(ev) {
-    return 'Day ' + Number(ev.day).toFixed(1) + ' · CAVE-IN ' + fmtNum(ev.depth_m) + ' m / ' +
+    var d = 'Day ' + Number(ev.day).toFixed(1) + ' · ';
+    if (ev.type === 'vibration') {
+      return d + 'VIBRATION ' + fmtNum(ev.ppv_mm_s) + ' mm/s for ' + Math.round(ev.duration_s) + ' s (site-wide)';
+    }
+    if (ev.kind === 'tilt') {
+      return d + 'TILT ' + fmtNum(ev.rate_mm_per_m) + ' mm/m toward ' + Math.round(ev.direction_deg) + '° at (' +
+        Math.round(ev.target_x) + ', ' + Math.round(ev.target_y) + '), r ' + fmtNum(ev.radius_m) + ' m';
+    }
+    return d + 'CAVE-IN ' + fmtNum(ev.depth_m) + ' m / ' +
       fmtNum(ev.radius_m) + ' m at (' + Math.round(ev.x) + ', ' + Math.round(ev.y) + ')' +
       (ev.source === 'live' ? ' (live)' : '');
   }
@@ -621,17 +629,34 @@ var simTab = (function () {
     });
   }
 
-  // FIRE with CAVE-IN: the cave-in becomes an event on FORGE's timeline at the
-  // current FORGE day. :8020 computes the ground; the slot only plays the look.
+  // FIRE adds an event to FORGE's timeline at the current FORGE day. :8020
+  // computes the ground; the slot only plays the look (dust, shake, toast).
   // duration_h: there is no duration control, so the engine default
   // (apply_collapse duration_hours=4.8) is used.
   var FORGE_CAVEIN_DURATION_H = 4.8;
+  var FORGE_VIBRATION_DURATION_S = 60;   // Session.apply_vibration default
+
+  function sliderValue(id) {
+    var el = document.getElementById(id);
+    return el ? parseFloat(el.value) : NaN;
+  }
+
+  function addForgeEvent(ev, effectType, ex, ey, erad, edepth, ppv) {
+    pauseForge();
+    forgeState.events.push(ev);
+    renderForgeEvents();
+    if (typeof simEmbed !== 'undefined' && simEmbed.sendForgeEffect) {
+      simEmbed.sendForgeEffect(effectType, ex, ey, erad, edepth, ppv);
+    }
+    clearForgePreview();
+    updateForgeRange(function () {
+      playForge();
+    });
+  }
 
   function fireForgeCaveIn() {
-    var depthEl = document.getElementById('sim-cavein-depth');
-    var radiusEl = document.getElementById('sim-cavein-radius');
-    var depth = depthEl ? parseFloat(depthEl.value) : NaN;
-    var radius = radiusEl ? parseFloat(radiusEl.value) : NaN;
+    var depth = sliderValue('sim-cavein-depth');
+    var radius = sliderValue('sim-cavein-radius');
     if (!(depth > 0) || !(radius > 0)) {
       console.warn('[FORGE] CAVE-IN needs depth and radius sliders');
       return;
@@ -645,16 +670,56 @@ var simTab = (function () {
       day: forgeState.day,
       duration_h: FORGE_CAVEIN_DURATION_H
     };
-    pauseForge();
-    forgeState.events.push(ev);
-    renderForgeEvents();
-    if (typeof simEmbed !== 'undefined' && simEmbed.sendForgeEffect) {
-      simEmbed.sendForgeEffect('cave_in', ev.x, ev.y, ev.radius_m, ev.depth_m);
+    addForgeEvent(ev, 'cave_in', ev.x, ev.y, ev.radius_m, ev.depth_m);
+  }
+
+  // Bowl centre for a TILT: the engine's tilt (App.tsx handleTriggerEvent) is
+  // a cave-in centred one radius off the target, so the target sits on the
+  // flank where the ground slopes most. Direction is a compass bearing.
+  function forgeTiltCentre(radius, bearingDeg) {
+    var b = bearingDeg * Math.PI / 180;
+    return { x: forgeTarget.x + radius * Math.sin(b), y: forgeTarget.y + radius * Math.cos(b) };
+  }
+
+  function fireForgeTilt() {
+    var rate = sliderValue('sim-tilt-rate');
+    var dir = sliderValue('sim-tilt-dir');
+    var radius = sliderValue('sim-tilt-radius');
+    if (!(rate > 0) || !(radius > 0) || !Number.isFinite(dir)) {
+      console.warn('[FORGE] TILT needs rate, direction and radius sliders');
+      return;
     }
-    clearForgePreview();
-    updateForgeRange(function () {
-      playForge();
-    });
+    var c = forgeTiltCentre(radius, dir);
+    var ev = {
+      type: 'cave_in',
+      kind: 'tilt',
+      x: c.x,
+      y: c.y,
+      radius_m: radius,
+      // Same rate -> drop mapping FORGE used before: rate (mm/m) over the radius.
+      depth_m: rate * radius / 1000,
+      day: forgeState.day,
+      duration_h: FORGE_CAVEIN_DURATION_H,
+      target_x: forgeTarget.x,
+      target_y: forgeTarget.y,
+      rate_mm_per_m: rate,
+      direction_deg: dir
+    };
+    addForgeEvent(ev, 'tilt', ev.x, ev.y, ev.radius_m, ev.depth_m);
+  }
+
+  function fireForgeVibration() {
+    var ppv = sliderValue('sim-vib-ppv');
+    if (!(ppv > 0)) return;
+    var ev = {
+      type: 'vibration',
+      x: forgeTarget.x,
+      y: forgeTarget.y,
+      day: forgeState.day,
+      ppv_mm_s: ppv,
+      duration_s: FORGE_VIBRATION_DURATION_S
+    };
+    addForgeEvent(ev, 'vibration', ev.x, ev.y, 0, 0, ppv);
   }
 
   // =========================================================================
@@ -786,10 +851,13 @@ var simTab = (function () {
     var nextDay = forgeState.day + (forgeState.speed * wallSec);
     // Node states only change while a collapse is in progress (engine rule:
     // event day to collapse end + 0.05 d, about 0.6 d with the default 8 h
-    // warning). Never step over such a window: land inside it once.
+    // warning), and a vibration lasts 60 s. Never step over such a window:
+    // land inside it once.
     forgeState.events.forEach(function (ev) {
       var start = ev.day;
-      var end = ev.day + ((ev.warning_hours != null ? ev.warning_hours : 8) + (ev.duration_h || 0)) / 24 + 0.05;
+      var end = ev.type === 'vibration'
+        ? ev.day + ev.duration_s / 86400
+        : ev.day + ((ev.warning_hours != null ? ev.warning_hours : 8) + (ev.duration_h || 0)) / 24 + 0.05;
       if (forgeState.day < start && nextDay > end) {
         nextDay = Math.min(nextDay, (start + end) / 2);
       }
@@ -1016,7 +1084,7 @@ var simTab = (function () {
   function forgeNearestEvent(x, y, day) {
     var best = null;
     forgeState.events.forEach(function (ev, idx) {
-      if (ev.day > day + 1e-9) return;
+      if (ev.type !== 'cave_in' || ev.day > day + 1e-9) return;
       var d = Math.hypot(ev.x - x, ev.y - y);
       if (!best || d < best.dist) best = { ev: ev, index: idx, dist: d };
     });
@@ -1024,7 +1092,7 @@ var simTab = (function () {
   }
 
   function forgeEventTag(ev, index) {
-    return 'CAVE-IN #' + (index + 1) + (ev.source === 'live' ? ' live' : '');
+    return (ev.kind === 'tilt' ? 'TILT #' : 'CAVE-IN #') + (index + 1) + (ev.source === 'live' ? ' live' : '');
   }
 
   function resetForgeAlarms() {
@@ -1158,13 +1226,14 @@ var simTab = (function () {
         row('lat, lng', (Number.isFinite(pos.lat) ? pos.lat.toFixed(5) : '--') + ', ' + (Number.isFinite(pos.lng) ? pos.lng.toFixed(5) : '--')) +
         row('Subsidence', subs) +
         row('Tilt', tilt) +
+        row('Vibration', fn && fn.vib_rms ? fn.vib_rms.toFixed(1) + ' mm/s RMS' : '0') +
         row('Nearest event', nearTxt) +
         row('First alarm', firstTxt.length ? firstTxt.join(' · ') : 'none') +
       '</div>';
   }
 
   function forgePreviewRadius() {
-    var ids = { sudden_sinking: 'sim-cavein-radius', tilt: 'sim-tilt-radius', crack: 'sim-crack-radius' };
+    var ids = { sudden_sinking: 'sim-cavein-radius', tilt: 'sim-tilt-radius' };
     var el = document.getElementById(ids[selectedScenarioType] || '');
     var r = el ? parseFloat(el.value) : NaN;
     return r > 0 ? r : null;
@@ -1182,14 +1251,16 @@ var simTab = (function () {
       '<line x1="100" y1="0" x2="100" y2="200" stroke="#1A2A33" stroke-width="0.5"/>' +
       '<line x1="0" y1="100" x2="200" y2="100" stroke="#1A2A33" stroke-width="0.5"/>';
     forgeState.events.forEach(function (ev, idx) {
+      if (ev.type !== 'cave_in') return;   // vibration is site-wide: event list only
       var started = ev.day <= day + 1e-9;
       out += '<circle class="event" data-event="' + idx + '" cx="' + px(ev.x) + '" cy="' + py(ev.y) + '" r="' + (ev.radius_m * k).toFixed(1) +
         '" fill="' + (started ? 'rgba(255,34,34,0.12)' : 'none') + '" stroke="' + (started ? '#FF5252' : '#6B4040') + '" stroke-width="1"/>' +
-        '<text x="' + px(ev.x) + '" y="' + (py(ev.y) - ev.radius_m * k - 2).toFixed(1) + '" fill="#FF9A9A" font-size="7" text-anchor="middle">d' + Number(ev.day).toFixed(1) + '</text>';
+        '<text x="' + px(ev.x) + '" y="' + (py(ev.y) - ev.radius_m * k - 2).toFixed(1) + '" fill="#FF9A9A" font-size="7" text-anchor="middle">' + (ev.kind === 'tilt' ? 'T ' : '') + 'd' + Number(ev.day).toFixed(1) + '</text>';
     });
     var pr = forgePreviewOn ? forgePreviewRadius() : null;
     if (pr) {
-      out += '<circle id="forge-minimap-preview" cx="' + px(forgeTarget.x) + '" cy="' + py(forgeTarget.y) + '" r="' + (pr * k).toFixed(1) +
+      var pc = forgePreviewCentre(pr);
+      out += '<circle id="forge-minimap-preview" cx="' + px(pc.x) + '" cy="' + py(pc.y) + '" r="' + (pr * k).toFixed(1) +
         '" data-radius-m="' + pr + '" fill="none" stroke="#FFAA00" stroke-width="1" stroke-dasharray="4 2"/>';
     }
     var tx = px(forgeTarget.x), ty = py(forgeTarget.y);
@@ -1226,12 +1297,22 @@ var simTab = (function () {
   // Live radius preview: drawing only, no maths. Shown in the 3D view (dashed
   // beacon ring) and on the mini map while a radius slider moves or the
   // target changes; cleared on FIRE and RESET FORGE.
+  // Where the previewed bowl sits: the target, or one radius off it for TILT.
+  function forgePreviewCentre(r) {
+    if (selectedScenarioType === 'tilt') {
+      var dir = sliderValue('sim-tilt-dir');
+      return forgeTiltCentre(r, Number.isFinite(dir) ? dir : 0);
+    }
+    return { x: forgeTarget.x, y: forgeTarget.y };
+  }
+
   function sendForgePreview() {
     var r = forgePreviewRadius();
     if (!r) { clearForgePreview(); return; }
     forgePreviewOn = true;
+    var c = forgePreviewCentre(r);
     if (typeof simEmbed !== 'undefined' && simEmbed.sendForgePreview) {
-      simEmbed.sendForgePreview(forgeTarget.x, forgeTarget.y, r);
+      simEmbed.sendForgePreview(c.x, c.y, r);
     }
     renderForgeMiniMap();
   }
@@ -1825,38 +1906,24 @@ var simTab = (function () {
   // NOTE: showRightPanelContent removed with the freeze flow (only caller).
 
 
-  // FIRE EVENT. CAVE-IN is a FORGE timeline event computed by :8020.
-  // CRACK / TILT / VIBRATION become timeline events in B2d-B2f; until then
-  // TILT and VIBRATION only play their look at the target (no maths), and
-  // CRACK says it is not built yet. FORGE never calls the 690-day lab.
+  // FIRE EVENT. CAVE-IN, TILT and VIBRATION are FORGE timeline events
+  // computed by :8020 with the engine's maths. CRACK has no engine model yet
+  // (B2d). FORGE never calls the 690-day lab.
   function runScenario() {
     var type = selectedScenarioType || 'crack';
     setViewportLit(true);
     if (type === 'sudden_sinking') {
       fireForgeCaveIn();
-      return;
-    }
-    fireForgeTrigger(type);
-    clearForgePreview();
-    var btnRun = document.getElementById('btn-sim-run-scenario');
-    if (type === 'crack' && btnRun) {
-      btnRun.textContent = 'CRACK: NOT BUILT YET (B2d)';
-      setTimeout(function () { btnRun.textContent = 'FIRE EVENT'; }, 1800);
-    }
-  }
-
-  function fireForgeTrigger(type) {
-    if (typeof simEmbed === 'undefined' || !simEmbed.triggerScenario) return;
-    var cx = forgeTarget.x;
-    var cy = forgeTarget.y;
-    if (type === 'tilt') {
-      var rEl = document.getElementById('sim-tilt-radius');
-      var rateEl = document.getElementById('sim-tilt-rate');
-      var tRad = rEl ? parseFloat(rEl.value) : 100;
-      var tiltRate = rateEl ? parseFloat(rateEl.value) : 5;
-      simEmbed.triggerScenario('forge', 'tilt', cx, cy, Math.abs(tiltRate) * tRad / 1000, tRad);
+    } else if (type === 'tilt') {
+      fireForgeTilt();
     } else if (type === 'vibration') {
-      simEmbed.triggerScenario('forge', 'vibration', cx, cy, 0, 0, undefined, undefined);
+      fireForgeVibration();
+    } else {
+      var btnRun = document.getElementById('btn-sim-run-scenario');
+      if (btnRun) {
+        btnRun.textContent = 'CRACK: NOT BUILT YET (B2d)';
+        setTimeout(function () { btnRun.textContent = 'FIRE EVENT'; }, 1800);
+      }
     }
   }
 

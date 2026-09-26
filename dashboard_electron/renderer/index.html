@@ -774,7 +774,7 @@
                     <input type="range" id="sim-tilt-rate" class="forge-slider" min="0.5" max="30" step="0.5" value="5">
                   </div>
                   <div class="forge-slider-row">
-                    <div class="forge-slider-head"><span class="sim-label">DIRECTION</span><span class="forge-slider-val" data-for="sim-tilt-dir" data-unit="°"></span></div>
+                    <div class="forge-slider-head"><span class="sim-label">DIRECTION (0° = N)</span><span class="forge-slider-val" data-for="sim-tilt-dir" data-unit="°"></span></div>
                     <input type="range" id="sim-tilt-dir" class="forge-slider" min="0" max="360" step="5" value="0">
                   </div>
                   <div class="forge-slider-row">
@@ -787,10 +787,7 @@
                     <div class="forge-slider-head"><span class="sim-label">PPV</span><span class="forge-slider-val" data-for="sim-vib-ppv" data-unit="mm/s"></span></div>
                     <input type="range" id="sim-vib-ppv" class="forge-slider" min="1" max="100" step="1" value="35">
                   </div>
-                  <div class="forge-slider-row">
-                    <div class="forge-slider-head"><span class="sim-label">RADIUS</span><span class="forge-slider-val" data-for="sim-vib-radius" data-unit="m"></span></div>
-                    <input type="range" id="sim-vib-radius" class="forge-slider" min="10" max="500" step="10" value="150">
-                  </div>
+                  <div class="forge-slider-note">Site-wide, 60 s, like the engine's blast: every node's vibration reading rises by the PPV. No ground movement.</div>
                 </div>
               </div>
 

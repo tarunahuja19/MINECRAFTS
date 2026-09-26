@@ -7,7 +7,7 @@ exact physics and layout helpers of the simulation sandbox session.
 
 import json
 import math
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional, Union
 import urllib.error
 import urllib.request
 
@@ -49,16 +49,41 @@ class CaveInEvent(BaseModel):
     duration_h: float = Field(..., gt=0)
     warning_hours: float = 8.0
     source: Optional[str] = None
+    # TILT is the engine's own tilt: a cave-in centred one radius off the
+    # target so the target sits on the bowl's flank (App.tsx handleTriggerEvent).
+    # The fields below only describe it for the FORGE UI; the maths is the cave-in.
+    kind: Literal["cave_in", "tilt"] = "cave_in"
+    target_x: Optional[float] = None
+    target_y: Optional[float] = None
+    rate_mm_per_m: Optional[float] = None
+    direction_deg: Optional[float] = None
+
+
+class VibrationEvent(BaseModel):
+    """Blast vibration, as Session.apply_vibration: a site-wide PPV added to
+    every node's vibration RMS for duration_s. It moves no ground and changes
+    no node state."""
+
+    type: Literal["vibration"]
+    x: float = 0.0
+    y: float = 0.0
+    day: float = Field(..., ge=0)
+    ppv_mm_s: float = Field(..., gt=0)
+    duration_s: float = Field(60.0, gt=0)
+    source: Optional[str] = None
+
+
+ForgeEvent = Annotated[Union[CaveInEvent, VibrationEvent], Field(discriminator="type")]
 
 
 class ForgeFrameRequest(BaseModel):
     day: float = 0.0
-    events: list[CaveInEvent] = Field(default_factory=list)
+    events: list[ForgeEvent] = Field(default_factory=list)
     include_grids: bool = False
 
 
 class ForgeRangeRequest(BaseModel):
-    events: list[CaveInEvent] = Field(default_factory=list)
+    events: list[ForgeEvent] = Field(default_factory=list)
 
 
 def event_to_pillar_failure(ev: CaveInEvent) -> PillarFailure:
@@ -83,7 +108,15 @@ async def health():
 @app.post("/forge/frame")
 async def forge_frame(req: ForgeFrameRequest):
     """Compute ground truth deformation, perturbations, and node states for a given day and events."""
-    failures: list[PillarFailure] = [event_to_pillar_failure(ev) for ev in req.events]
+    failures: list[PillarFailure] = [
+        event_to_pillar_failure(ev) for ev in req.events if isinstance(ev, CaveInEvent)
+    ]
+    # Vibration transient in force on this day (Session: base + transient).
+    vib_mm_s = sum(
+        ev.ppv_mm_s
+        for ev in req.events
+        if isinstance(ev, VibrationEvent) and ev.day <= req.day <= ev.day + ev.duration_s / 86400.0
+    )
 
     # 1. Base Knothe ground truth
     base_ch = surface.channels(_X, _Y, req.day)
@@ -161,8 +194,8 @@ async def forge_frame(req: ForgeFrameRequest):
                 "displacement": disp_mm,
                 # Vertical ground drop at the node (bowl + cave-ins), for the FORGE node card.
                 "subsidence_mm": round(float(total_channels["s"][iy, ix]) * 1000.0, 1),
-                "vib_rms": 0,
-                "vib_peak": 0,
+                "vib_rms": round(vib_mm_s, 2),
+                "vib_peak": round(vib_mm_s * 1.45, 2),
                 "vib_fdom": 0.0,
                 "rssi": -90.0,
                 "snr": 20.0,
@@ -176,8 +209,8 @@ async def forge_frame(req: ForgeFrameRequest):
                     "max_displacement": disp_mm,
                     "max_temperature": 28.0,
                     "min_battery": 3600,
-                    "max_vib_peak": 0,
-                    "max_vib_rms": 0,
+                    "max_vib_peak": round(vib_mm_s * 1.45, 2),
+                    "max_vib_rms": round(vib_mm_s, 2),
                     "last_alive": 1,
                     "last_seq": 1,
                     "node_state": st,
@@ -201,6 +234,7 @@ async def forge_frame(req: ForgeFrameRequest):
         },
         "nodes": nodes_data,
         "node_states": node_states,
+        "vib_mm_s": round(vib_mm_s, 2),
     }
     if req.include_grids:
         res["channels"] = {k: v.tolist() for k, v in total_channels.items()}
@@ -217,6 +251,8 @@ async def forge_range(req: ForgeRangeRequest):
 
     latest_end = 0.0
     for ev in req.events:
+        if isinstance(ev, VibrationEvent):
+            continue
         t_collapse_days = ev.day + (ev.warning_hours / 24.0)
         duration_days = ev.duration_h / 24.0
         event_end = t_collapse_days + duration_days + 5.0

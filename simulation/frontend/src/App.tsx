@@ -585,10 +585,23 @@ export const App: React.FC = () => {
   // FORGE cave-in look: the same dust, shake and toast as a collapse trigger,
   // but no triggerCollapse — FORGE's ground comes only from :8020 frames, so
   // carving here too would draw the bowl twice.
-  const playForgeCaveInEffect = (cx: number, cy: number, rad: number, depth: number) => {
+  const playForgeCaveInEffect = (cx: number, cy: number, rad: number, depth: number, isTilt = false) => {
     spawnImpactBurst(cx, cy, rad, depth);
-    addImpact(0.7, 0.9);
-    showToast(`💥 VOID ROOF CAVE-IN: ΔZ=${depth.toFixed(2)}m at (${cx.toFixed(0)}m, ${cy.toFixed(0)}m)`);
+    addImpact(isTilt ? 0.5 : 0.7, 0.9);
+    showToast(
+      isTilt
+        ? `📐 SURFACE TILT: bowl centred at (${cx.toFixed(0)}m, ${cy.toFixed(0)}m), ΔZ=${depth.toFixed(2)}m, r=${rad.toFixed(0)}m`
+        : `💥 VOID ROOF CAVE-IN: ΔZ=${depth.toFixed(2)}m at (${cx.toFixed(0)}m, ${cy.toFixed(0)}m)`,
+    );
+  };
+
+  // FORGE vibration look: shake and ground ripple only. No geomechanics call,
+  // since a blast moves no ground (Session.apply_vibration).
+  const playForgeVibrationEffect = (ppv: number) => {
+    setVibrationPPV(ppv);
+    setVibrationPulse((p) => p + 1);
+    addImpact(Math.min(2.0, 0.5 + ppv / 30.0), 2.0);
+    showToast(`⚡ BLAST SHOCKWAVE: PPV=${ppv.toFixed(1)} mm/s (0 mm static subsidence)`);
   };
 
   const handleTriggerEvent = (
@@ -769,11 +782,13 @@ export const App: React.FC = () => {
   // Assigned in an effect (same as isRunningRef above), never during render.
   const triggerEventRef = useRef(handleTriggerEvent);
   const forgeCaveInEffectRef = useRef(playForgeCaveInEffect);
+  const forgeVibrationEffectRef = useRef(playForgeVibrationEffect);
   const startRef = useRef(handleStart);
   const pauseRef = useRef(handlePause);
   useEffect(() => {
     triggerEventRef.current = handleTriggerEvent;
     forgeCaveInEffectRef.current = playForgeCaveInEffect;
+    forgeVibrationEffectRef.current = playForgeVibrationEffect;
     startRef.current = handleStart;
     pauseRef.current = handlePause;
   });
@@ -858,7 +873,13 @@ export const App: React.FC = () => {
           break;
         }
         case "forge-effect": {
-          if (!engineReadOnly || d.type !== "cave_in") break;
+          if (!engineReadOnly) break;
+          if (d.type === "vibration") {
+            const ppv = Number.isFinite(d.ppv) ? (d.ppv as number) : 35;
+            forgeVibrationEffectRef.current(ppv);
+            break;
+          }
+          if (d.type !== "cave_in" && d.type !== "tilt") break;
           if (![d.cx, d.cy, d.rad, d.depth].every(Number.isFinite)) break;
           // Beacon on the event, same as the `trigger` command.
           {
@@ -867,14 +888,14 @@ export const App: React.FC = () => {
             setTargetLocation({
               x: d.cx,
               y: d.cy,
-              label: `Cave-in (${d.cx.toFixed(0)}m, ${d.cy.toFixed(0)}m)`,
+              label: `${d.type === "tilt" ? "Tilt bowl" : "Cave-in"} (${d.cx.toFixed(0)}m, ${d.cy.toFixed(0)}m)`,
               elev,
               slopeDeg: slope,
               zoneName: classifyTerrainZone(elev, slope),
             });
           }
           setCollapseRadiusM(d.rad);
-          forgeCaveInEffectRef.current(d.cx, d.cy, d.rad, d.depth);
+          forgeCaveInEffectRef.current(d.cx, d.cy, d.rad, d.depth, d.type === "tilt");
           break;
         }
         case "forge-preview": {
