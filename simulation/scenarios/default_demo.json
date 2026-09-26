@@ -1,0 +1,32 @@
+{
+  "name": "default_demo",
+  "seed": 20260927,
+  "base_iso_time": "2026-01-01T00:00:00Z",
+  "duration_days": 365,
+  "tick_seconds": 3600,
+  "events": [
+    {
+      "type": "crack",
+      "day": 60,
+      "x0": -110, "y0": -70, "x1": 60, "y1": 10,
+      "throw_m": 0.4, "width_m": 10, "open_days": 3
+    },
+    {
+      "type": "tilt",
+      "day": 120,
+      "x": 145, "y": 0,
+      "radius_m": 60, "rate_mm_per_m": 5, "direction_deg": 90, "over_days": 10
+    },
+    {
+      "type": "vibration",
+      "day": 150,
+      "ppv_mm_s": 45, "duration_s": 60
+    },
+    {
+      "type": "cave_in",
+      "day": 200,
+      "x": -200, "y": 120,
+      "radius_m": 35, "depth_m": 6, "duration_h": 4.8, "warning_hours": 8
+    }
+  ]
+}
