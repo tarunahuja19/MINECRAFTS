@@ -1319,13 +1319,12 @@ body.sim-paused #tab-alarms {
   min-height: 260px;
 }
 
-#forge-minimap-wrap {
+#forge-minimap {
   flex-shrink: 0;
-  padding: 6px;
+  height: 260px;
   background: #05090D;
 }
-#forge-minimap { width: 100%; height: auto; display: block; aspect-ratio: 1 / 1; }
-#forge-minimap .node { cursor: pointer; }
+#forge-minimap .forge-target-icon { background: transparent; border: none; }
 
 #forge-alarm-list {
   flex: 1;

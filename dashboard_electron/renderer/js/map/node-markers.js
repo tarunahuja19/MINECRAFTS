@@ -534,6 +534,7 @@ var nodeMarkers = (function () {
     getNodeData: getNodeData,
     getAllNodes: getAllNodes,
     roleOf: roleOf,
-    tierLetterOf: tierLetterOf
+    tierLetterOf: tierLetterOf,
+    createIcon: createIcon
   };
 })();

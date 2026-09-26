@@ -3,19 +3,21 @@
 /**
  * dashboard_electron/test/verify_forge_b3.js
  *
- * B3: FORGE right column (health strip, node card, mini map, FORGE alarms)
+ * B3: FORGE right column (health strip, node card, Leaflet mini map, FORGE alarms)
  * coloured by the FORGE frame's node_states, plus the live radius preview.
+ * The mini map is the MAP tab's Leaflet view (same tiles and node icons).
  * Same harness as verify_forge_cavein.js: headless Chrome over CDP against
  * :8085 on 127.0.0.1, own FORGE server on :8022 (FORGE_PORT overrides).
  *
- *  1. radius slider 30 → 200 moves the preview ring (mini map + 3D command) before FIRE
+ *  1. radius slider 30 → 200 moves the dashed preview circle (getRadius, mini map + 3D command) before FIRE
  *  2. FIRE 10 m / 100 m at (100, 50) on day 20 clears the preview; PLAY at 20 d/s to END
  *     does not skip the collapse, and a FORGE alarm line appears
- *  3. day 20.43: health counts = frame counts; mini map and dots have as many nodes as MAP;
- *     every node within 1.2R is CRITICAL on the dots and the mini map
+ *  3. day 20.43: health counts = frame counts; mini map markers and dots have as many nodes as MAP;
+ *     every node within 1.2R is CRITICAL on the dots and has the critical icon on the mini map
  *  4. clicking a mini-map node fills the node card (CRITICAL, subsidence, nearest event, first day)
  *  5. RESET FORGE clears the FORGE alarms
- *  6. MAP / ALARMS unchanged; zero :8010, /control and forbidden /api/simulation/* requests
+ *  6. MAP / ALARMS unchanged; zero :8010, /control and forbidden /api/simulation/* requests;
+ *     every tile request goes to 127.0.0.1:8085 and no tile/image request leaves 127.0.0.1
  */
 
 const { spawn, spawnSync } = require('child_process');
@@ -155,8 +157,14 @@ async function run() {
     console.log(`  [SCREENSHOT] ${name}`);
   }
 
+  const requestUrls = [];
+  ws.on('message', (raw) => {
+    const msg = JSON.parse(raw);
+    if (msg.method === 'Network.requestWillBeSent') requestUrls.push(msg.params.request.url);
+  });
   await send('Page.enable');
   await send('Runtime.enable');
+  await send('Network.enable');
   // A /json/new tab does not inherit --window-size; pin the layout viewport.
   await send('Emulation.setDeviceMetricsOverride', { width: 1400, height: 900, deviceScaleFactor: 1, mobile: false });
   await sleep(3500);
@@ -262,11 +270,16 @@ async function run() {
   const column = () => evaluate(`(function () {
     function num(k) { var b = document.querySelector('#forge-health-counts b[data-k="' + k + '"]'); return b ? b.textContent : null; }
     var dots = {}; Array.prototype.forEach.call(document.querySelectorAll('#forge-health-body .forge-health-dot'), function (d) { dots[d.dataset.nodeId] = d.dataset.state; });
-    var mm = {}; Array.prototype.forEach.call(document.querySelectorAll('#forge-minimap circle.node'), function (c) { mm[c.dataset.nodeId] = c.dataset.state; });
-    var pv = document.getElementById('forge-minimap-preview');
+    // Mini map node state read off the DOM: the fill of the marker's icon svg.
+    var FILL = { '#00CC44': 'ACTIVE', '#FFA500': 'WARNING', '#FF2222': 'CRITICAL' };
+    var mm = {}; Array.prototype.forEach.call(document.querySelectorAll('#forge-minimap .leaflet-marker-icon.node-marker-led'), function (m) {
+      var shape = m.querySelector('svg circle, svg polygon');
+      mm[m.getAttribute('title')] = shape ? (FILL[shape.getAttribute('fill')] || shape.getAttribute('fill')) : null;
+    });
+    var pl = forgeMap.getPreviewLayer();
     var f = simTab.getForgeFrame();
     return { counts: { ACTIVE: num('ACTIVE'), WARNING: num('WARNING'), CRITICAL: num('CRITICAL') }, dots: dots, mini: mm,
-      preview: pv ? Number(pv.dataset.radiusM) : null, frameDay: f ? f.t_days : null, frameStates: f ? f.node_states : null,
+      preview: forgeMap.getPreviewRadius(), previewDashed: !!(pl && pl.options.dashArray), frameDay: f ? f.t_days : null, frameStates: f ? f.node_states : null,
       alarms: simTab.getForgeAlarms().map(function (a) { return a.text; }),
       alarmRows: document.querySelectorAll('#forge-alarm-list .forge-alarm-row').length };
   })()`);
@@ -285,7 +298,8 @@ async function run() {
     seen.push({ r, mini: c.preview, iframe: last && last.r });
   }
   console.log('  slider → mini map / 3D command:', JSON.stringify(seen));
-  check(seen.every((s) => s.mini === s.r), 'mini-map preview circle radius follows the slider 30 → 200 m');
+  check(seen.every((s) => s.mini === s.r), 'mini-map preview circle getRadius() follows the slider 30 → 200 m');
+  check((await column()).previewDashed, 'the mini-map preview circle is dashed');
   check(seen.every((s) => s.iframe === s.r), 'the 3D view receives forge-preview with the slider radius on every input');
   const lastPv = await evaluate(`window.__previews[window.__previews.length - 1]`, forgeCtx);
   check(lastPv.x === 100 && lastPv.y === 50, 'preview is centred on the FORGE target (100, 50)');
@@ -323,19 +337,25 @@ async function run() {
   check(Number(mid.counts.ACTIVE) === fc.ACTIVE && Number(mid.counts.WARNING) === fc.WARNING && Number(mid.counts.CRITICAL) === fc.CRITICAL,
     'health counts equal the frame node_states counts');
   check(fc.CRITICAL > 0, `the collapse makes nodes CRITICAL (${fc.CRITICAL})`);
-  const mapCount = await evaluate(`(nodeMarkers.getAllNodes() || []).length`);
-  check(Object.keys(mid.mini).length === mapCount && Object.keys(mid.dots).length === mapCount,
-    `mini map (${Object.keys(mid.mini).length}) and dots (${Object.keys(mid.dots).length}) have as many nodes as the MAP tab (${mapCount})`);
+  // Distinct node titles: the MAP tab currently leaves a second, orphaned set of marker DOM
+  // (nodes-loaded fires nodeMarkers.init twice), so raw DOM nodes would count every node twice.
+  const mapCount = await evaluate(`new Set(Array.prototype.map.call(document.querySelectorAll('#map-container .leaflet-marker-icon.node-marker-led'), function (m) { return m.getAttribute('title'); })).size`);
+  const miniCount = await evaluate(`document.querySelectorAll('#forge-minimap .leaflet-marker-icon.node-marker-led').length`);
+  check(mapCount > 0 && miniCount === mapCount && Object.keys(mid.dots).length === mapCount,
+    `mini map markers (${miniCount}) and dots (${Object.keys(mid.dots).length}) equal the MAP tab's marker count (${mapCount})`);
   const inside = Object.keys(nodePos).filter((id) => Math.hypot(nodePos[id][0] - 100, nodePos[id][1] - 50) <= 120);
   console.log('  within 1.2R:', inside.join(','));
   check(inside.length > 0 && inside.every((id) => mid.dots[id] === 'CRITICAL' && mid.mini[id] === 'CRITICAL'),
-    'every node within 1.2R is CRITICAL on the dots and on the mini map');
+    'every node within 1.2R is CRITICAL on the dots and has the critical icon on the mini map');
   check(Object.keys(mid.frameStates).every((id) => mid.dots[id] === mid.frameStates[id]), 'every dot matches its frame state');
+  check(Object.keys(mid.frameStates).every((id) => mid.mini[id] === mid.frameStates[id]), 'every mini-map icon matches its frame state');
+  const zoneCircles = await evaluate(`(function () { var n = 0; forgeMap.getMap().eachLayer(function (l) { if (l.getRadius && l.getBounds && (l.options.color === '#FFFFFF' || l.options.color === '#FF3B3B')) n++; }); return n; })()`);
+  check(zoneCircles === 2, `the started cave-in draws its white and red zone circles (${zoneCircles})`);
   await shot('forge-b3-during.png');
 
   // ---- 4. node detail ---------------------------------------------------------
   console.log('\n[4] Node detail for ' + inside[0]);
-  await evaluate(`document.querySelector('#forge-minimap circle.node[data-node-id="${inside[0]}"]').dispatchEvent(new MouseEvent('click'))`);
+  await evaluate(`document.querySelector('#forge-minimap .leaflet-marker-icon[title="${inside[0]}"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
   await sleep(200);
   const card = await evaluate(`(function () { var c = document.querySelector('#forge-node-detail .forge-node-card');
     return c ? { id: c.dataset.nodeId, state: c.dataset.state, text: c.innerText } : null; })()`);
@@ -361,6 +381,16 @@ async function run() {
   console.log('  page:', JSON.stringify(net));
   check(net.lab === 0 && !iframeNet.some((u) => /:8010/.test(u)), 'zero requests to :8010 from FORGE');
   check(net.control === 0 && net.forbidden.length === 0, 'zero /control and zero /api/simulation/* other than GET status');
+  const tileReqs = requestUrls.filter((u) => /\/tiles\//.test(u));
+  // Map imagery only: index.html's Google Fonts <link> is a separate, pre-existing off-host request.
+  const offHost = requestUrls.filter((u) => /^https?:/.test(u) && !/^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(u) &&
+    /\.(png|jpe?g|webp)(\?|$)|tile/i.test(u));
+  console.log(`  tile requests: ${tileReqs.length}; image/tile requests off 127.0.0.1: ${offHost.length}`);
+  check(tileReqs.length > 0 && tileReqs.every((u) => u.startsWith('http://127.0.0.1:8085/tiles/')), 'every tile request goes to http://127.0.0.1:8085/tiles/');
+  check(offHost.length === 0, 'no tile/image request leaves 127.0.0.1' + (offHost.length ? ': ' + offHost.slice(0, 3).join(', ') : ''));
+  const forgeTiles = await evaluate(`document.querySelectorAll('#forge-minimap img.leaflet-tile').length`);
+  check(forgeTiles > 0 && await evaluate(`Array.prototype.every.call(document.querySelectorAll('#forge-minimap img.leaflet-tile'), function (t) { return t.src.indexOf('http://127.0.0.1:8085/tiles/') === 0; })`),
+    `the FORGE mini map itself loaded tiles (${forgeTiles}), all from :8085`);
 
   console.log('\n=====================================================');
   console.log(failures === 0 ? 'ALL FORGE B3 CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

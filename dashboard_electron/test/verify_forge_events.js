@@ -261,11 +261,11 @@ async function run() {
   const column = () => evaluate(`(function () {
     function num(k) { var b = document.querySelector('#forge-health-counts b[data-k="' + k + '"]'); return b ? b.textContent : null; }
     var dots = {}; Array.prototype.forEach.call(document.querySelectorAll('#forge-health-body .forge-health-dot'), function (d) { dots[d.dataset.nodeId] = d.dataset.state; });
-    var mm = {}; Array.prototype.forEach.call(document.querySelectorAll('#forge-minimap circle.node'), function (c) { mm[c.dataset.nodeId] = c.dataset.state; });
-    var pv = document.getElementById('forge-minimap-preview');
+    var mm = forgeMap.getMarkerStates();
+    var pv = forgeMap.getPreviewRadius();
     var f = simTab.getForgeFrame();
     return { counts: { ACTIVE: num('ACTIVE'), WARNING: num('WARNING'), CRITICAL: num('CRITICAL') }, dots: dots, mini: mm,
-      preview: pv ? Number(pv.dataset.radiusM) : null, frameDay: f ? f.t_days : null, frameStates: f ? f.node_states : null,
+      preview: pv, frameDay: f ? f.t_days : null, frameStates: f ? f.node_states : null,
       alarms: simTab.getForgeAlarms().map(function (a) { return a.text; }),
       alarmRows: document.querySelectorAll('#forge-alarm-list .forge-alarm-row').length };
   })()`);
@@ -363,7 +363,7 @@ async function run() {
   console.log('  preview:', JSON.stringify(lastPv));
   check(lastPv.line && lastPv.line.x0 === -60 && lastPv.line.y0 === 0 && lastPv.line.x1 === 60 && lastPv.line.y1 === 0,
     '3D preview command carries the line A-B');
-  check(await evaluate(`!!document.getElementById('forge-minimap-preview-line')`), 'mini map shows the dashed preview line');
+  check(await evaluate(`(function () { var l = forgeMap.getPreviewLayer(); return !!(l && l.getLatLngs && !l.getRadius && l.options.dashArray); })()`), 'mini map shows the dashed preview line');
   await evaluate(`simTab.selectNode('N01', 'forge')`);   // keep N05's label off the line
   await frameAt(19.5);
   await sleep(300);
@@ -398,8 +398,8 @@ async function run() {
   await evaluate(`document.getElementById('btn-forge-reset').click()`);
   await sleep(600);
   await evaluate(`document.querySelector('.sim-scenario-btn[data-type="vibration"]').click()`);
-  const vibPreview = await evaluate(`document.getElementById('forge-minimap-preview')`);
-  check(vibPreview === null, 'VIBRATION shows no radius preview (site-wide)');
+  const vibPreview = await evaluate(`!!forgeMap.getPreviewLayer()`);
+  check(vibPreview === false, 'VIBRATION shows no radius preview (site-wide)');
   await setSlider('sim-vib-ppv', 20);
   await frameAt(30);
   await evaluate(`window.__vibSeen = []`);

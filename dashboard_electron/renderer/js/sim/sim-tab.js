@@ -1173,7 +1173,6 @@ var simTab = (function () {
   var forgeSelectedNode = null;
   var forgePreviewOn = false;
   var FORGE_ALARM_MAX = 200;
-  var FORGE_SITE_HALF_M = 300;   // FORGE terrain is the 600 m district square
 
   function forgeLayoutNodes() {
     var all = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getNodes)
@@ -1377,61 +1376,37 @@ var simTab = (function () {
     return r > 0 ? r : null;
   }
 
-  function renderForgeMiniMap() {
-    var svg = document.getElementById('forge-minimap');
-    if (!svg) return;
-    var H = FORGE_SITE_HALF_M;
-    var k = 200 / (2 * H);                               // px per metre
-    function px(x) { return ((x + H) * k).toFixed(1); }
-    function py(y) { return ((H - y) * k).toFixed(1); }  // north up
-    var day = forgeLastFrame ? Number(forgeLastFrame.t_days) : forgeState.day;
-    var out = '<rect x="0" y="0" width="200" height="200" fill="#0B141A" stroke="#3A5566" stroke-width="1"/>' +
-      '<line x1="100" y1="0" x2="100" y2="200" stroke="#1A2A33" stroke-width="0.5"/>' +
-      '<line x1="0" y1="100" x2="200" y2="100" stroke="#1A2A33" stroke-width="0.5"/>';
-    forgeState.events.forEach(function (ev, idx) {
-      if (ev.type === 'vibration') return;   // site-wide: event list only
-      var started = ev.day <= day + 1e-9;
-      var stroke = started ? '#FF5252' : '#6B4040';
-      var lbl = 'd' + Number(ev.day).toFixed(1);
-      if (ev.type === 'crack') {
-        out += '<line class="event" data-event="' + idx + '" x1="' + px(ev.x0) + '" y1="' + py(ev.y0) + '" x2="' + px(ev.x1) + '" y2="' + py(ev.y1) +
-          '" stroke="' + stroke + '" stroke-width="' + (started ? 2 : 1) + '"/>' +
-          '<text x="' + px((ev.x0 + ev.x1) / 2) + '" y="' + (py((ev.y0 + ev.y1) / 2) - 3).toFixed(1) + '" fill="#FF9A9A" font-size="7" text-anchor="middle">C ' + lbl + '</text>';
-        return;
-      }
-      var c = ev.type === 'tilt' ? forgeTiltCentre(ev.radius_m, ev.direction_deg, ev.x, ev.y) : { x: ev.x, y: ev.y };
-      out += '<circle class="event" data-event="' + idx + '" cx="' + px(c.x) + '" cy="' + py(c.y) + '" r="' + (ev.radius_m * k).toFixed(1) +
-        '" fill="' + (started ? 'rgba(255,34,34,0.12)' : 'none') + '" stroke="' + stroke + '" stroke-width="1"/>' +
-        '<text x="' + px(c.x) + '" y="' + (py(c.y) - ev.radius_m * k - 2).toFixed(1) + '" fill="#FF9A9A" font-size="7" text-anchor="middle">' + (ev.type === 'tilt' ? 'T ' : '') + lbl + '</text>';
-    });
-    if (forgePreviewOn && selectedScenarioType === 'crack') {
+  // What the dashed preview shows: a ring (radius sliders, or a crack's first
+  // point) or the drawn crack line. null when no preview is on.
+  function forgePreviewShape() {
+    if (!forgePreviewOn) return null;
+    if (selectedScenarioType === 'crack') {
       var cl = forgeCrackLine();
-      if (cl) {
-        out += '<line id="forge-minimap-preview-line" x1="' + px(cl.x0) + '" y1="' + py(cl.y0) + '" x2="' + px(cl.x1) + '" y2="' + py(cl.y1) +
-          '" stroke="#FFAA00" stroke-width="1.2" stroke-dasharray="4 2"/>';
-      } else if (crackDraw.a) {
-        out += '<circle id="forge-minimap-preview-a" cx="' + px(crackDraw.a.x) + '" cy="' + py(crackDraw.a.y) + '" r="2.5" fill="#FFAA00"/>';
-      }
+      if (cl) return { line: { x0: cl.x0, y0: cl.y0, x1: cl.x1, y1: cl.y1, width_m: sliderValue('sim-crack-width') } };
+      var w = sliderValue('sim-crack-width');
+      return crackDraw.a && w > 0 ? { circle: { x: crackDraw.a.x, y: crackDraw.a.y, r: w } } : null;
     }
-    var pr = forgePreviewOn ? forgePreviewRadius() : null;
-    if (pr) {
-      var pc = forgePreviewCentre(pr);
-      out += '<circle id="forge-minimap-preview" cx="' + px(pc.x) + '" cy="' + py(pc.y) + '" r="' + (pr * k).toFixed(1) +
-        '" data-radius-m="' + pr + '" fill="none" stroke="#FFAA00" stroke-width="1" stroke-dasharray="4 2"/>';
+    var pr = forgePreviewRadius();
+    if (!pr) return null;
+    var pc = forgePreviewCentre(pr);
+    return { circle: { x: pc.x, y: pc.y, r: pr } };
+  }
+
+  function renderForgeMiniMap() {
+    if (typeof forgeMap !== 'undefined') {
+      var nodes = forgeLayoutNodes();
+      var states = {};
+      nodes.forEach(function (n) { states[forgeNodeId(n)] = forgeStateOf(forgeNodeId(n)); });
+      forgeMap.update({
+        nodes: nodes,
+        states: states,
+        zones: forgeLastFrame && forgeLastFrame.zones || [],
+        cracks: forgeLastFrame && forgeLastFrame.cracks || [],
+        preview: forgePreviewShape(),
+        target: forgeTarget,
+        selected: forgeSelectedNode
+      });
     }
-    var tx = px(forgeTarget.x), ty = py(forgeTarget.y);
-    out += '<g id="forge-minimap-target" stroke="#FFFFFF" stroke-width="0.8"><line x1="' + (tx - 5) + '" y1="' + ty + '" x2="' + (tx - 1.5) + '" y2="' + ty + '"/><line x1="' + (+tx + 1.5) + '" y1="' + ty + '" x2="' + (+tx + 5) + '" y2="' + ty + '"/>' +
-      '<line x1="' + tx + '" y1="' + (ty - 5) + '" x2="' + tx + '" y2="' + (ty - 1.5) + '"/><line x1="' + tx + '" y1="' + (+ty + 1.5) + '" x2="' + tx + '" y2="' + (+ty + 5) + '"/></g>';
-    forgeLayoutNodes().forEach(function (n) {
-      var nid = forgeNodeId(n);
-      var st = forgeStateOf(nid);
-      out += '<circle class="node" data-node-id="' + nid + '" data-state="' + st + '" cx="' + px(n.x) + '" cy="' + py(n.y) + '" r="3.2" fill="' + forgeStateColor(st) +
-        '" stroke="' + (nid === forgeSelectedNode ? '#FFFFFF' : '#05090D') + '" stroke-width="' + (nid === forgeSelectedNode ? 1.4 : 0.6) + '"><title>' + nid + ' · ' + st + '</title></circle>';
-    });
-    svg.innerHTML = out;
-    Array.prototype.forEach.call(svg.querySelectorAll('.node'), function (c) {
-      c.addEventListener('click', function () { selectNode(c.getAttribute('data-node-id'), 'forge'); });
-    });
     var badge = document.getElementById('forge-map-badge');
     if (badge) badge.textContent = forgeState.events.length + ' EVENT' + (forgeState.events.length === 1 ? '' : 'S');
   }
@@ -2102,6 +2077,11 @@ var simTab = (function () {
       if (!forgeInitialized) {
         forgeInitialized = true;
         seedForge();
+      }
+      if (typeof forgeMap !== 'undefined') {
+        forgeMap.init('forge-minimap');
+        forgeMap.invalidate();
+        renderForgeMiniMap();
       }
     } else {
       pauseForge();
