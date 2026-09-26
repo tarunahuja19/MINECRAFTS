@@ -93,7 +93,11 @@ def test_cave_in_delta_evolution(client):
 
 
 def test_node_states_match_session(client):
-    """Node_states match Session's own result for the same failures and day."""
+    """Node_states agree with Session's distance rule for the same failures and day.
+
+    FORGE also reads the pit's own strain and tilt, so it may raise nodes beyond
+    1.5 R to WARNING that the live rule leaves ACTIVE; it must never be milder,
+    and the CRITICAL footprint must be identical."""
     day = 20.2
     event = [
         {
@@ -126,11 +130,17 @@ def test_node_states_match_session(client):
     active_colls = active_collapses(session.pillar_failures, day)
     expected_states = session._assign_node_states(active_colls)
 
-    assert forge_states == expected_states
+    rank = {"ACTIVE": 0, "WARNING": 1, "CRITICAL": 2}
+    assert forge_states.keys() == expected_states.keys()
+    for nid, expected in expected_states.items():
+        assert rank[forge_states[nid]] >= rank[expected], nid
+        if expected == "CRITICAL" or forge_states[nid] == "CRITICAL":
+            assert forge_states[nid] == expected, nid
 
 
 def test_nodes_inside_critical_radius_lifecycle(client):
-    """Nodes inside 1.2R are CRITICAL during the active window and ACTIVE after it ends."""
+    """Nodes inside 1.2R are CRITICAL once the event starts, and stay CRITICAL after
+    the collapse window ends: damage does not heal."""
     # Find a node close to center (0, 0)
     target_node = min(_sensor_array.nodes, key=lambda n: math.hypot(n.x_m, n.y_m))
     dist = math.hypot(target_node.x_m, target_node.y_m)
@@ -160,7 +170,7 @@ def test_nodes_inside_critical_radius_lifecycle(client):
     res_ended = client.post("/forge/frame", json={"day": 21.0, "events": event})
     assert res_ended.status_code == 200
     states_ended = res_ended.json()["node_states"]
-    assert states_ended[node_key] == "ACTIVE"
+    assert states_ended[node_key] == "CRITICAL"
 
 
 def test_forge_range(client):
@@ -370,16 +380,16 @@ def test_seed_round_trip(client):
         assert math.isclose(rebuilt_pf.duration_days, original_failure["duration_days"], rel_tol=1e-6)
 
 
-def test_tilt_is_an_offset_cave_in(client):
-    """A tilt event is computed exactly as the cave-in it describes."""
+def test_tilt_is_solved_not_an_offset_cave_in(client):
+    """A tilt event (and the legacy cave_in kind "tilt") no longer runs as a plain
+    cave-in one radius off the target: its depth is solved to deliver the rate, so it
+    differs from the cave-in it used to be."""
     cave = {"type": "cave_in", "x": 200.0, "y": 50.0, "radius_m": 100.0, "depth_m": 0.5,
             "day": 20.0, "duration_h": 4.8}
-    tilt = dict(cave, kind="tilt", target_x=100.0, target_y=50.0, rate_mm_per_m=5.0, direction_deg=0.0)
+    tilt = dict(cave, kind="tilt", target_x=100.0, target_y=50.0, rate_mm_per_m=5.0, direction_deg=90.0)
     a = client.post("/forge/frame", json={"day": 40.0, "events": [cave]}).json()
     b = client.post("/forge/frame", json={"day": 40.0, "events": [tilt]}).json()
-    assert a["terrain"] == b["terrain"]
-    assert a["node_states"] == b["node_states"]
-    assert [n["subsidence_mm"] for n in a["nodes"]] == [n["subsidence_mm"] for n in b["nodes"]]
+    assert a["terrain"] != b["terrain"]
 
 
 def test_vibration_window(client):

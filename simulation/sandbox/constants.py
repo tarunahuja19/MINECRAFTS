@@ -40,6 +40,9 @@ TAN_BETA  = 1.9          # 1.82 fitted at Barapukuria, same Gondwana strata
 C_KNOTHE  = 0.04         # per day; matched to measured curves via SDPS
 EPS_TENSILE_LIMIT  = 5.3 # mm/m, Kamptee coalfield, Central India
 EPS_COMPRESS_LIMIT = 6.6 # mm/m, same
+# ASSUMED building-damage style limits on the tilt an event adds to a node's ground.
+TILT_WARNING_MM_M  = 3.0  # mm/m
+TILT_CRITICAL_MM_M = 10.0 # mm/m
 
 # ---------------------------------------------------------------------------
 # Derived parameters — computed, never hand-typed (source plan Section 1.1:

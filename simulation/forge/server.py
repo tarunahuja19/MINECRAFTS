@@ -16,11 +16,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from pydantic import BaseModel, Field
 
-from sandbox import collapse, constants, surface
+from forge import states
+from sandbox import collapse, constants, events as event_maths, surface
 from sandbox.collapse import PillarFailure
 from sandbox.mqtt_bridge import _node_topic_id
 from sandbox.sensors import SensorArray, SensorNoiseConfig
-from sandbox.session import active_collapses, assign_node_states
 
 app = FastAPI(title="FORGE Math Server", version="1.0.0")
 
@@ -49,9 +49,8 @@ class CaveInEvent(BaseModel):
     duration_h: float = Field(..., gt=0)
     warning_hours: float = 8.0
     source: Optional[str] = None
-    # TILT is the engine's own tilt: a cave-in centred one radius off the
-    # target so the target sits on the bowl's flank (App.tsx handleTriggerEvent).
-    # The fields below only describe it for the FORGE UI; the maths is the cave-in.
+    # Legacy TILT shape (App.tsx handleTriggerEvent): with all four tilt fields
+    # set it is read as a TiltEvent over 3 days (sandbox.events.normalise).
     kind: Literal["cave_in", "tilt"] = "cave_in"
     target_x: Optional[float] = None
     target_y: Optional[float] = None
@@ -73,7 +72,39 @@ class VibrationEvent(BaseModel):
     source: Optional[str] = None
 
 
-ForgeEvent = Annotated[Union[CaveInEvent, VibrationEvent], Field(discriminator="type")]
+class TiltEvent(BaseModel):
+    """Ground tilting at a target: a bowl one radius away along direction_deg
+    (0 = N, 90 = E), deep enough that the tilt there reaches rate_mm_per_m."""
+
+    type: Literal["tilt"]
+    x: float
+    y: float
+    radius_m: float = Field(..., gt=0)
+    rate_mm_per_m: float = Field(..., gt=0)
+    direction_deg: float
+    over_days: float = Field(..., gt=0)
+    day: float = Field(..., ge=0)
+    source: Optional[str] = None
+
+
+class CrackEvent(BaseModel):
+    """A fissure along a segment with a vertical throw at its midpoint."""
+
+    type: Literal["crack"]
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+    throw_m: float = Field(..., gt=0)
+    width_m: float = Field(..., gt=0)
+    open_days: float = Field(..., gt=0)
+    day: float = Field(..., ge=0)
+    source: Optional[str] = None
+
+
+ForgeEvent = Annotated[
+    Union[CaveInEvent, TiltEvent, CrackEvent, VibrationEvent], Field(discriminator="type")
+]
 
 
 class ForgeFrameRequest(BaseModel):
@@ -86,17 +117,8 @@ class ForgeRangeRequest(BaseModel):
     events: list[ForgeEvent] = Field(default_factory=list)
 
 
-def event_to_pillar_failure(ev: CaveInEvent) -> PillarFailure:
-    """Convert strict CaveInEvent to physics engine PillarFailure."""
-    return PillarFailure(
-        cx=ev.x,
-        cy=ev.y,
-        radius_m=ev.radius_m,
-        t_init_days=ev.day,
-        t_collapse_days=ev.day + (ev.warning_hours / 24.0),
-        duration_days=ev.duration_h / 24.0,
-        magnitude_m=ev.depth_m,
-    )
+def _event_dicts(events: list) -> list[dict]:
+    return [event_maths.normalise(ev.model_dump()) for ev in events]
 
 
 @app.get("/health")
@@ -108,9 +130,9 @@ async def health():
 @app.post("/forge/frame")
 async def forge_frame(req: ForgeFrameRequest):
     """Compute ground truth deformation, perturbations, and node states for a given day and events."""
-    failures: list[PillarFailure] = [
-        event_to_pillar_failure(ev) for ev in req.events if isinstance(ev, CaveInEvent)
-    ]
+    evs = _event_dicts(req.events)
+    failures_by_event = [event_maths.to_failures(ev) for ev in evs]
+    failures: list[PillarFailure] = [pf for fs in failures_by_event for pf in fs]
     # Vibration transient in force on this day (Session: base + transient).
     vib_mm_s = sum(
         ev.ppv_mm_s
@@ -137,9 +159,10 @@ async def forge_frame(req: ForgeFrameRequest):
         "strain_y": base_ch["strain_y"] + deltas["delta_strain_y"],
     }
 
-    # 4. Active collapses & authoritative node health states
-    active_colls = active_collapses(failures, req.day)
-    node_states = assign_node_states(_sensor_array.nodes, active_colls)
+    # 4. Authoritative node health states: started events keep their footprint.
+    node_states = states.forge_node_states(
+        _sensor_array.nodes, evs, failures_by_event, req.day, deltas
+    )
 
     # 5. Perturbations for 3D viewport renderer
     perturbations = []
@@ -236,6 +259,10 @@ async def forge_frame(req: ForgeFrameRequest):
         },
         "nodes": nodes_data,
         "node_states": node_states,
+        "zones": states.hazard_zones(evs, failures_by_event, req.day),
+        "cracks": states.strain_cracks(
+            _X, _Y, total_channels, deltas, evs, failures_by_event, req.day
+        ),
         "vib_mm_s": round(vib_mm_s, 2),
     }
     if req.include_grids:
@@ -252,13 +279,9 @@ async def forge_range(req: ForgeRangeRequest):
         return {"end_day": 365}
 
     latest_end = 0.0
-    for ev in req.events:
-        if isinstance(ev, VibrationEvent):
-            continue
-        t_collapse_days = ev.day + (ev.warning_hours / 24.0)
-        duration_days = ev.duration_h / 24.0
-        event_end = t_collapse_days + duration_days + 5.0
-        if event_end > latest_end:
+    for ev in _event_dicts(req.events):
+        event_end = event_maths.event_end_day(ev)
+        if event_end is not None and event_end > latest_end:
             latest_end = event_end
 
     end_day = max(365, int(math.ceil(latest_end)))
