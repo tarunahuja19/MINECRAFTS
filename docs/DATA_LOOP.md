@@ -80,6 +80,27 @@ verifier proves. Path B is the same data arriving without a database round trip;
 a dashboard that connects late has missed the MQTT frames but reads the history
 back from Postgres via Path A.
 
+### 2.2a What the node values depend on
+
+Every reading is the Knothe ground model sampled at the node, plus sensor noise.
+Both are a pure function of two `SessionConfig` fields:
+
+| Field | Drives | Live default |
+|---|---|---|
+| `seed` | the whole sensor noise stream (`SensorArray.rng`) | `42` |
+| `base_iso_time` | every `t_iso` / `ts` | empty → wall-clock UTC at start |
+
+With both fixed, `nodes.csv` is byte-identical run to run
+(`simulation/tests/test_reproducibility.py`). Live mode leaves `base_iso_time`
+empty on purpose, so each run gets fresh timestamps and is not swallowed by the
+`ON CONFLICT (node_id, ts) DO NOTHING` in Postgres. Per-node hardware offsets
+(temperature, RSSI) are fixed per node id and never change.
+
+**FORGE is not on either path.** Its 3D effects run inside its own iframe
+(`simEmbed.triggerScenario('forge', …)`), and its consequence numbers come from
+the Scenario Lab on `:8010`. Neither writes to the engine, Postgres, MQTT, or
+the dashboard's alarm state.
+
 ### 2.3 Full flowchart
 
 ```mermaid

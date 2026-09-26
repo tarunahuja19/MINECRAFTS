@@ -16,7 +16,7 @@ import asyncio
 import math
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -94,7 +94,7 @@ class SimulationSession:
 
         # Physics and instrumentation components
         self.zone_manager = segments.ZoneManager(log_to_console=False)
-        self.sensor_array = SensorArray(self.config.noise_config)
+        self.sensor_array = SensorArray(self._noise_config())
 
         # Interventions & active disturbances
         self.pillar_failures: list[PillarFailure] = []
@@ -137,6 +137,15 @@ class SimulationSession:
             broker_port=int(os.environ.get("R4_BROKER_PORT", "1883")),
             enabled=os.environ.get("R4_MQTT_ENABLED", "1") != "0",
         )
+
+    def _noise_config(self) -> SensorNoiseConfig:
+        """Noise budget with its seed taken from `SessionConfig.seed`.
+
+        `SessionConfig.seed` is the one seed for a run; the sensor noise
+        stream must follow it, or two sessions with different seeds would
+        still produce identical telemetry.
+        """
+        return replace(self.config.noise_config, seed=self.config.seed)
 
     @property
     def session_id(self) -> str:
@@ -674,7 +683,7 @@ class SimulationSession:
         # Zone state machine and sensor noise stream are stateful across ticks
         # and must not carry a previous run's history into a new one.
         self.zone_manager = segments.ZoneManager(log_to_console=False)
-        self.sensor_array = SensorArray(self.config.noise_config)
+        self.sensor_array = SensorArray(self._noise_config())
         self.packet_aggregator.reset(self.config.t_start_seconds)
         self.last_finalized_packet = None
         self.mqtt_bridge.reset()
