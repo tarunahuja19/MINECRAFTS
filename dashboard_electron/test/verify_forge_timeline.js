@@ -5,11 +5,11 @@
  *
  * Automated verification of the independent FORGE timeline driven by :8020 frames:
  * 1. Spawns its own :8020-code math server on port 8022 (FORGE_PORT overrides; 8021 is held by macOS launchd).
- * 2. Opens FORGE; verifies badge displays day and END >= 120.
+ * 2. Opens FORGE; verifies badge displays day and END >= 365.
  * 3. Tests slider scrub to day 10 and day 60: asserts forge-frame-applied matches
  *    direct POST /forge/frame math.
  * 4. Captures screenshots at day 5, day 40, and END.
- * 5. Tests PLAY at 20 d/s from day 100: advances, PAUSE holds for 3 s, resumes
+ * 5. Tests PLAY at 20 d/s from day 340: advances, PAUSE holds for 3 s, resumes
  *    and auto-stops at END.
  * 6. Verifies request isolation: 0 requests to :8000/control, 0 to :8080/api/simulation/*
  *    except GET .../status.
@@ -317,15 +317,15 @@ async function run() {
         };
       })()
     `);
-    if (badgeInfo && badgeInfo.text.indexOf('FORGE · Day') !== -1 && Number(badgeInfo.endDay) >= 120) {
+    if (badgeInfo && badgeInfo.text.indexOf('FORGE · Day') !== -1 && Number(badgeInfo.endDay) >= 365) {
       break;
     }
   }
 
   console.log('  Badge text:', badgeInfo.text);
-  if (!(Number(badgeInfo.endDay) >= 120)) {
+  if (!(Number(badgeInfo.endDay) >= 365)) {
     cleanupAll();
-    throw new Error(`Expected badge to show END >= 120; got "${badgeInfo.text}" (endDay: ${badgeInfo.endDay})`);
+    throw new Error(`Expected badge to show END >= 365; got "${badgeInfo.text}" (endDay: ${badgeInfo.endDay})`);
   }
   const note = await evaluate(`document.getElementById('forge-badge-note').textContent`);
   console.log('  Badge note:', JSON.stringify(note));
@@ -446,31 +446,31 @@ async function run() {
   await sleep(600);
   await captureScreenshot(path.join(imgDir, 'forge-day-40.png'));
 
-  // Step 8: PLAY at 20 d/s from day 100 with PAUSE mid-way (holds for 3s), then auto-stop at END
-  console.log('\n[STEP 8] Testing PLAY at 20 d/s from day 100 with PAUSE hold...');
+  // Step 8: PLAY at 20 d/s from day 340 with PAUSE mid-way (holds for 3s), then auto-stop at END
+  console.log('\n[STEP 8] Testing PLAY at 20 d/s from day 340 with PAUSE hold...');
   // Select 20 d/s
   await evaluate(`
     (function() {
       var btn20 = document.querySelector('.forge-speed-btn[data-speed="20"]');
       if (btn20) btn20.click();
       var s = document.getElementById('forge-day-slider');
-      s.value = '100';
+      s.value = '340';
       s.dispatchEvent(new Event('input'));
     })()
   `);
   await sleep(400);
 
   // Click PLAY
-  console.log('  Starting PLAY from day 100...');
+  console.log('  Starting PLAY from day 340...');
   await evaluate(`document.getElementById('forge-play-btn').click();`);
 
   // Let it play for ~250ms to advance
   await sleep(250);
   const statePlaying = await evaluate(`window.simTab.getForgeState()`);
   console.log(`  Advancing: current day is ${statePlaying.day.toFixed(2)} (playing: ${statePlaying.playing})`);
-  if (statePlaying.day <= 100) {
+  if (statePlaying.day <= 340) {
     cleanupAll();
-    throw new Error(`Expected day to advance beyond 100, but is ${statePlaying.day}`);
+    throw new Error(`Expected day to advance beyond 340, but is ${statePlaying.day}`);
   }
 
   // Click PAUSE mid-way
@@ -489,11 +489,11 @@ async function run() {
   }
   console.log('  PASS  PAUSE held day static for 3 s');
 
-  // Resume PLAY to END (120)
-  console.log('  Resuming PLAY to END (120)...');
+  // Resume PLAY to END (365)
+  console.log('  Resuming PLAY to END (365)...');
   await evaluate(`document.getElementById('forge-play-btn').click();`);
 
-  // Wait until it reaches 120 and stops by itself (at 20 d/s, remaining ~15 days takes ~750ms)
+  // Wait until it reaches 365 and stops by itself (at 20 d/s, remaining ~25 days takes ~1.25s)
   let stoppedAtEnd = false;
   let finalForgeState = null;
   for (let i = 0; i < 40; i++) {

@@ -249,7 +249,7 @@ async def forge_frame(req: ForgeFrameRequest):
 async def forge_range(req: ForgeRangeRequest):
     """Compute maximum simulation end-day based on latest event end time."""
     if not req.events:
-        return {"end_day": 120}
+        return {"end_day": 365}
 
     latest_end = 0.0
     for ev in req.events:
@@ -261,7 +261,7 @@ async def forge_range(req: ForgeRangeRequest):
         if event_end > latest_end:
             latest_end = event_end
 
-    end_day = max(120, int(math.ceil(latest_end)))
+    end_day = max(365, int(math.ceil(latest_end)))
     return {"end_day": end_day}
 
 

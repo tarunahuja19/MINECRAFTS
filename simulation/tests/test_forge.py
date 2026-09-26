@@ -164,30 +164,30 @@ def test_nodes_inside_critical_radius_lifecycle(client):
 
 
 def test_forge_range(client):
-    """POST /forge/range: no events -> 120; an event on day 118 -> end_day > 118."""
-    # 1. No events -> exactly 120
+    """POST /forge/range: no events -> 365; an event on day 360 -> end_day > 360."""
+    # 1. No events -> exactly 365
     res_empty = client.post("/forge/range", json={"events": []})
     assert res_empty.status_code == 200
-    assert res_empty.json()["end_day"] == 120
+    assert res_empty.json()["end_day"] == 365
 
-    # 2. Event on day 118 -> end_day > 118
-    event_118 = [
+    # 2. Event on day 360 -> end_day > 360
+    event_360 = [
         {
             "type": "cave_in",
             "x": 10.0,
             "y": 10.0,
             "radius_m": 50.0,
             "depth_m": 2.0,
-            "day": 118.0,
+            "day": 360.0,
             "duration_h": 4.8,
         }
     ]
-    res_118 = client.post("/forge/range", json={"events": event_118})
-    assert res_118.status_code == 200
-    end_day = res_118.json()["end_day"]
-    assert end_day > 118
-    # 118 + 8/24 (0.333) + 4.8/24 (0.2) + 5 = 123.533 -> ceil = 124
-    assert end_day == 124
+    res_360 = client.post("/forge/range", json={"events": event_360})
+    assert res_360.status_code == 200
+    end_day = res_360.json()["end_day"]
+    assert end_day > 360
+    # 360 + 8/24 (0.333) + 4.8/24 (0.2) + 5 = 365.533 -> ceil = 366
+    assert end_day == 366
 
 
 def test_unknown_event_type_raises_422(client):
@@ -396,7 +396,7 @@ def test_vibration_window(client):
     assert during["terrain"] == quiet["terrain"]
     assert during["node_states"] == quiet["node_states"]
     # Range ignores vibrations.
-    assert client.post("/forge/range", json={"events": [vib]}).json() == {"end_day": 120}
+    assert client.post("/forge/range", json={"events": [vib]}).json() == {"end_day": 365}
     # PPV must be positive.
     bad = dict(vib, ppv_mm_s=0)
     assert client.post("/forge/frame", json={"day": 10.0, "events": [bad]}).status_code == 422

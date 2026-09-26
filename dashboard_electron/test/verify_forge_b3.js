@@ -252,7 +252,7 @@ async function run() {
     throw new Error('no forge-frame-applied for day ' + day);
   }
   async function waitStoppedAtEnd() {
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 240; i++) {
       await sleep(250);
       const st = await evaluate(`simTab.getForgeState()`);
       if (!st.playing && Math.abs(st.day - st.endDay) < 0.01) return st;

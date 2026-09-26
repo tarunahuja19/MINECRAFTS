@@ -770,7 +770,7 @@ var simTab = (function () {
   var forgeState = {
     day: 0,
     events: [],
-    endDay: 120,
+    endDay: 365,
     playing: false,
     speed: 1
   };
@@ -786,7 +786,7 @@ var simTab = (function () {
     var btnPlay = document.getElementById('forge-play-btn');
 
     if (slider) {
-      slider.max = String(forgeState.endDay || 120);
+      slider.max = String(forgeState.endDay || 365);
       slider.value = String(forgeState.day);
     }
     if (badge) {
@@ -929,7 +929,7 @@ var simTab = (function () {
         return res.json();
       })
       .then(function (rangeData) {
-        forgeState.endDay = (rangeData && typeof rangeData.end_day === 'number') ? rangeData.end_day : 120;
+        forgeState.endDay = (rangeData && typeof rangeData.end_day === 'number') ? rangeData.end_day : 365;
         forgeState.playing = false;
         if (btnPlay) btnPlay.textContent = '▶ PLAY';
         updateForgeUI();
