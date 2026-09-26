@@ -137,30 +137,6 @@
   cursor: pointer;
 }
 
-.sim-btn-freeze {
-  background: #006633;
-  color: #E6FFE6;
-  border: 1px solid #00CC44;
-  font-family: Tahoma, sans-serif;
-  font-weight: bold;
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  padding: 7px 12px;
-  cursor: pointer;
-  border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  transition: background 0.15s ease, filter 0.15s ease;
-}
-
-.sim-btn-freeze:hover {
-  background: #008844;
-  filter: brightness(1.1);
-}
-
-.sim-btn-freeze:active {
-  background: #004422;
-}
-
 /* Scenario buttons */
 .sim-scenario-grid {
   display: grid;

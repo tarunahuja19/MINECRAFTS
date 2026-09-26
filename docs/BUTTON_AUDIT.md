@@ -64,7 +64,7 @@ terminal output this table is built from.
 | `btn-sim-close-session` (✕ CLOSE) | FORGE middle toolbar | Closes the sandbox session, returns to MAP | Disabled with no session open in this pass (correct — button starts `disabled`); exercised indirectly via `verify_forge_close.js`/`verify_sandbox.js`, which pass | KEEP | |
 | `forge-recenter-btn` | FORGE middle toolbar | Re-fits camera to the selection bounds | Clicked (with an active sandbox session from `verify_sandbox.js`); FORGE slot received `recenter` | KEEP | |
 | `.sim-embed-retry-btn` (RETRY) | FORGE viewport fallback | Retries the FORGE 3D embed | Not clicked (embed loaded fine) | KEEP | |
-| `btn-sim-freeze` (FREEZE) | FORGE left column | Legacy freeze action | `display:none` in the DOM — not visible, not clickable | REMOVE | Dead markup: the button is hidden and its handler is still wired in `sim-tab.js` (`setupDomListeners`) but there is no way to reach it from the UI. Candidate for deletion in a follow-up cleanup step (out of scope here — B0 only removes the node list, timeline bar, and toasts) |
+| `btn-sim-freeze` (FREEZE) | FORGE left column | Legacy freeze action | REMOVED in B0b (commit <sha>) | REMOVE | Removed in B0b: deleted button element, click handler, unused freezeCurrentDay function, and CSS rules. |
 
 ## NODES tab
 
@@ -119,7 +119,7 @@ terminal output this table is built from.
 
 ## REMOVE candidates
 
-- **`btn-sim-freeze` (FREEZE button, FORGE left column)** — `display:none` in `index.html`, with a dead click handler still wired in `sim-tab.js`. Unreachable from the UI. Not touched in this step (B0's scope is the node list / timeline bar / toasts only); flagged for a follow-up cleanup pass.
+- **`btn-sim-freeze` (FREEZE button, FORGE left column)** — REMOVED in B0b (commit <sha>). Dead markup, click handler, unused `freezeCurrentDay` function and CSS rules removed.
 
 ## FIX candidates
 

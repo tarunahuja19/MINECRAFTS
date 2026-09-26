@@ -202,15 +202,7 @@ var simTab = (function () {
 
     // FORGE always uses the full terrain and all nodes.
 
-    // 4. FREEZE button
-    var btnFreeze = document.getElementById('btn-sim-freeze');
-    if (btnFreeze) {
-      btnFreeze.addEventListener('click', function () {
-        freezeCurrentDay();
-      });
-    }
-
-    // 5. Scenario buttons (CRACK, TILT, VIBRATION, CAVE-IN)
+    // Scenario buttons (CRACK, TILT, VIBRATION, CAVE-IN)
     var scenarioBtns = document.querySelectorAll('.sim-scenario-btn');
     scenarioBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -486,13 +478,6 @@ var simTab = (function () {
     }
     isLabAvailable = isUp;
     return isUp;
-  }
-
-  // Legacy FREEZE flow removed (button hidden; experiments need no freeze).
-  // Kept as a stub for export compatibility; ground truth loads silently
-  // inside runScenario and the SIM day-scrub.
-  function freezeCurrentDay() {
-    console.warn('[sim-tab] freezeCurrentDay is retired; no freeze flow.');
   }
 
   function deepestFromSnapshot(snap) {
@@ -2117,7 +2102,6 @@ var simTab = (function () {
   return {
     init: init,
     onTabShown: onTabShown,
-    freezeCurrentDay: freezeCurrentDay,
     runScenario: runScenario,
     renderScenarioResult: renderScenarioResult,
     deepestFromSnapshot: deepestFromSnapshot,
