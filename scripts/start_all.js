@@ -42,7 +42,7 @@ console.log('  R4 MINE SUBSIDENCE MONITORING SYSTEM - LAUNCHER');
 console.log(`  Root: ${ROOT_DIR}`);
 console.log('=================================================================');
 
-const STACK_PORTS = [1883, 8080, 8085, 8000, 5173, 8010];
+const STACK_PORTS = [1883, 8080, 8085, 8000, 5173, 8010, 8020];
 const children = [];
 
 function clearPortOccupants(ports = STACK_PORTS) {
@@ -205,7 +205,7 @@ async function main() {
   
   // Clear any zombie/orphan processes holding stack ports
   clearPortOccupants(STACK_PORTS);
-  ok('verified stack ports (1883, 8080, 8085, 8000, 5173) are free');
+  ok('verified stack ports (1883, 8080, 8085, 8000, 5173, 8010, 8020) are free');
 
   // 1. Check & Auto-Reset DB for a pristine run
   try {
@@ -291,6 +291,17 @@ async function main() {
   await waitForHttp('http://127.0.0.1:8010/health', 25000, labProc);
   ok('scenario lab server healthy - http://127.0.0.1:8010/health');
 
+  // 7. Start FORGE Math Server (port 8020)
+  say('[5b] FORGE math server (port 8020)');
+  const forgeProc = spawn(pythonCmd, ['-m', 'uvicorn', 'forge.server:app', '--host', '0.0.0.0', '--port', '8020', '--log-level', 'info'], {
+    cwd: path.join(ROOT_DIR, 'simulation'),
+    stdio: 'inherit',
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1', PYTHONUNBUFFERED: '1' }
+  });
+  children.push(forgeProc);
+  await waitForHttp('http://127.0.0.1:8020/health', 25000, forgeProc);
+  ok('FORGE math server healthy - http://127.0.0.1:8020/health');
+
   // 6. Start Vite 3D Sandbox Frontend
   say('[5] Sandbox 3D frontend (Vite dev server, port 5173)');
   const localVite = path.join(ROOT_DIR, 'simulation', 'frontend', 'node_modules', '.bin', process.platform === 'win32' ? 'vite.cmd' : 'vite');
@@ -351,6 +362,7 @@ async function main() {
   console.log('  Operator Dashboard:       Electron Window  &  http://127.0.0.1:8085/');
   console.log('  Backend REST & WebSocket: http://localhost:8080');
   console.log('  Physics Sim Engine:       http://127.0.0.1:8000');
+  console.log('  FORGE Math Engine:        http://127.0.0.1:8020');
   console.log('  MQTT Telemetry Broker:    mqtt://127.0.0.1:1883');
   console.log('-----------------------------------------------------------------');
 }

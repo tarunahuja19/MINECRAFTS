@@ -233,6 +233,28 @@ async def health():
     }
 
 
+@app.get("/interventions")
+async def get_interventions():
+    """Read-only view of current simulation time and pillar failure interventions."""
+    session = get_session()
+    failures = [
+        {
+            "cx": pf.cx,
+            "cy": pf.cy,
+            "radius_m": pf.radius_m,
+            "t_init_days": pf.t_init_days,
+            "t_collapse_days": pf.t_collapse_days,
+            "duration_days": pf.duration_days,
+            "magnitude_m": pf.magnitude_m,
+        }
+        for pf in session.pillar_failures
+    ]
+    return {
+        "t_sim_seconds": session.t_sim_seconds,
+        "pillar_failures": failures,
+    }
+
+
 @app.get("/config")
 async def get_config():
     """Return static environment geometry, node definitions, baseline terrain, and base bowl."""

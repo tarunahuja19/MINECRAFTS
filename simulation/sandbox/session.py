@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 import numpy as np
 
@@ -49,6 +49,61 @@ WARNING_RADIUS_FACTOR = 1.5
 
 #: Ordering for resolving overlapping carves - a node takes its worst state.
 _STATE_SEVERITY = {"ACTIVE": 0, "WARNING": 1, "CRITICAL": 2}
+
+
+def active_collapses(
+    failures: list[PillarFailure], t_days: float
+) -> list[PillarFailure]:
+    """Filter failures that are active at time t_days."""
+    return [
+        pf for pf in failures
+        if pf.t_init_days <= t_days <= (pf.t_collapse_days + pf.duration_days + 0.05)
+    ]
+
+
+def assign_node_states(
+    nodes: Iterable[Any], active_collapses: list[PillarFailure]
+) -> dict[str, str]:
+    """Health state per node id (``N01``-style) for the current tick.
+
+    A node's state is decided by geometry alone — its distance from every
+    active carve — never by a strain threshold. Thresholds were what let
+    continuous baseline subsidence redden the board with no operator input,
+    because the ground genuinely does keep settling and any fixed cutoff is
+    eventually crossed.
+
+    With no carve in progress every node is ACTIVE. Around a carve of
+    radius R:
+
+    - within ``1.2 * R``: CRITICAL, the collapse footprint proper
+    - within ``1.5 * R``: WARNING, the ground-falling fringe outside it
+    - beyond that: ACTIVE
+
+    Overlapping carves resolve to the most severe state, so a node in one
+    carve's fringe and another's core reads CRITICAL.
+    """
+    states = {
+        _node_topic_id(n.node_id): "ACTIVE" for n in nodes
+    }
+    if not active_collapses:
+        return states
+
+    for pf in active_collapses:
+        critical_r = pf.radius_m * CRITICAL_RADIUS_FACTOR
+        warning_r = pf.radius_m * WARNING_RADIUS_FACTOR
+        for n in nodes:
+            dist = math.hypot(n.x_m - pf.cx, n.y_m - pf.cy)
+            if dist <= critical_r:
+                state = "CRITICAL"
+            elif dist <= warning_r:
+                state = "WARNING"
+            else:
+                continue
+            nid = _node_topic_id(n.node_id)
+            if _STATE_SEVERITY[state] > _STATE_SEVERITY[states[nid]]:
+                states[nid] = state
+
+    return states
 
 
 @dataclass
@@ -234,46 +289,8 @@ class SimulationSession:
     def _assign_node_states(
         self, active_collapses: list[PillarFailure]
     ) -> dict[str, str]:
-        """Health state per node id (``N01``-style) for the current tick.
-
-        A node's state is decided by geometry alone — its distance from every
-        active carve — never by a strain threshold. Thresholds were what let
-        continuous baseline subsidence redden the board with no operator input,
-        because the ground genuinely does keep settling and any fixed cutoff is
-        eventually crossed.
-
-        With no carve in progress every node is ACTIVE. Around a carve of
-        radius R:
-
-        - within ``1.2 * R``: CRITICAL, the collapse footprint proper
-        - within ``1.5 * R``: WARNING, the ground-falling fringe outside it
-        - beyond that: ACTIVE
-
-        Overlapping carves resolve to the most severe state, so a node in one
-        carve's fringe and another's core reads CRITICAL.
-        """
-        states = {
-            _node_topic_id(n.node_id): "ACTIVE" for n in self.sensor_array.nodes
-        }
-        if not active_collapses:
-            return states
-
-        for pf in active_collapses:
-            critical_r = pf.radius_m * CRITICAL_RADIUS_FACTOR
-            warning_r = pf.radius_m * WARNING_RADIUS_FACTOR
-            for n in self.sensor_array.nodes:
-                dist = math.hypot(n.x_m - pf.cx, n.y_m - pf.cy)
-                if dist <= critical_r:
-                    state = "CRITICAL"
-                elif dist <= warning_r:
-                    state = "WARNING"
-                else:
-                    continue
-                nid = _node_topic_id(n.node_id)
-                if _STATE_SEVERITY[state] > _STATE_SEVERITY[states[nid]]:
-                    states[nid] = state
-
-        return states
+        """Health state per node id (``N01``-style) for the current tick."""
+        return assign_node_states(self.sensor_array.nodes, active_collapses)
 
     def tick(self) -> dict[str, Any]:
         """Execute one simulation tick (60 sim-seconds).
@@ -343,10 +360,7 @@ class SimulationSession:
         )
 
         # Check active collapse interventions and compute 1.2x Alert Radius
-        active_collapses = [
-            pf for pf in self.pillar_failures
-            if pf.t_init_days <= t_sim_days <= (pf.t_collapse_days + pf.duration_days + 0.05)
-        ]
+        active_colls = active_collapses(self.pillar_failures, t_sim_days)
 
         # Assign every node its authoritative health state for this tick. This
         # is the single source of truth for node colour anywhere in the system:
@@ -355,7 +369,7 @@ class SimulationSession:
         # An operator carving a surface is the ONLY thing that reddens a node.
         # Ordinary Knothe subsidence, however far it has progressed, leaves the
         # board green - that is what makes a red node mean something.
-        node_states = self._assign_node_states(active_collapses)
+        node_states = self._assign_node_states(active_colls)
 
         for n in self.sensor_array.nodes:
             st = node_states.get(_node_topic_id(n.node_id), "ACTIVE")
@@ -402,10 +416,10 @@ class SimulationSession:
         # same reason the readings batch is: the tick loop never waits on I/O.
         sensor_nodes = getattr(self.sensor_array, "nodes", None)
         zone_alarms = self.mqtt_bridge.publish_zone_alarms(
-            self.zone_manager.zones, iso_ts, sensor_nodes, active_collapses=active_collapses
+            self.zone_manager.zones, iso_ts, sensor_nodes, active_collapses=active_colls
         )
         node_alarms = self.mqtt_bridge.publish_node_alarms(
-            readings, iso_ts, sensor_nodes, active_collapses=active_collapses
+            readings, iso_ts, sensor_nodes, active_collapses=active_colls
         )
         for alarm in zone_alarms + node_alarms:
             try:
