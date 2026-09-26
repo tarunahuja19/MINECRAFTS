@@ -669,29 +669,9 @@
                    the FORGE middle view. SIM is a selection-proof district viewer. -->
             </div>
 
-            <!-- Bottom Timeline Scrub Bar -->
-            <div class="sim-timeline-bar">
-              <button id="sim-btn-play" class="sim-timeline-btn">▶ PLAY</button>
-              <div class="sim-speed-group">
-                <button class="sim-timeline-btn sim-speed-btn active" data-speed="1">1x</button>
-                <button class="sim-timeline-btn sim-speed-btn" data-speed="10">10x</button>
-              </div>
-
-              <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 2px;"></div>
-
-              <button id="sim-btn-step-prev-d" class="sim-timeline-btn" title="Step back 1 day">-1d</button>
-              <button id="sim-btn-step-next-d" class="sim-timeline-btn" title="Step forward 1 day">+1d</button>
-              <button id="sim-btn-step-prev-h" class="sim-timeline-btn" title="Step back 1 hour">-1h</button>
-              <button id="sim-btn-step-next-h" class="sim-timeline-btn" title="Step forward 1 hour">+1h</button>
-
-              <label class="sim-checkbox-label" style="font-size:10px; font-weight:bold; margin-left:4px;">
-                <input type="checkbox" id="sim-loop-checkbox" checked>
-                <span>LOOP</span>
-              </label>
-
-              <div style="flex:1; display:flex; align-items:center; gap:8px; margin-left:10px;">
-                <span id="sim-timeline-day-val" class="sim-val-display" style="white-space:nowrap; min-width:65px;">Day 0 (Live)</span>
-              </div>
+            <!-- Bottom Live Day Badge (read-only) -->
+            <div class="sim-live-bar">
+              <span id="sim-live-day-badge" class="sim-live-badge">LIVE · —</span>
             </div>
           </div>
 
@@ -738,24 +718,17 @@
               <!-- Engine Status Section (690d slider removed; math runs dynamically) -->
               <div class="sim-section-box">
                 <div class="sim-section-title">SIMULATION ENGINE STATUS</div>
-                <div class="sim-row">
-                  <span class="sim-label">PHYSICS CLOCK:</span>
-                  <span class="sim-val-display" id="sim-day-display">Day 0 (Live)</span>
-                </div>
                 <div style="font-size:9.5px; color:var(--text-secondary); line-height:1.4; margin-top:3px;">
                   Continuum geomechanics math running in real-time.
                 </div>
               </div>
 
-              <!-- Nodes in the experiment (all ticked for now; unticking only greys a node out) -->
+              <!-- FORGE always uses the full terrain and all nodes. -->
               <div class="sim-section-box">
-                <div class="sim-section-title" style="display:flex; justify-content:space-between;">
-                  <span>NODES IN EXPERIMENT</span><span id="forge-node-count" style="color:#00FF88;"></span>
-                </div>
-                <div id="sim-region-readout" style="font-size:10px; color:var(--text-secondary); line-height:1.4; font-family:monospace; margin-bottom:4px;">
+                <div class="sim-section-title">EXPERIMENT REGION</div>
+                <div id="sim-region-readout" style="font-size:10px; color:var(--text-secondary); line-height:1.4; font-family:monospace;">
                   Entire Mine Domain
                 </div>
-                <div id="forge-node-list" class="forge-node-list"></div>
               </div>
 
               <!-- Freeze Action (removed from FORGE flow) -->

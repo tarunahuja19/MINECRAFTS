@@ -34,8 +34,6 @@ var simTab = (function () {
   var currentDay = 0;
   var currentSegment = '3';
   var selectedScenarioType = 'crack'; // 'crack', 'tilt', 'vibration', 'sudden_sinking'
-  // Node ids the operator unticked in FORGE's node list. Display-only for now.
-  var forgeExcludedNodes = {};
   var isFrozen = false;
   var segmentsData = [];
   var lastSnapshotData = null;
@@ -43,81 +41,29 @@ var simTab = (function () {
   var sandboxSession = null;
   var isLabAvailable = true;
   var inTabNotifications = [];
-
-  // Timeline playback state (manual only — nothing auto-plays)
   var isPlaying = false;
-  var playTimer = null;
-  var playSpeed = 1; // 1x, 10x
-
-  // SIM day-scrub state: paints the :8010 snapshot trough for the shown day.
-  var lastScrubbedDay = null;
-  var scrubInFlight = false;
-  var scrubQueuedDay = null;
+  var simLiveBadgeTimer = null;
 
   // Latest-telemetry cache, same rule as MAP node-sensors.js (scan fixture
   // history from the end, cache per node) so SIM/FORGE show the same numbers.
   var nodeTelemetryCache = {};
 
-  function onDayChange(newDay) {
-    currentDay = parseFloat(newDay);
-    var daySlider = document.getElementById('sim-day-slider');
-    var dayDisplay = document.getElementById('sim-day-display');
-    var timelineSlider = document.getElementById('sim-timeline-slider');
-    var timelineDisplay = document.getElementById('sim-timeline-day-val');
-
-    if (daySlider) daySlider.value = currentDay;
-    if (timelineSlider) timelineSlider.value = currentDay;
-    if (dayDisplay) dayDisplay.textContent = 'Day ' + Math.round(currentDay) + ' (Live)';
-    if (timelineDisplay) timelineDisplay.textContent = 'Day ' + Math.round(currentDay) + ' (Live)';
-
-    if (sandboxSession) {
-      sandboxSession.day = currentDay;
-      var sandboxDayEl = document.getElementById('sim-sandbox-day');
-      if (sandboxDayEl) sandboxDayEl.textContent = Math.round(currentDay);
-    }
-    if (typeof simEmbed !== 'undefined' && simEmbed.setDay) {
-      simEmbed.setDay(currentDay);
-    }
-    // SIM district truth follows the shown day (throttled, map only).
-    refreshSimDayData(Math.round(currentDay));
-    console.log('[SIM_TAB_TIMELINE] Day ' + Math.round(currentDay));
-  }
-
-  /**
-   * Refresh the full-district snapshot HUD for a day (SIM tab only).
-   * Throttled: one in-flight fetch, latest day wins. The 3D ground itself is
-   * the live engine view (no rewind); the day label + HUD numbers follow the
-   * scrub. Silent when the lab is down: a data view with no data keeps its
-   * last numbers, never invented ones.
-   */
-  function refreshSimDayData(day) {
-    if (day === lastScrubbedDay && !scrubInFlight) return;
-    if (scrubInFlight) {
-      scrubQueuedDay = day;
-      return;
-    }
-    scrubInFlight = true;
-    fetch(LAB_API_BASE + '/api/snapshot?day=' + encodeURIComponent(day) + '&segment=full')
+  function updateSimLiveBadge() {
+    var badge = document.getElementById('sim-live-day-badge');
+    if (!badge) return;
+    var apiBase = 'http://' + (window.location.hostname || 'localhost') + ':8080';
+    fetch(apiBase + '/api/simulation/status', { cache: 'no-store' })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       })
-      .then(function (snap) {
-        scrubInFlight = false;
-        lastScrubbedDay = day;
-        updateHudStats(snap, 'full');
-        if (scrubQueuedDay !== null && scrubQueuedDay !== day) {
-          var q = scrubQueuedDay;
-          scrubQueuedDay = null;
-          refreshSimDayData(q);
-        } else {
-          scrubQueuedDay = null;
-        }
+      .then(function (data) {
+        var seconds = (data && data.t_sim_seconds) || 0;
+        var day = (seconds / 86400).toFixed(1);
+        badge.textContent = 'LIVE · Day ' + day;
       })
-      .catch(function (err) {
-        scrubInFlight = false;
-        scrubQueuedDay = null;
-        console.warn('[sim-tab] Day-scrub snapshot unavailable:', err.message);
+      .catch(function () {
+        badge.textContent = 'LIVE · —';
       });
   }
 
@@ -168,9 +114,8 @@ var simTab = (function () {
           console.log('[SIM_TAB] system-reset ignored: sandbox session ' + sandboxSession.id + ' is active and isolated');
           return;
         }
-        if (isPlaying) {
-          stopPlay();
-        }
+        // The PLAY button (and its stopPlay()) was removed in B0; nothing
+        // sets isPlaying true anymore, so there is nothing to stop here.
       });
       bus.on('selection-changed', function () {
         updateGateState();
@@ -217,26 +162,13 @@ var simTab = (function () {
         renderForgeHealth();
       });
     }
-    onDayChange(0);
     updateGateState();
-    // No autoplay: PLAY is manual-only. Day 0 HUD loads via refreshSimDayData.
+    updateSimLiveBadge();
+    if (simLiveBadgeTimer) clearInterval(simLiveBadgeTimer);
+    simLiveBadgeTimer = setInterval(updateSimLiveBadge, 5000);
   }
 
   function setupDomListeners() {
-    // 1. Day slider in left panel
-    var daySlider = document.getElementById('sim-day-slider');
-    var timelineSlider = document.getElementById('sim-timeline-slider');
-
-    if (daySlider) {
-      daySlider.addEventListener('input', function (e) {
-        onDayChange(e.target.value);
-      });
-    }
-    if (timelineSlider) {
-      timelineSlider.addEventListener('input', function (e) {
-        onDayChange(e.target.value);
-      });
-    }
 
     // 2. Zone picker REMOVED: the region comes ONLY from the MAP SIM-box
     // selection (currentSegment stays '3' as the lab snapshot-values scope).
@@ -376,35 +308,7 @@ var simTab = (function () {
     // Close sandbox session button
     bindCloseButton();
 
-    // 8. Timeline Controls
-    var btnPlay = document.getElementById('sim-btn-play');
-    if (btnPlay) {
-      btnPlay.addEventListener('click', function () {
-        togglePlay();
-      });
-    }
 
-    var speedBtns = document.querySelectorAll('.sim-speed-btn');
-    speedBtns.forEach(function (b) {
-      b.addEventListener('click', function () {
-        speedBtns.forEach(function (sb) { sb.classList.remove('active'); });
-        b.classList.add('active');
-        playSpeed = parseFloat(b.dataset.speed || 1);
-        if (isPlaying) {
-          restartPlayTimer();
-        }
-      });
-    });
-
-    var btnStepPrevD = document.getElementById('sim-btn-step-prev-d');
-    var btnStepNextD = document.getElementById('sim-btn-step-next-d');
-    var btnStepPrevH = document.getElementById('sim-btn-step-prev-h');
-    var btnStepNextH = document.getElementById('sim-btn-step-next-h');
-
-    if (btnStepPrevD) btnStepPrevD.addEventListener('click', function () { onDayChange(Math.max(0, currentDay - 1)); });
-    if (btnStepNextD) btnStepNextD.addEventListener('click', function () { onDayChange(currentDay + 1); });
-    if (btnStepPrevH) btnStepPrevH.addEventListener('click', function () { onDayChange(Math.max(0, currentDay - (1 / 24))); });
-    if (btnStepNextH) btnStepNextH.addEventListener('click', function () { onDayChange(currentDay + (1 / 24)); });
   }
 
   // NOTE: 3D views are the embedded website app (sim-embed.js dual slots).
@@ -923,32 +827,6 @@ var simTab = (function () {
   }
 
   /**
-   * FORGE node checklist: every district node (same pool as the MAP tab),
-   * all ticked by default. Unticking only greys the node out for now.
-   */
-  function renderForgeNodeList(allNodes) {
-    var list = document.getElementById('forge-node-list');
-    var count = document.getElementById('forge-node-count');
-    if (!list) return;
-    var ids = allNodes.map(function (n) { return n.node_id || n.id; }).filter(Boolean);
-    var included = ids.filter(function (id) { return !forgeExcludedNodes[id]; }).length;
-    if (count) count.textContent = included + ' / ' + ids.length;
-    list.innerHTML = ids.map(function (id) {
-      var off = !!forgeExcludedNodes[id];
-      return '<label class="' + (off ? 'excluded' : '') + '">' +
-        '<input type="checkbox" data-node-id="' + id + '"' + (off ? '' : ' checked') + '>' + id + '</label>';
-    }).join('');
-    list.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
-      box.addEventListener('change', function () {
-        var id = box.getAttribute('data-node-id');
-        if (box.checked) delete forgeExcludedNodes[id];
-        else forgeExcludedNodes[id] = true;
-        renderForgeNodeList(allNodes);
-      });
-    });
-  }
-
-  /**
    * FORGE district health board: one dot per district node (FULL pool, not
    * just the selection), colored by the same state rule as MAP markers.
    */
@@ -959,7 +837,6 @@ var simTab = (function () {
       ? (fixtureProvider.getNodes() || [])
       : [];
     if (badge) badge.textContent = allNodes.length + ' NODES';
-    renderForgeNodeList(allNodes);
     if (!body) return;
     if (allNodes.length === 0) {
       body.innerHTML = '<div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No district nodes loaded yet.</div>';
@@ -1625,7 +1502,15 @@ var simTab = (function () {
       console.warn('[SIM_TAB_DATASET] Empty selection sandbox created (0 cloned nodes)');
     }
 
-    onDayChange(0);
+    currentDay = 0;
+    if (sandboxSession) {
+      sandboxSession.day = 0;
+      var sandboxDayEl = document.getElementById('sim-sandbox-day');
+      if (sandboxDayEl) sandboxDayEl.textContent = '0';
+    }
+    if (typeof simEmbed !== 'undefined' && simEmbed.setDay) {
+      simEmbed.setDay(0);
+    }
 
     // Health check :8010 on sandbox open
     var labAvailable = await checkLabAvailability();
@@ -2186,78 +2071,12 @@ var simTab = (function () {
     }
   }
 
-  function startPlay() {
-    isPlaying = true;
-    window.__SIM_PLAYING__ = true;
-    var btnPlay = document.getElementById('sim-btn-play');
-    if (btnPlay) {
-      btnPlay.innerHTML = '❚❚ PAUSE';
-      btnPlay.classList.add('active');
-    }
-    if (typeof bus !== 'undefined' && bus.emit) {
-      bus.emit('simulation-play', null);
-      bus.emit('simulation-status', { is_running: true, is_paused: false, state: 'RUNNING' });
-    }
-    var mode = (typeof modeSwitch !== 'undefined' && modeSwitch.getMode) ? modeSwitch.getMode() : 'fixture';
-    if (mode === 'live') {
-      if (typeof liveProvider !== 'undefined' && liveProvider.start) {
-        liveProvider.start();
-      }
-    } else {
-      if (typeof fixtureProvider !== 'undefined' && fixtureProvider.startLiveSimulation) {
-        fixtureProvider.startLiveSimulation();
-      }
-    }
-    restartPlayTimer();
-  }
-
-  function stopPlay() {
-    isPlaying = false;
-    window.__SIM_PLAYING__ = false;
-    var btnPlay = document.getElementById('sim-btn-play');
-    if (btnPlay) {
-      btnPlay.innerHTML = '▶ PLAY';
-      btnPlay.classList.remove('active');
-    }
-    if (playTimer) {
-      clearInterval(playTimer);
-      playTimer = null;
-    }
-    if (typeof bus !== 'undefined' && bus.emit) {
-      bus.emit('simulation-stop', null);
-      bus.emit('simulation-status', { is_running: false, is_paused: true, state: 'PAUSED' });
-    }
-    if (typeof liveProvider !== 'undefined' && liveProvider.stop) {
-      liveProvider.stop();
-    }
-    if (typeof fixtureProvider !== 'undefined' && fixtureProvider.stopReplay) {
-      fixtureProvider.stopReplay();
-    }
-  }
-
-  function togglePlay() {
-    if (isPlaying) {
-      stopPlay();
-    } else {
-      startPlay();
-    }
-  }
-
-  function restartPlayTimer() {
-    if (playTimer) clearInterval(playTimer);
-    var intervalMs = Math.max(50, 400 / playSpeed);
-    playTimer = setInterval(function () {
-      var loopChk = document.getElementById('sim-loop-checkbox');
-      var shouldLoop = loopChk ? loopChk.checked : true;
-
-      var nextDay = currentDay + 1;
-      onDayChange(nextDay);
-    }, intervalMs);
-  }
-
   function onTabShown(tab) {
     updateGateState();
     renderForgeHealth();
+    if (tab === 'sim') {
+      updateSimLiveBadge();
+    }
     // Lazy-load the shown tab's 3D slot on first visit (perf: a slot costs
     // no WebGL until its tab opens; the hidden slot's frame loop suspends
     // automatically under display:none).
@@ -2288,10 +2107,7 @@ var simTab = (function () {
     repaintClonedMarker: repaintClonedMarker,
     nodeStateColor: nodeStateColor,
     recenterToSessionBounds: recenterToSessionBounds,
-    startPlay: startPlay,
-    stopPlay: stopPlay,
-    togglePlay: togglePlay,
-    onDayChange: onDayChange,
+    updateSimLiveBadge: updateSimLiveBadge,
     getCurrentDay: function () { return currentDay; },
     isPlaying: function () { return isPlaying; }
   };

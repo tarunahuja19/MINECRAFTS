@@ -189,23 +189,22 @@ async function runTest() {
     `);
     console.log('[STEP 3] Pre-Send Dashboard State:', preDashboardState);
 
-    // Register selection and trigger Send to Sim
-    console.log('[STEP 3] Setting selectionStore and clicking #btn-send-to-sim...');
+    // Register selection and trigger sandbox creation via current flow
+    console.log('[STEP 3] Setting selectionStore and creating sandbox session via simTab.handleSandboxCreate...');
     await evaluate(`
-      (function() {
+      (async function() {
         var sampleSector = {
           id: 'E5',
-          title: '3D: SECTOR E5 (Active Face)',
+          name: '3D: SECTOR E5 (Active Face)',
           center: [18.6435, 79.5725],
           latRange: [18.6415, 18.6455],
           lngRange: [79.5705, 79.5745],
           bounds: [[18.6415, 79.5705], [18.6455, 79.5745]],
           nodeCount: 4,
-          nodes: ['N23', 'N24', 'N25', 'N31']
+          nodes: [{ node_id: 'N23' }, { node_id: 'N24' }, { node_id: 'N25' }, { node_id: 'N31' }]
         };
-        selectionStore.set(sampleSector);
-        var btn = document.getElementById('btn-send-to-sim');
-        btn.click();
+        selectionStore.set(sampleSector, 'sim');
+        await simTab.handleSandboxCreate(sampleSector);
       })()
     `);
 
@@ -216,11 +215,10 @@ async function runTest() {
       await sleep(300);
       pipelineDone = await evaluate(`
         (function() {
-          var res = window.__sendToSimAssertResult;
           var overlay = document.getElementById('sim-loading-overlay');
           var overlayGone = overlay ? (overlay.style.display === 'none' && !overlay.classList.contains('fade-out')) : true;
           var session = typeof simTab !== 'undefined' && simTab.getSandboxSession ? simTab.getSandboxSession() : null;
-          return !!res && overlayGone && !!session;
+          return overlayGone && !!session;
         })()
       `);
       if (pipelineDone) break;
@@ -265,13 +263,6 @@ async function runTest() {
     }
     if (sandboxLoadState.simCmds.indexOf('set-bounds') !== -1) {
       throw new Error('SIM slot received set-bounds! Selection-proof rule violated.');
-    }
-
-    // Assert before/after check
-    const assertResult = await evaluate(`window.__sendToSimAssertResult`);
-    console.log('[STEP 3] window.__sendToSimAssertResult:', assertResult);
-    if (!assertResult || !assertResult.passed) {
-      throw new Error('Send to Sim before/after assertion failed or was not recorded!');
     }
 
     const postLoadDashboardState = await evaluate(`
@@ -388,7 +379,7 @@ async function runTest() {
             };
           })()
         `);
-        if (pollState.text === 'RUN EXPERIMENT' && !pollState.disabled && pollState.resLen > 30) {
+        if ((pollState.text === 'FIRE EVENT' || pollState.text === 'RUN EXPERIMENT') && !pollState.disabled && pollState.resLen > 30) {
           return;
         }
       }
@@ -460,7 +451,7 @@ async function runTest() {
       })()
     `);
     console.log('[STEP 6] Post-Reset State:', postResetState);
-    if (!postResetState.sessionSurvived || postResetState.markers !== 4) {
+    if (!postResetState.sessionSurvived || postResetState.nodeCount !== 4) {
       throw new Error('Sandbox session did not survive live system reset!');
     }
     if (Math.abs(postResetState.dashCenter.lat - preDashboardState.center.lat) > 1e-4 ||

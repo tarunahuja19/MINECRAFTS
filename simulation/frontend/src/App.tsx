@@ -304,13 +304,6 @@ export const App: React.FC = () => {
                 console.log(`[FRONTEND] packet ${pkt.packet_id} fetched successfully`);
                 setLatestPacket(pkt);
                 setPacketCount((prev) => prev + 1);
-                // Packet-sync toasts are a SIMULATION-tab readout. The FORGE
-                // slot is a sandbox view on the same engine — announcing every
-                // 60 s packet there is noise, so it stays silent (telemetry
-                // below still ingests; only the toast is suppressed).
-                if (embedSlotRef.current !== "forge") {
-                  showToast(`📦 60s PACKET #${pkt.packet_id} SYNCHRONIZED`);
-                }
 
                 // Update terrain if changed (§Phase 8)
                 if (pkt.terrain?.changes && pkt.terrain.changes.length > 0) {
@@ -505,7 +498,6 @@ export const App: React.FC = () => {
   const handleStart = () => {
     setIsRunning(true);
     sendWsAction({ action: "start" });
-    showToast("▶ SIMULATION RUNNING (60s tick stream active)");
   };
 
   const handlePause = () => {

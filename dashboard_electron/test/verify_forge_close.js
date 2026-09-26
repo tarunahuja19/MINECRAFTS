@@ -276,13 +276,9 @@ async function main() {
     assert.ok(cmds.includes('recenter'), 'CLOSE posts recenter to reset camera to district overview');
   });
 
-  await check('App.tsx: packet SYNCHRONIZED toast gated on slot (static pin)', () => {
+  await check('App.tsx: packet SYNCHRONIZED toast removed per B0', () => {
     const appSrc = fs.readFileSync(APP_TSX, 'utf8');
-    const toastIdx = appSrc.indexOf('SYNCHRONIZED');
-    assert.ok(toastIdx > 0, 'SYNCHRONIZED toast text present');
-    const windowBefore = appSrc.slice(Math.max(0, toastIdx - 800), toastIdx);
-    assert.ok(/!== ['"]forge['"]/.test(windowBefore),
-      'toast preceded by a !== \'forge\' slot guard');
+    assert.ok(!appSrc.includes('SYNCHRONIZED'), 'SYNCHRONIZED toast removed from App.tsx');
   });
 
   console.log(process.exitCode ? `\n${pass} CHECK(S) PASSED, FAILURES ABOVE\n`

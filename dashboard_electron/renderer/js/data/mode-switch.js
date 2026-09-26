@@ -61,9 +61,13 @@ var modeSwitch = (function () {
       });
     } else {
       fixtureProvider.stopReplay();
-      if (window.__SIM_PLAYING__) {
-        liveProvider.start();
-      }
+      // The PLAY button that used to flip __SIM_PLAYING__ true is gone (B0);
+      // nothing else sets it, and it gates telemetry/status processing all
+      // through live-provider.js, node-markers.js, sim-live.js and friends.
+      // Live mode has no manual play/pause yet (A3 adds a header control), so
+      // settling into LIVE means the feed is simply on.
+      window.__SIM_PLAYING__ = true;
+      liveProvider.start();
       updateModeDisplay('LIVE SIMULATION', false);
 
       // Load canonical nodes from live PostgreSQL backend
