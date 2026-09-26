@@ -103,6 +103,8 @@ export type EmbedParentCommand =
       x?: number | null;
       y?: number | null;
       radius_m?: number | null;
+      /** CRACK preview: a dashed line A-B in panel-frame metres; replaces the ring. */
+      line?: { x0: number; y0: number; x1: number; y1: number } | null;
     };
 
 export type EmbedChildEvent =

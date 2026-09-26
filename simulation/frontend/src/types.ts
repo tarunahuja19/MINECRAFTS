@@ -111,6 +111,14 @@ export interface CrackLine {
   isNew: boolean;
 }
 
+/** FORGE CRACK preview: the segment A-B being drawn, in the same frame as CrackLine. */
+export interface PreviewLine {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 /**
  * One node's per-tick reading.
  *

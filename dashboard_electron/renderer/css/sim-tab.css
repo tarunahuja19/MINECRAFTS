@@ -1362,3 +1362,20 @@ body.sim-paused #tab-alarms {
 .forge-btn-reset:hover:not(:disabled) {
   background: #2A3A44;
 }
+
+.forge-btn-draw {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 8px;
+  font-size: 10.5px;
+  background: var(--bg-chrome);
+  color: var(--text-primary);
+  border-color: var(--border-bevel-light);
+}
+.forge-btn-draw:hover:not(:disabled) { background: #2A3A44; }
+.forge-btn-draw.active {
+  background: #5A4A10;
+  color: #FFD866;
+  border-color: #FFAA00;
+}
+#forge-crack-readout { font-family: Consolas, monospace; margin-top: 4px; }

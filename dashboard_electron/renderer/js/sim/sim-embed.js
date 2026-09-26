@@ -470,10 +470,11 @@ var simEmbed = (function () {
       var slot = slots.forge;
       if (slot) postToSlot(slot, { cmd: 'forge-effect', type: type, cx: cx, cy: cy, rad: rad, depth: depth, ppv: ppv });
     },
-    // Radius preview ring (drawing only). x = null clears it.
-    sendForgePreview: function (x, y, radiusM) {
+    // Radius preview ring (drawing only). x = null clears it. `line` ({x0,y0,x1,y1})
+    // draws the dashed CRACK preview instead of the ring.
+    sendForgePreview: function (x, y, radiusM, line) {
       var slot = slots.forge;
-      if (slot) postToSlot(slot, { cmd: 'forge-preview', x: x, y: y, radius_m: radiusM });
+      if (slot) postToSlot(slot, { cmd: 'forge-preview', x: x, y: y, radius_m: radiusM, line: line || null });
     },
     getLastForgeFrameApplied: function () {
       return slots.forge ? slots.forge.lastForgeFrameApplied || null : null;

@@ -42,6 +42,7 @@ import type {
   TickPayload,
   ZoneTelemetry,
   CrackLine,
+  PreviewLine,
 } from "./types";
 
 export const App: React.FC = () => {
@@ -123,6 +124,8 @@ export const App: React.FC = () => {
   const [perturbations, setPerturbations] = useState<Perturbation[]>([]);
   // Lab crack segments overlay (dashboard `set-cracks` command; embed only).
   const [crackLines, setCrackLines] = useState<CrackLine[]>([]);
+  // FORGE CRACK preview: dashed line A-B while the user draws (embed only).
+  const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
   const [nodeTelemetry, setNodeTelemetry] = useState<NodeTelemetry[]>([]);
   const [zoneTelemetry, setZoneTelemetry] = useState<ZoneTelemetry[]>([]);
   const [tickCount, setTickCount] = useState<number>(0);
@@ -864,6 +867,7 @@ export const App: React.FC = () => {
           // `perturbations`, so the ground falls back to the live state.
           globalGeomechanics.reset();
           setCrackLines([]);
+          setPreviewLine(null);
           setBursts([]);
           setImpacts([]);
           setEventEndsAt(null);
@@ -926,6 +930,13 @@ export const App: React.FC = () => {
         }
         case "forge-preview": {
           if (!engineReadOnly) break;
+          const ln = d.line;
+          if (ln && [ln.x0, ln.y0, ln.x1, ln.y1].every(Number.isFinite)) {
+            setPreviewLine({ x0: ln.x0, y0: ln.y0, x1: ln.x1, y1: ln.y1 });
+            setBeaconHidden(true);
+            break;
+          }
+          setPreviewLine(null);
           // {x: null} (or any unusable value) clears the preview ring.
           if (d.x == null || d.y == null || d.radius_m == null || d.radius_m <= 0 || !Number.isFinite(d.x) || !Number.isFinite(d.y) || !Number.isFinite(d.radius_m)) {
             setBeaconHidden(true);
@@ -1207,6 +1218,7 @@ export const App: React.FC = () => {
             clipBounds={embedClip}
             nodeFilter={embedNodes}
             crackLines={crackLines}
+            previewLine={previewLine}
           />
         </div>
       </div>

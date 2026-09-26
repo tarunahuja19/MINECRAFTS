@@ -3,7 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { CrackLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
+import type { CrackLine, PreviewLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
 import type { EmbedClipBounds } from "../embed";
 import { sampleBaseGroundY } from "../utils/terrainSampler";
 import { TerrainMesh } from "./TerrainMesh";
@@ -69,6 +69,37 @@ interface MineViewportProps {
   nodeFilter?: number[] | null;
   /** Lab crack segments overlay (dashboard `set-cracks`); empty = none. */
   crackLines?: CrackLine[];
+  /** FORGE CRACK preview: dashed line A-B while drawing; null = none. */
+  previewLine?: PreviewLine | null;
+}
+
+/** Dashed amber line A-B riding the base ground (FORGE DRAW CRACK preview). */
+function PreviewLineOverlay({ line }: { line: PreviewLine | null }) {
+  const geo = useMemo(() => {
+    if (!line) return null;
+    const len = Math.hypot(line.x1 - line.x0, line.y1 - line.y0);
+    const n = Math.max(2, Math.ceil(len / 5));
+    const pos: number[] = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const x = line.x0 + (line.x1 - line.x0) * t;
+      const y = line.y0 + (line.y1 - line.y0) * t;
+      const h = sampleBaseGroundY(x, y);
+      pos.push(x, (Number.isFinite(h) ? h : 0) + 2.0, y);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    return g;
+  }, [line]);
+
+  useEffect(() => () => geo?.dispose(), [geo]);
+
+  if (!geo) return null;
+  return (
+    <line geometry={geo} onUpdate={(l: THREE.Line) => l.computeLineDistances()}>
+      <lineDashedMaterial color="#ffaa00" dashSize={6} gapSize={3} depthWrite={false} />
+    </line>
+  );
 }
 
 /**
@@ -182,6 +213,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   clipBounds = null,
   nodeFilter = null,
   crackLines = [],
+  previewLine = null,
 }, ref) => {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
@@ -389,6 +421,9 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
 
           {/* Lab crack ground-break overlay (embed `set-cracks` command) */}
           <CrackLinesOverlay lines={crackLines} />
+
+          {/* FORGE CRACK preview (embed `forge-preview` with a line) */}
+          <PreviewLineOverlay line={previewLine} />
 
           {/* Impact dust thrown by collapse / tilt triggers */}
           <CollapseDust bursts={bursts} />

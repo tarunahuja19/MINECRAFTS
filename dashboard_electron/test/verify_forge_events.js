@@ -3,13 +3,14 @@
 /**
  * dashboard_electron/test/verify_forge_events.js
  *
- * B2e TILT and B2f VIBRATION as FORGE timeline events (CRACK stays unbuilt).
+ * TILT creep, user-drawn CRACK (E2) and VIBRATION as FORGE timeline events.
  * Same harness as verify_forge_b3.js (own FORGE server on :8022).
  *
- *  1. CRACK says it is not built and adds no event
- *  2. TILT = the engine's tilt: a cave-in centred one radius off the target along the
- *     bearing, depth = rate × r; preview on the offset bowl; :8020 computes it exactly
- *     as that cave-in; nodes within 1.2R of the bowl go CRITICAL mid-collapse
+ *  1. TILT {type:"tilt", x, y, radius_m, rate_mm_per_m, direction_deg, over_days, day}: preview
+ *     ring on the offset bowl; the node card at the target reads the rate once over_days have passed
+ *  2. CRACK: FIRE is disabled until DRAW CRACK has set A and B (ESC cancels, target untouched);
+ *     dashed preview line in the 3D view and on the mini map; nodes within 12 m of the segment
+ *     are CRITICAL on day 30 and the health strip counts them
  *  3. VIBRATION = Session.apply_vibration: site-wide PPV on every node for 60 s, no ground,
  *     no node state change; PLAY lands inside the 60 s window; node card shows it
  *  4. no triggerCollapse in the FORGE slot; MAP/ALARMS unchanged; no :8010 / control calls
@@ -55,7 +56,7 @@ function check(cond, msg) {
 
 async function run() {
   console.log('=====================================================');
-  console.log('[TEST] FORGE TILT + VIBRATION EVENTS (B2e, B2f)');
+  console.log('[TEST] FORGE TILT + CRACK + VIBRATION EVENTS (E2)');
   console.log('=====================================================\n');
 
   const repoRoot = path.join(__dirname, '..', '..');
@@ -221,7 +222,7 @@ async function run() {
     g.triggerCollapse = function () { window.__tc++; return orig.apply(this, arguments); };
     window.__previews = []; window.__effects = [];
     window.addEventListener('message', function (e) {
-      if (e.data && e.data.cmd === 'forge-preview') window.__previews.push({ x: e.data.x, y: e.data.y, r: e.data.radius_m });
+      if (e.data && e.data.cmd === 'forge-preview') window.__previews.push({ x: e.data.x, y: e.data.y, r: e.data.radius_m, line: e.data.line });
       if (e.data && e.data.cmd === 'forge-effect') window.__effects.push({ type: e.data.type, cx: e.data.cx, cy: e.data.cy, ppv: e.data.ppv });
     });
     window.__iframeNet = [];
@@ -277,54 +278,120 @@ async function run() {
   // The tests below expect the default target; make it explicit.
   await postTarget(0, 0);
 
-  // ---- 1. CRACK is not built ---------------------------------------------------
-  console.log('\n[1] CRACK');
-  await evaluate(`document.querySelector('.sim-scenario-btn[data-type="crack"]').click()`);
-  await evaluate(`document.getElementById('btn-sim-run-scenario').click()`);
-  await sleep(200);
-  const crackBtn = await evaluate(`document.getElementById('btn-sim-run-scenario').textContent`);
-  check(/NOT BUILT YET/.test(crackBtn) && (await own()).length === 0, `CRACK says "${crackBtn}" and adds no event`);
+  const pressEsc = () => evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+  const fireDisabled = () => evaluate(`document.getElementById('btn-sim-run-scenario').disabled`);
+  const cardTilt = async (id) => {
+    await evaluate(`simTab.selectNode('${id}', 'forge')`);
+    await sleep(250);
+    const card = await evaluate(`document.getElementById('forge-node-detail').innerText`);
+    const m = /Tilt\s*\n?\s*([\d.]+) mm\/m/.exec(card);
+    return m ? parseFloat(m[1]) : null;
+  };
+  const pauseAt = async (day) => { await evaluate(`simTab.pauseForge()`); return frameAt(day); };
 
-  // ---- 2. TILT -----------------------------------------------------------------
-  console.log('\n[2] TILT 5 mm/m toward 90° (east), r 100 m, at target (0, 0), day 20');
+  // ---- 1. TILT -----------------------------------------------------------------
+  console.log('\n[1] TILT 5 mm/m toward 90° (east), r 100 m, over 3 d, at target (0, 0), day 0');
   await evaluate(`document.querySelector('.sim-scenario-btn[data-type="tilt"]').click()`);
   await setSlider('sim-tilt-rate', 5);
   await setSlider('sim-tilt-dir', 90);
   await setSlider('sim-tilt-radius', 100);
+  await setSlider('sim-tilt-over', 3);
   await sleep(150);
   const pv = await evaluate(`window.__previews[window.__previews.length - 1]`, forgeCtx);
   console.log('  preview:', JSON.stringify(pv));
   check(Math.abs(pv.x - 100) < 1e-6 && Math.abs(pv.y) < 1e-6 && pv.r === 100, 'TILT preview ring sits on the offset bowl (100, 0), r 100');
-  await frameAt(19.5);
+  check(!(await fireDisabled()), 'FIRE is enabled for TILT');
+  await frameAt(0);
   await shot('forge-tilt-preview.png');
-  await frameAt(20);
   await evaluate(`document.querySelector('.forge-speed-btn[data-speed="20"]').click()`);
   await evaluate(`document.getElementById('btn-sim-run-scenario').click()`);
   await sleep(300);
   const tiltEv = (await own())[0];
   console.log('  event:', JSON.stringify(tiltEv));
   console.log('  rows:', JSON.stringify(await eventRows()));
-  check(tiltEv && tiltEv.type === 'cave_in' && tiltEv.kind === 'tilt' && Math.abs(tiltEv.x - 100) < 1e-6 && Math.abs(tiltEv.y) < 1e-6 &&
-    tiltEv.radius_m === 100 && Math.abs(tiltEv.depth_m - 0.5) < 1e-9 && tiltEv.day === 20,
-    'TILT event = engine tilt: cave-in centred one radius off the target, depth = rate × r');
-  check((await eventRows()).indexOf('Day 20.0 · TILT 5 mm/m toward 90° at (0, 0), r 100 m') !== -1, 'event list shows the TILT line');
+  check(tiltEv && tiltEv.type === 'tilt' && tiltEv.x === 0 && tiltEv.y === 0 && tiltEv.radius_m === 100 && tiltEv.rate_mm_per_m === 5 &&
+    tiltEv.direction_deg === 90 && tiltEv.over_days === 3 && tiltEv.day === 0,
+    'TILT event = {type:"tilt", x, y (target), radius_m, rate_mm_per_m, direction_deg, over_days, day}');
+  check((await eventRows()).indexOf('Day 0.0 · TILT 5 mm/m → 90°, over 3 d') !== -1, 'event list shows "Day 0.0 · TILT 5 mm/m → 90°, over 3 d"');
   const eff = await evaluate(`window.__effects[window.__effects.length - 1]`, forgeCtx);
   check(eff && eff.type === 'tilt' && Math.abs(eff.cx - 100) < 1e-6, 'forge-effect "tilt" played at the bowl');
-  await waitStoppedAtEnd();
-  const tEnd = await evaluate(`simTab.getForgeState().endDay`);
-  const tiltApplied = await frameAt(tEnd);
-  const asCave = await directFrame(tEnd, [Object.assign({}, tiltEv, { kind: 'cave_in' })]);
-  const withTilt = await directFrame(tEnd, [tiltEv]);
-  console.log('  END applied:', JSON.stringify(tiltApplied), '| max subsidence tilt/cave:', withTilt.terrain.max_subsidence_m, asCave.terrain.max_subsidence_m);
-  check(Math.abs(tiltApplied.max_amp - 0.5) <= 0.05, `max_amp at END ≈ 0.5 m: ${tiltApplied.max_amp}`);
-  check(JSON.stringify(withTilt.terrain) === JSON.stringify(asCave.terrain), ':8020 computes TILT exactly as the offset cave-in');
-  await frameAt(20.43);
+  await pauseAt(1.5);
+  const tiltHalf = await cardTilt('N05');
+  await pauseAt(8);
+  const tiltDone = await cardTilt('N05');
+  console.log(`  N05 (at the target) tilt: day 1.5 → ${tiltHalf} mm/m, day 8 → ${tiltDone} mm/m`);
+  check(tiltDone !== null && Math.abs(tiltDone - 5) <= 0.5, `node card tilt at the target ≈ 5 mm/m after over_days: ${tiltDone}`);
+  check(tiltHalf !== null && tiltHalf < tiltDone, `tilt creeps in: ${tiltHalf} mm/m halfway, ${tiltDone} mm/m at the end`);
+  const tiltStates = await evaluate(`simTab.getForgeFrame().node_states`);
+  // States follow the tilt thresholds (WARNING at 3 mm/m, CRITICAL at 10), not the cave-in 1.2R rule.
+  check(tiltStates.N05 === 'WARNING', `node at the target reads WARNING (5 mm/m is over 3, under 10): ${tiltStates.N05}`);
+  await shot('forge-tilt-after.png');
+
+  // ---- 2. CRACK ----------------------------------------------------------------
+  console.log('\n[2] CRACK A (-60, 0) → B (60, 0), throw 0.5 m, width 10 m, day 20');
+  await evaluate(`document.getElementById('btn-forge-reset').click()`);
+  await sleep(600);
+  await evaluate(`document.querySelector('.sim-scenario-btn[data-type="crack"]').click()`);
+  await setSlider('sim-crack-throw', 0.5);
+  await setSlider('sim-crack-width', 10);
+  await setSlider('sim-crack-open', 2);
+  await sleep(150);
+  check(await fireDisabled(), 'FIRE is disabled until B is set');
+  // ESC cancels drawing and leaves the target alone.
+  await evaluate(`document.getElementById('btn-forge-draw-crack').click()`);
+  await postTarget(-60, 0);
+  check(/A: -60, 0\s+B: --/.test(await evaluate(`document.getElementById('forge-crack-readout').textContent`)), 'first click sets A');
+  await pressEsc();
+  await postTarget(30, 30);   // no longer drawing: moves the target instead
+  const tgt = await evaluate(`simTab.getForgeTarget()`);
+  check(Math.abs(tgt.x - 30) < 1e-6 && (await evaluate(`document.getElementById('forge-crack-readout').textContent`)).indexOf('A: --') === 0,
+    'ESC cancels drawing (A dropped); the next click moves the target again');
+  await postTarget(0, 0);
+  // Draw for real.
+  await evaluate(`document.getElementById('btn-forge-draw-crack').click()`);
+  await postTarget(-60, 0);
+  check(await fireDisabled(), 'FIRE still disabled with only A set');
+  await postTarget(60, 0);
+  const readout = await evaluate(`document.getElementById('forge-crack-readout').textContent`);
+  console.log('  readout:', readout);
+  check(/A: -60, 0\s+B: 60, 0\s+length 120 m/.test(readout), 'readout shows "A: -60, 0  B: 60, 0  length 120 m"');
+  check(!(await fireDisabled()), 'FIRE is enabled once B is set');
+  check(!(await evaluate(`document.getElementById('btn-forge-draw-crack').classList.contains('active')`)), 'drawing turns off after B');
+  const tgt2 = await evaluate(`simTab.getForgeTarget()`);
+  check(tgt2.x === 0 && tgt2.y === 0, 'drawing did not move the target');
+  const lastPv = await evaluate(`window.__previews[window.__previews.length - 1]`, forgeCtx);
+  console.log('  preview:', JSON.stringify(lastPv));
+  check(lastPv.line && lastPv.line.x0 === -60 && lastPv.line.y0 === 0 && lastPv.line.x1 === 60 && lastPv.line.y1 === 0,
+    '3D preview command carries the line A-B');
+  check(await evaluate(`!!document.getElementById('forge-minimap-preview-line')`), 'mini map shows the dashed preview line');
+  await evaluate(`simTab.selectNode('N01', 'forge')`);   // keep N05's label off the line
+  await frameAt(19.5);
   await sleep(300);
-  const mid = await evaluate(`simTab.getForgeFrame().node_states`);
-  const inside = Object.keys(nodePos).filter((id) => Math.hypot(nodePos[id][0] - 100, nodePos[id][1]) <= 120);
-  console.log('  within 1.2R of the bowl:', inside.join(','));
-  check(inside.length > 0 && inside.every((id) => mid[id] === 'CRITICAL'), 'nodes within 1.2R of the tilt bowl are CRITICAL mid-collapse');
-  await shot('forge-tilt-during.png');
+  await shot('forge-crack-preview.png');
+  await frameAt(20);
+  await evaluate(`document.getElementById('btn-sim-run-scenario').click()`);
+  await sleep(300);
+  const crackEv = (await own())[0];
+  console.log('  event:', JSON.stringify(crackEv));
+  console.log('  rows:', JSON.stringify(await eventRows()));
+  check(crackEv && crackEv.type === 'crack' && crackEv.x0 === -60 && crackEv.y0 === 0 && crackEv.x1 === 60 && crackEv.y1 === 0 &&
+    crackEv.throw_m === 0.5 && crackEv.width_m === 10 && crackEv.open_days === 2 && crackEv.day === 20,
+    'CRACK event = {type:"crack", x0, y0, x1, y1, throw_m, width_m, open_days, day}');
+  check((await eventRows()).indexOf('Day 20.0 · CRACK 120 m, throw 0.50 m') !== -1, 'event list shows "Day 20.0 · CRACK 120 m, throw 0.50 m"');
+  check(await fireDisabled(), 'FIRE is disabled again after the crack fires (A/B cleared)');
+  await pauseAt(30);
+  await sleep(400);
+  const crackStates = await evaluate(`simTab.getForgeFrame().node_states`);
+  const nearSeg = Object.keys(nodePos).filter((id) => Math.hypot(Math.max(0, Math.abs(nodePos[id][0]) - 60), nodePos[id][1]) <= 12);
+  console.log('  within 12 m of the segment:', nearSeg.map((id) => `${id}=${crackStates[id]}`).join(', '));
+  check(nearSeg.length > 0 && nearSeg.every((id) => crackStates[id] === 'CRITICAL'), 'nodes within 12 m of the crack are CRITICAL on day 30');
+  const col = await column();
+  console.log('  health strip:', JSON.stringify(col.counts));
+  check(Number(col.counts.WARNING) + Number(col.counts.CRITICAL) >= 1, 'health strip counts at least one WARNING/CRITICAL node');
+  check(col.alarms.some((t) => /CRACK #1, \d+ m\)/.test(t)), 'alarm "why" names the crack with the distance to the segment');
+  const cardN05 = await evaluate(`(function () { simTab.selectNode('N05', 'forge'); return document.getElementById('forge-node-detail').innerText; })()`);
+  check(/Nearest event\s*\n?\s*0 m · CRACK #1/.test(cardN05), 'node card: nearest event is the crack, 0 m (on the segment)');
+  await shot('forge-crack-after.png');
 
   // ---- 3. VIBRATION ------------------------------------------------------------
   console.log('\n[3] VIBRATION 20 mm/s on day 30');

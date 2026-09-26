@@ -760,13 +760,19 @@
                 </div>
                 <div id="sim-params-crack" class="sim-event-param-group">
                   <div class="forge-slider-row">
-                    <div class="forge-slider-head"><span class="sim-label">DAYS AHEAD</span><span class="forge-slider-val" data-for="sim-days-ahead" data-unit="d"></span></div>
-                    <input type="range" id="sim-days-ahead" class="forge-slider" min="1" max="90" step="1" value="30">
+                    <div class="forge-slider-head"><span class="sim-label">THROW</span><span class="forge-slider-val" data-for="sim-crack-throw" data-unit="m"></span></div>
+                    <input type="range" id="sim-crack-throw" class="forge-slider" min="0.05" max="2" step="0.05" value="0.4">
                   </div>
                   <div class="forge-slider-row">
-                    <div class="forge-slider-head"><span class="sim-label">RADIUS</span><span class="forge-slider-val" data-for="sim-crack-radius" data-unit="m"></span></div>
-                    <input type="range" id="sim-crack-radius" class="forge-slider" min="10" max="500" step="10" value="150">
+                    <div class="forge-slider-head"><span class="sim-label">WIDTH</span><span class="forge-slider-val" data-for="sim-crack-width" data-unit="m"></span></div>
+                    <input type="range" id="sim-crack-width" class="forge-slider" min="2" max="30" step="1" value="8">
                   </div>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">OPEN OVER</span><span class="forge-slider-val" data-for="sim-crack-open" data-unit="d"></span></div>
+                    <input type="range" id="sim-crack-open" class="forge-slider" min="0.5" max="30" step="0.5" value="2">
+                  </div>
+                  <button id="btn-forge-draw-crack" class="sim-btn-run forge-btn-draw" title="Click two points on the terrain: A, then B. ESC cancels.">DRAW CRACK</button>
+                  <div id="forge-crack-readout" class="forge-slider-note">A: --  B: --</div>
                 </div>
                 <div id="sim-params-tilt" class="sim-event-param-group" style="display:none;">
                   <div class="forge-slider-row">
@@ -780,6 +786,10 @@
                   <div class="forge-slider-row">
                     <div class="forge-slider-head"><span class="sim-label">RADIUS</span><span class="forge-slider-val" data-for="sim-tilt-radius" data-unit="m"></span></div>
                     <input type="range" id="sim-tilt-radius" class="forge-slider" min="10" max="500" step="10" value="100">
+                  </div>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">OVER</span><span class="forge-slider-val" data-for="sim-tilt-over" data-unit="d"></span></div>
+                    <input type="range" id="sim-tilt-over" class="forge-slider" min="1" max="30" step="1" value="3">
                   </div>
                 </div>
                 <div id="sim-params-vibration" class="sim-event-param-group" style="display:none;">
@@ -795,7 +805,7 @@
               <div class="sim-section-box">
                 <div class="sim-section-title">TARGET</div>
                 <div id="forge-target-readout" style="font-size:10.5px; font-family:monospace; color:var(--text-primary);">x 0 m · y 0 m (default)</div>
-                <div style="font-size:9.5px; color:var(--text-secondary); margin-top:2px;">Click the terrain to move the target.</div>
+                <div style="font-size:9.5px; color:var(--text-secondary); margin-top:2px;">Click the terrain to move the target (CRACK: use DRAW CRACK).</div>
               </div>
 
               <button id="btn-sim-run-scenario" class="sim-btn-run">FIRE EVENT</button>

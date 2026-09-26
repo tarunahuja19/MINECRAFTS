@@ -204,11 +204,26 @@ var simTab = (function () {
         scenarioBtns.forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         selectedScenarioType = btn.dataset.type || 'crack';
+        if (selectedScenarioType !== 'crack') cancelCrackDraw();
         updateScenarioParamsVisibility(selectedScenarioType);
-        if (forgePreviewOn) sendForgePreview();
+        updateFireEnabled();
+        if (forgePreviewOn || selectedScenarioType === 'crack') sendForgePreview();
       });
     });
     updateScenarioParamsVisibility(selectedScenarioType || 'crack');
+
+    // 5a. DRAW CRACK toggle; ESC cancels drawing.
+    var btnDraw = document.getElementById('btn-forge-draw-crack');
+    if (btnDraw) {
+      btnDraw.addEventListener('click', function () {
+        if (crackDraw.drawing) cancelCrackDraw(); else startCrackDraw();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && crackDraw.drawing) cancelCrackDraw();
+    });
+    renderForgeCrackReadout();
+    updateFireEnabled();
 
     // 5b. Event sliders: each badge shows its slider's live value + unit.
     var sliders = document.querySelectorAll('#sim-left .forge-slider');
@@ -219,7 +234,7 @@ var simTab = (function () {
         badge.textContent = slider.value + ' ' + (badge.getAttribute('data-unit') || '');
       };
       slider.addEventListener('input', paint);
-      if (/-radius$/.test(slider.id) || slider.id === 'sim-tilt-dir') {
+      if (/-radius$/.test(slider.id) || slider.id === 'sim-tilt-dir' || slider.id === 'sim-crack-width') {
         slider.addEventListener('input', sendForgePreview);
       }
       paint();
@@ -370,7 +385,7 @@ var simTab = (function () {
     // RUN & event buttons remain active for full terrain scenarios
     var btnRun = document.getElementById('btn-sim-run-scenario');
     if (btnRun) {
-      btnRun.disabled = false;
+      updateFireEnabled();
       btnRun.title = 'Run experiment scenario';
       btnRun.style.opacity = '1';
       btnRun.style.cursor = 'pointer';
@@ -537,6 +552,7 @@ var simTab = (function () {
     forgeState.events = forgeState.events.filter(function (ev) { return ev.source === 'live'; });
     renderForgeEvents();
     resetForgeAlarms();
+    clearCrackDraw();
     clearForgePreview();
     renderForgeRight();
     updateForgeRange(function () {
@@ -573,6 +589,7 @@ var simTab = (function () {
 
   function setForgeTarget(t) {
     if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y)) return;
+    if (crackDraw.drawing) { addCrackPoint(t.x, t.y); return; }
     forgeTarget = {
       x: t.x,
       y: t.y,
@@ -600,14 +617,89 @@ var simTab = (function () {
     el.textContent = txt;
   }
 
+  // DRAW CRACK: while drawing, terrain clicks set A then B instead of the
+  // target. B turns drawing off; ESC (or the button again) cancels.
+  var crackDraw = { drawing: false, a: null, b: null };
+
+  function forgeCrackLine() {
+    return crackDraw.a && crackDraw.b
+      ? { x0: crackDraw.a.x, y0: crackDraw.a.y, x1: crackDraw.b.x, y1: crackDraw.b.y }
+      : null;
+  }
+
+  function updateFireEnabled() {
+    var btn = document.getElementById('btn-sim-run-scenario');
+    if (!btn) return;
+    var wait = selectedScenarioType === 'crack' && !crackDraw.b;
+    btn.disabled = wait;
+    btn.title = wait ? 'Draw the crack first: DRAW CRACK, then click A and B on the terrain' : 'Run experiment scenario';
+    btn.style.opacity = wait ? '0.5' : '1';
+    btn.style.cursor = wait ? 'not-allowed' : 'pointer';
+  }
+
+  function renderForgeCrackReadout() {
+    var el = document.getElementById('forge-crack-readout');
+    var btn = document.getElementById('btn-forge-draw-crack');
+    if (btn) {
+      btn.classList.toggle('active', crackDraw.drawing);
+      btn.textContent = crackDraw.drawing ? (crackDraw.a ? 'CLICK POINT B (ESC cancels)' : 'CLICK POINT A (ESC cancels)') : 'DRAW CRACK';
+    }
+    if (!el) return;
+    var fmt = function (p) { return p ? Math.round(p.x) + ', ' + Math.round(p.y) : '--'; };
+    var txt = 'A: ' + fmt(crackDraw.a) + '  B: ' + fmt(crackDraw.b);
+    if (crackDraw.a && crackDraw.b) {
+      txt += '  length ' + Math.round(Math.hypot(crackDraw.b.x - crackDraw.a.x, crackDraw.b.y - crackDraw.a.y)) + ' m';
+    }
+    el.textContent = txt;
+  }
+
+  function startCrackDraw() {
+    crackDraw = { drawing: true, a: null, b: null };
+    renderForgeCrackReadout();
+    updateFireEnabled();
+    sendForgePreview();
+    // Terrain clicks land in the iframe, which would swallow ESC.
+    try { window.focus(); } catch (_) {}
+  }
+
+  function cancelCrackDraw() {
+    if (!crackDraw.drawing) return;
+    crackDraw.drawing = false;
+    if (!crackDraw.b) crackDraw.a = null;
+    renderForgeCrackReadout();
+    updateFireEnabled();
+    sendForgePreview();
+  }
+
+  function clearCrackDraw() {
+    crackDraw = { drawing: false, a: null, b: null };
+    renderForgeCrackReadout();
+    updateFireEnabled();
+  }
+
+  function addCrackPoint(x, y) {
+    if (!crackDraw.a) {
+      crackDraw.a = { x: x, y: y };
+    } else {
+      crackDraw.b = { x: x, y: y };
+      crackDraw.drawing = false;
+    }
+    renderForgeCrackReadout();
+    updateFireEnabled();
+    sendForgePreview();
+    try { window.focus(); } catch (_) {}
+  }
+
   function forgeEventLine(ev) {
     var d = 'Day ' + Number(ev.day).toFixed(1) + ' · ';
     if (ev.type === 'vibration') {
       return d + 'VIBRATION ' + fmtNum(ev.ppv_mm_s) + ' mm/s for ' + Math.round(ev.duration_s) + ' s (site-wide)';
     }
-    if (ev.kind === 'tilt') {
-      return d + 'TILT ' + fmtNum(ev.rate_mm_per_m) + ' mm/m toward ' + Math.round(ev.direction_deg) + '° at (' +
-        Math.round(ev.target_x) + ', ' + Math.round(ev.target_y) + '), r ' + fmtNum(ev.radius_m) + ' m';
+    if (ev.type === 'tilt') {
+      return d + 'TILT ' + fmtNum(ev.rate_mm_per_m) + ' mm/m → ' + Math.round(ev.direction_deg) + '°, over ' + fmtNum(ev.over_days) + ' d';
+    }
+    if (ev.type === 'crack') {
+      return d + 'CRACK ' + Math.round(Math.hypot(ev.x1 - ev.x0, ev.y1 - ev.y0)) + ' m, throw ' + Number(ev.throw_m).toFixed(2) + ' m';
     }
     return d + 'CAVE-IN ' + fmtNum(ev.depth_m) + ' m / ' +
       fmtNum(ev.radius_m) + ' m at (' + Math.round(ev.x) + ', ' + Math.round(ev.y) + ')' +
@@ -653,7 +745,7 @@ var simTab = (function () {
     pauseForge();
     forgeState.events.push(ev);
     renderForgeEvents();
-    if (typeof simEmbed !== 'undefined' && simEmbed.sendForgeEffect) {
+    if (effectType && typeof simEmbed !== 'undefined' && simEmbed.sendForgeEffect) {
       simEmbed.sendForgeEffect(effectType, ex, ey, erad, edepth, ppv);
     }
     clearForgePreview();
@@ -681,39 +773,60 @@ var simTab = (function () {
     addForgeEvent(ev, 'cave_in', ev.x, ev.y, ev.radius_m, ev.depth_m);
   }
 
-  // Bowl centre for a TILT: the engine's tilt (App.tsx handleTriggerEvent) is
-  // a cave-in centred one radius off the target, so the target sits on the
-  // flank where the ground slopes most. Direction is a compass bearing.
-  function forgeTiltCentre(radius, bearingDeg) {
+  // Bowl centre for a TILT: :8020 puts a bowl one radius off the target along
+  // the bearing, so the target sits on the flank where the ground slopes most.
+  // Direction is a compass bearing.
+  function forgeTiltCentre(radius, bearingDeg, x, y) {
     var b = bearingDeg * Math.PI / 180;
-    return { x: forgeTarget.x + radius * Math.sin(b), y: forgeTarget.y + radius * Math.cos(b) };
+    return {
+      x: (x === undefined ? forgeTarget.x : x) + radius * Math.sin(b),
+      y: (y === undefined ? forgeTarget.y : y) + radius * Math.cos(b)
+    };
   }
 
   function fireForgeTilt() {
     var rate = sliderValue('sim-tilt-rate');
     var dir = sliderValue('sim-tilt-dir');
     var radius = sliderValue('sim-tilt-radius');
-    if (!(rate > 0) || !(radius > 0) || !Number.isFinite(dir)) {
-      console.warn('[FORGE] TILT needs rate, direction and radius sliders');
+    var over = sliderValue('sim-tilt-over');
+    if (!(rate > 0) || !(radius > 0) || !(over > 0) || !Number.isFinite(dir)) {
+      console.warn('[FORGE] TILT needs rate, direction, radius and over sliders');
       return;
     }
-    var c = forgeTiltCentre(radius, dir);
     var ev = {
-      type: 'cave_in',
-      kind: 'tilt',
-      x: c.x,
-      y: c.y,
+      type: 'tilt',
+      x: forgeTarget.x,
+      y: forgeTarget.y,
       radius_m: radius,
-      // Same rate -> drop mapping FORGE used before: rate (mm/m) over the radius.
-      depth_m: rate * radius / 1000,
-      day: forgeState.day,
-      duration_h: FORGE_CAVEIN_DURATION_H,
-      target_x: forgeTarget.x,
-      target_y: forgeTarget.y,
       rate_mm_per_m: rate,
-      direction_deg: dir
+      direction_deg: dir,
+      over_days: over,
+      day: forgeState.day
     };
-    addForgeEvent(ev, 'tilt', ev.x, ev.y, ev.radius_m, ev.depth_m);
+    var c = forgeTiltCentre(radius, dir);
+    addForgeEvent(ev, 'tilt', c.x, c.y, radius, rate * radius / 1000);
+  }
+
+  function fireForgeCrack() {
+    var line = forgeCrackLine();
+    var thr = sliderValue('sim-crack-throw');
+    var width = sliderValue('sim-crack-width');
+    var open = sliderValue('sim-crack-open');
+    if (!line || !(thr > 0) || !(width > 0) || !(open > 0)) return;
+    if (line.x0 === line.x1 && line.y0 === line.y1) {
+      console.warn('[FORGE] CRACK needs two different points');
+      return;
+    }
+    var ev = {
+      type: 'crack',
+      x0: line.x0, y0: line.y0, x1: line.x1, y1: line.y1,
+      throw_m: thr,
+      width_m: width,
+      open_days: open,
+      day: forgeState.day
+    };
+    clearCrackDraw();
+    addForgeEvent(ev, null);
   }
 
   function fireForgeVibration() {
@@ -1088,19 +1201,34 @@ var simTab = (function () {
     return null;
   }
 
-  // Nearest event already started on this FORGE day: { ev, index, dist }.
+  // Distance from (x, y) to an event: a point for cave-in and tilt (the
+  // target), the segment for a crack. Vibration is site-wide: null.
+  function forgeEventDist(ev, x, y) {
+    if (ev.type === 'crack') {
+      var dx = ev.x1 - ev.x0, dy = ev.y1 - ev.y0;
+      var len2 = dx * dx + dy * dy;
+      var t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - ev.x0) * dx + (y - ev.y0) * dy) / len2));
+      return Math.hypot(x - (ev.x0 + t * dx), y - (ev.y0 + t * dy));
+    }
+    if (ev.type === 'cave_in' || ev.type === 'tilt') return Math.hypot(ev.x - x, ev.y - y);
+    return null;
+  }
+
+  // Nearest event of any kind already started on this FORGE day: { ev, index, dist }.
   function forgeNearestEvent(x, y, day) {
     var best = null;
     forgeState.events.forEach(function (ev, idx) {
-      if (ev.type !== 'cave_in' || ev.day > day + 1e-9) return;
-      var d = Math.hypot(ev.x - x, ev.y - y);
+      if (ev.day > day + 1e-9) return;
+      var d = forgeEventDist(ev, x, y);
+      if (d === null) return;
       if (!best || d < best.dist) best = { ev: ev, index: idx, dist: d };
     });
     return best;
   }
 
   function forgeEventTag(ev, index) {
-    return (ev.kind === 'tilt' ? 'TILT #' : 'CAVE-IN #') + (index + 1) + (ev.source === 'live' ? ' live' : '');
+    var name = ev.type === 'tilt' ? 'TILT' : ev.type === 'crack' ? 'CRACK' : 'CAVE-IN';
+    return name + ' #' + (index + 1) + (ev.source === 'live' ? ' live' : '');
   }
 
   function resetForgeAlarms() {
@@ -1241,7 +1369,7 @@ var simTab = (function () {
   }
 
   function forgePreviewRadius() {
-    var ids = { sudden_sinking: 'sim-cavein-radius', tilt: 'sim-tilt-radius' };
+    var ids = { sudden_sinking: 'sim-cavein-radius', tilt: 'sim-tilt-radius' };  // CRACK previews a line, not a ring
     var el = document.getElementById(ids[selectedScenarioType] || '');
     var r = el ? parseFloat(el.value) : NaN;
     return r > 0 ? r : null;
@@ -1259,12 +1387,30 @@ var simTab = (function () {
       '<line x1="100" y1="0" x2="100" y2="200" stroke="#1A2A33" stroke-width="0.5"/>' +
       '<line x1="0" y1="100" x2="200" y2="100" stroke="#1A2A33" stroke-width="0.5"/>';
     forgeState.events.forEach(function (ev, idx) {
-      if (ev.type !== 'cave_in') return;   // vibration is site-wide: event list only
+      if (ev.type === 'vibration') return;   // site-wide: event list only
       var started = ev.day <= day + 1e-9;
-      out += '<circle class="event" data-event="' + idx + '" cx="' + px(ev.x) + '" cy="' + py(ev.y) + '" r="' + (ev.radius_m * k).toFixed(1) +
-        '" fill="' + (started ? 'rgba(255,34,34,0.12)' : 'none') + '" stroke="' + (started ? '#FF5252' : '#6B4040') + '" stroke-width="1"/>' +
-        '<text x="' + px(ev.x) + '" y="' + (py(ev.y) - ev.radius_m * k - 2).toFixed(1) + '" fill="#FF9A9A" font-size="7" text-anchor="middle">' + (ev.kind === 'tilt' ? 'T ' : '') + 'd' + Number(ev.day).toFixed(1) + '</text>';
+      var stroke = started ? '#FF5252' : '#6B4040';
+      var lbl = 'd' + Number(ev.day).toFixed(1);
+      if (ev.type === 'crack') {
+        out += '<line class="event" data-event="' + idx + '" x1="' + px(ev.x0) + '" y1="' + py(ev.y0) + '" x2="' + px(ev.x1) + '" y2="' + py(ev.y1) +
+          '" stroke="' + stroke + '" stroke-width="' + (started ? 2 : 1) + '"/>' +
+          '<text x="' + px((ev.x0 + ev.x1) / 2) + '" y="' + (py((ev.y0 + ev.y1) / 2) - 3).toFixed(1) + '" fill="#FF9A9A" font-size="7" text-anchor="middle">C ' + lbl + '</text>';
+        return;
+      }
+      var c = ev.type === 'tilt' ? forgeTiltCentre(ev.radius_m, ev.direction_deg, ev.x, ev.y) : { x: ev.x, y: ev.y };
+      out += '<circle class="event" data-event="' + idx + '" cx="' + px(c.x) + '" cy="' + py(c.y) + '" r="' + (ev.radius_m * k).toFixed(1) +
+        '" fill="' + (started ? 'rgba(255,34,34,0.12)' : 'none') + '" stroke="' + stroke + '" stroke-width="1"/>' +
+        '<text x="' + px(c.x) + '" y="' + (py(c.y) - ev.radius_m * k - 2).toFixed(1) + '" fill="#FF9A9A" font-size="7" text-anchor="middle">' + (ev.type === 'tilt' ? 'T ' : '') + lbl + '</text>';
     });
+    if (forgePreviewOn && selectedScenarioType === 'crack') {
+      var cl = forgeCrackLine();
+      if (cl) {
+        out += '<line id="forge-minimap-preview-line" x1="' + px(cl.x0) + '" y1="' + py(cl.y0) + '" x2="' + px(cl.x1) + '" y2="' + py(cl.y1) +
+          '" stroke="#FFAA00" stroke-width="1.2" stroke-dasharray="4 2"/>';
+      } else if (crackDraw.a) {
+        out += '<circle id="forge-minimap-preview-a" cx="' + px(crackDraw.a.x) + '" cy="' + py(crackDraw.a.y) + '" r="2.5" fill="#FFAA00"/>';
+      }
+    }
     var pr = forgePreviewOn ? forgePreviewRadius() : null;
     if (pr) {
       var pc = forgePreviewCentre(pr);
@@ -1315,12 +1461,21 @@ var simTab = (function () {
   }
 
   function sendForgePreview() {
-    var r = forgePreviewRadius();
-    if (!r) { clearForgePreview(); return; }
+    var line = null, r = null, c = null;
+    if (selectedScenarioType === 'crack') {
+      // A drawn crack previews as the line A-B; with only A set, a ring of the crack's width marks A.
+      line = forgeCrackLine();
+      if (!line && crackDraw.a) { r = sliderValue('sim-crack-width'); c = crackDraw.a; }
+      if (!line && !(r > 0)) { clearForgePreview(); return; }
+    } else {
+      r = forgePreviewRadius();
+      if (!r) { clearForgePreview(); return; }
+      c = forgePreviewCentre(r);
+    }
     forgePreviewOn = true;
-    var c = forgePreviewCentre(r);
     if (typeof simEmbed !== 'undefined' && simEmbed.sendForgePreview) {
-      simEmbed.sendForgePreview(c.x, c.y, r);
+      if (line) simEmbed.sendForgePreview(null, null, null, line);
+      else simEmbed.sendForgePreview(c.x, c.y, r);
     }
     renderForgeMiniMap();
   }
@@ -1914,9 +2069,8 @@ var simTab = (function () {
   // NOTE: showRightPanelContent removed with the freeze flow (only caller).
 
 
-  // FIRE EVENT. CAVE-IN, TILT and VIBRATION are FORGE timeline events
-  // computed by :8020 with the engine's maths. CRACK has no engine model yet
-  // (B2d). FORGE never calls the 690-day lab.
+  // FIRE EVENT. Every FORGE event is a timeline event computed by :8020 with
+  // the engine's maths. FORGE never calls the 690-day lab.
   function runScenario() {
     var type = selectedScenarioType || 'crack';
     setViewportLit(true);
@@ -1927,11 +2081,7 @@ var simTab = (function () {
     } else if (type === 'vibration') {
       fireForgeVibration();
     } else {
-      var btnRun = document.getElementById('btn-sim-run-scenario');
-      if (btnRun) {
-        btnRun.textContent = 'CRACK: NOT BUILT YET (B2d)';
-        setTimeout(function () { btnRun.textContent = 'FIRE EVENT'; }, 1800);
-      }
+      fireForgeCrack();
     }
   }
 
