@@ -741,12 +741,12 @@ var simTab = (function () {
     return el ? parseFloat(el.value) : NaN;
   }
 
-  function addForgeEvent(ev, effectType, ex, ey, erad, edepth, ppv) {
+  function addForgeEvent(ev, effectType, ex, ey, erad, edepth, ppv, extra) {
     pauseForge();
     forgeState.events.push(ev);
     renderForgeEvents();
     if (effectType && typeof simEmbed !== 'undefined' && simEmbed.sendForgeEffect) {
-      simEmbed.sendForgeEffect(effectType, ex, ey, erad, edepth, ppv);
+      simEmbed.sendForgeEffect(effectType, ex, ey, erad, edepth, ppv, extra);
     }
     clearForgePreview();
     updateForgeRange(function () {
@@ -804,7 +804,7 @@ var simTab = (function () {
       day: forgeState.day
     };
     var c = forgeTiltCentre(radius, dir);
-    addForgeEvent(ev, 'tilt', c.x, c.y, radius, rate * radius / 1000);
+    addForgeEvent(ev, 'tilt', c.x, c.y, radius, rate * radius / 1000, undefined, { direction_deg: dir });
   }
 
   function fireForgeCrack() {
@@ -826,7 +826,9 @@ var simTab = (function () {
       day: forgeState.day
     };
     clearCrackDraw();
-    addForgeEvent(ev, null);
+    addForgeEvent(ev, 'crack', (line.x0 + line.x1) / 2, (line.y0 + line.y1) / 2,
+      Math.hypot(line.x1 - line.x0, line.y1 - line.y0) / 2, thr, undefined,
+      { line: { x0: line.x0, y0: line.y0, x1: line.x1, y1: line.y1 } });
   }
 
   function fireForgeVibration() {
@@ -1474,7 +1476,9 @@ var simTab = (function () {
     }
     forgePreviewOn = true;
     if (typeof simEmbed !== 'undefined' && simEmbed.sendForgePreview) {
-      if (line) simEmbed.sendForgePreview(null, null, null, line);
+      if (line) simEmbed.sendForgePreview(null, null, null, {
+        x0: line.x0, y0: line.y0, x1: line.x1, y1: line.y1, width_m: sliderValue('sim-crack-width')
+      });
       else simEmbed.sendForgePreview(c.x, c.y, r);
     }
     renderForgeMiniMap();

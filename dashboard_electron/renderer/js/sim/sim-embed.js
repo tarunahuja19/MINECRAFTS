@@ -466,12 +466,13 @@ var simEmbed = (function () {
       var slot = slots.forge;
       if (slot) postToSlot(slot, { cmd: 'forge-frame', frame: frame });
     },
-    sendForgeEffect: function (type, cx, cy, rad, depth, ppv) {
+    // `extra` adds per-type fields: tilt {direction_deg}, crack {line: {x0, y0, x1, y1}}.
+    sendForgeEffect: function (type, cx, cy, rad, depth, ppv, extra) {
       var slot = slots.forge;
-      if (slot) postToSlot(slot, { cmd: 'forge-effect', type: type, cx: cx, cy: cy, rad: rad, depth: depth, ppv: ppv });
+      if (slot) postToSlot(slot, Object.assign({ cmd: 'forge-effect', type: type, cx: cx, cy: cy, rad: rad, depth: depth, ppv: ppv }, extra || {}));
     },
-    // Radius preview ring (drawing only). x = null clears it. `line` ({x0,y0,x1,y1})
-    // draws the dashed CRACK preview instead of the ring.
+    // Zone preview (drawing only; dashed white/red rings at 1.2 R and 1.5 R). x = null
+    // clears it. `line` ({x0,y0,x1,y1,width_m}) previews a CRACK zone instead of the ring.
     sendForgePreview: function (x, y, radiusM, line) {
       var slot = slots.forge;
       if (slot) postToSlot(slot, { cmd: 'forge-preview', x: x, y: y, radius_m: radiusM, line: line || null });

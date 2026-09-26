@@ -3,6 +3,13 @@ import { GroundPhysicsModal, type InfoKey } from "./components/GroundPhysicsModa
 import { LiveMathModal } from "./components/LiveMathModal";
 import { MineViewport, type MineViewportHandle } from "./components/MineViewport";
 import type { ImpactBurst } from "./components/CollapseDust";
+import {
+  TILT_ARROW_FADE_S,
+  TILT_ARROW_HOLD_S,
+  type CrackDustSpec,
+  type PreviewZone,
+  type TiltArrowSpec,
+} from "./components/EventZones";
 import { FALLBACK_NODES } from "./components/NodeMarkers";
 import { MenuBar } from "./components/MenuBar";
 import { RightInspectorPanel } from "./components/RightInspectorPanel";
@@ -42,8 +49,43 @@ import type {
   TickPayload,
   ZoneTelemetry,
   CrackLine,
+  EventZone,
   PreviewLine,
 } from "./types";
+
+/** Crack segments from the embed bridge or a FORGE frame, minus any with a non-finite end. */
+function sanitizeCracks(segs: unknown): CrackLine[] {
+  if (!Array.isArray(segs)) return [];
+  return segs
+    .filter(
+      (s) =>
+        s &&
+        Number.isFinite(s.x0) &&
+        Number.isFinite(s.y0) &&
+        Number.isFinite(s.x1) &&
+        Number.isFinite(s.y1),
+    )
+    .map((s) => ({
+      x0: s.x0,
+      y0: s.y0,
+      x1: s.x1,
+      y1: s.y1,
+      width_mm: Number.isFinite(s.width_mm) ? s.width_mm : 0,
+      isNew: s.isNew === true,
+    }));
+}
+
+/** Hazard zones from a FORGE frame that have a usable shape and radii. */
+function sanitizeZones(zones: unknown): EventZone[] {
+  if (!Array.isArray(zones)) return [];
+  return zones.filter(
+    (z) =>
+      z &&
+      z.r_white > 0 &&
+      z.r_red > 0 &&
+      ((Array.isArray(z.polyline) && z.polyline.length >= 2) || (Number.isFinite(z.cx) && Number.isFinite(z.cy))),
+  );
+}
 
 export const App: React.FC = () => {
   // Connection state
@@ -126,6 +168,26 @@ export const App: React.FC = () => {
   const [crackLines, setCrackLines] = useState<CrackLine[]>([]);
   // FORGE CRACK preview: dashed line A-B while the user draws (embed only).
   const [previewLine, setPreviewLine] = useState<PreviewLine | null>(null);
+  // FORGE hazard zones from the :8020 frame (white / red rings), and the ring
+  // previewed before an event is fired ({x, y, radius_m}; the rings sit at
+  // 1.2 R and 1.5 R). Both embed-only.
+  const [eventZones, setEventZones] = useState<EventZone[]>([]);
+  const [previewRing, setPreviewRing] = useState<PreviewZone | null>(null);
+  // FORGE event looks that live for a few seconds: tilt arrow, crack dust line.
+  const [tiltArrows, setTiltArrows] = useState<TiltArrowSpec[]>([]);
+  const [crackDusts, setCrackDusts] = useState<CrackDustSpec[]>([]);
+  const lookIdRef = useRef(0);
+  const previewZone = useMemo<PreviewZone | null>(() => {
+    if (previewLine && (previewLine.width_m ?? 0) > 0) {
+      return {
+        x: (previewLine.x0 + previewLine.x1) / 2,
+        y: (previewLine.y0 + previewLine.y1) / 2,
+        radius_m: previewLine.width_m as number,
+        line: previewLine,
+      };
+    }
+    return previewRing;
+  }, [previewLine, previewRing]);
   const [nodeTelemetry, setNodeTelemetry] = useState<NodeTelemetry[]>([]);
   const [zoneTelemetry, setZoneTelemetry] = useState<ZoneTelemetry[]>([]);
   const [tickCount, setTickCount] = useState<number>(0);
@@ -606,17 +668,57 @@ export const App: React.FC = () => {
     setImpacts((prev) => [...prev.slice(-5), { t0, amp0, tau }]);
   };
 
-  // FORGE cave-in look: the same dust, shake and toast as a collapse trigger,
-  // but no triggerCollapse — FORGE's ground comes only from :8020 frames, so
-  // carving here too would draw the bowl twice.
-  const playForgeCaveInEffect = (cx: number, cy: number, rad: number, depth: number, isTilt = false) => {
-    spawnImpactBurst(cx, cy, rad, depth);
-    addImpact(isTilt ? 0.5 : 0.7, 0.9);
+  // FORGE event looks: no triggerCollapse here — FORGE's ground comes only
+  // from :8020 frames, so carving here too would draw the bowl twice.
+  //   cave_in  dust burst + shake + toast (the same as a collapse trigger)
+  //   tilt     no dust, a small shake, and an arrow on the terrain at the
+  //            target pointing along `directionDeg` that fades after
+  //            TILT_ARROW_HOLD_S. (cx, cy) is the bowl centre, one radius
+  //            along the bearing from the target.
+  const playForgeCaveInEffect = (cx: number, cy: number, rad: number, depth: number, isTilt = false, directionDeg?: number) => {
+    if (isTilt) {
+      addImpact(0.25, 0.9);
+      if (Number.isFinite(directionDeg)) {
+        const b = ((directionDeg as number) * Math.PI) / 180;
+        spawnLook(
+          setTiltArrows,
+          {
+            x: cx - rad * Math.sin(b),
+            y: cy - rad * Math.cos(b),
+            dirDeg: directionDeg as number,
+            lengthM: Math.min(80, Math.max(30, 0.6 * rad)),
+          },
+          (TILT_ARROW_HOLD_S + TILT_ARROW_FADE_S + 0.25) * 1000,
+        );
+      }
+    } else {
+      spawnImpactBurst(cx, cy, rad, depth);
+      addImpact(0.7, 0.9);
+    }
     showToast(
       isTilt
         ? `📐 SURFACE TILT: bowl centred at (${cx.toFixed(0)}m, ${cy.toFixed(0)}m), ΔZ=${depth.toFixed(2)}m, r=${rad.toFixed(0)}m`
         : `💥 VOID ROOF CAVE-IN: ΔZ=${depth.toFixed(2)}m at (${cx.toFixed(0)}m, ${cy.toFixed(0)}m)`,
     );
+  };
+
+  // FORGE crack look: a thin dust line along the segment and a toast; no shake.
+  const playForgeCrackEffect = (line: { x0: number; y0: number; x1: number; y1: number }, throwM: number) => {
+    spawnLook(setCrackDusts, { x0: line.x0, y0: line.y0, x1: line.x1, y1: line.y1 }, 2500);
+    showToast(
+      `🪨 SURFACE CRACK: ${Math.hypot(line.x1 - line.x0, line.y1 - line.y0).toFixed(0)}m long, throw ${throwM.toFixed(2)}m`,
+    );
+  };
+
+  /** Add a short-lived look (arrow, dust line) and remove it after `ms`. */
+  const spawnLook = <T extends { id: number }>(
+    set: React.Dispatch<React.SetStateAction<T[]>>,
+    spec: Omit<T, "id">,
+    ms: number,
+  ) => {
+    const id = ++lookIdRef.current;
+    set((prev) => [...prev.slice(-3), { ...spec, id } as T]);
+    window.setTimeout(() => set((prev) => prev.filter((l) => l.id !== id)), ms);
   };
 
   // FORGE vibration look: shake and ground ripple only. No geomechanics call,
@@ -810,12 +912,14 @@ export const App: React.FC = () => {
   // Assigned in an effect (same as isRunningRef above), never during render.
   const triggerEventRef = useRef(handleTriggerEvent);
   const forgeCaveInEffectRef = useRef(playForgeCaveInEffect);
+  const forgeCrackEffectRef = useRef(playForgeCrackEffect);
   const forgeVibrationEffectRef = useRef(playForgeVibrationEffect);
   const startRef = useRef(handleStart);
   const pauseRef = useRef(handlePause);
   useEffect(() => {
     triggerEventRef.current = handleTriggerEvent;
     forgeCaveInEffectRef.current = playForgeCaveInEffect;
+    forgeCrackEffectRef.current = playForgeCrackEffect;
     forgeVibrationEffectRef.current = playForgeVibrationEffect;
     startRef.current = handleStart;
     pauseRef.current = handlePause;
@@ -868,6 +972,10 @@ export const App: React.FC = () => {
           globalGeomechanics.reset();
           setCrackLines([]);
           setPreviewLine(null);
+          setPreviewRing(null);
+          setEventZones([]);
+          setTiltArrows([]);
+          setCrackDusts([]);
           setBursts([]);
           setImpacts([]);
           setEventEndsAt(null);
@@ -886,6 +994,10 @@ export const App: React.FC = () => {
           const perts = frame.perturbations || [];
           setPerturbations(perts);
           if (frame.nodes) setNodeTelemetry(frame.nodes as NodeTelemetry[]);
+          setEventZones(sanitizeZones(frame.zones));
+          // Strain and drawn cracks. A frame without the field leaves the
+          // overlay alone (a lab `set-cracks` may own it).
+          if (Array.isArray(frame.cracks)) setCrackLines(sanitizeCracks(frame.cracks));
 
           let maxAmp = 0;
           for (const p of perts) {
@@ -909,6 +1021,12 @@ export const App: React.FC = () => {
             forgeVibrationEffectRef.current(ppv);
             break;
           }
+          if (d.type === "crack") {
+            const ln = d.line;
+            if (!ln || ![ln.x0, ln.y0, ln.x1, ln.y1, d.depth].every(Number.isFinite)) break;
+            forgeCrackEffectRef.current(ln, d.depth);
+            break;
+          }
           if (d.type !== "cave_in" && d.type !== "tilt") break;
           if (![d.cx, d.cy, d.rad, d.depth].every(Number.isFinite)) break;
           // Beacon on the event, same as the `trigger` command.
@@ -925,23 +1043,26 @@ export const App: React.FC = () => {
             });
           }
           setCollapseRadiusM(d.rad);
-          forgeCaveInEffectRef.current(d.cx, d.cy, d.rad, d.depth, d.type === "tilt");
+          forgeCaveInEffectRef.current(d.cx, d.cy, d.rad, d.depth, d.type === "tilt", d.direction_deg);
           break;
         }
         case "forge-preview": {
           if (!engineReadOnly) break;
           const ln = d.line;
           if (ln && [ln.x0, ln.y0, ln.x1, ln.y1].every(Number.isFinite)) {
-            setPreviewLine({ x0: ln.x0, y0: ln.y0, x1: ln.x1, y1: ln.y1 });
+            setPreviewLine({ x0: ln.x0, y0: ln.y0, x1: ln.x1, y1: ln.y1, width_m: Number.isFinite(ln.width_m) ? ln.width_m : undefined });
+            setPreviewRing(null);
             setBeaconHidden(true);
             break;
           }
           setPreviewLine(null);
           // {x: null} (or any unusable value) clears the preview ring.
           if (d.x == null || d.y == null || d.radius_m == null || d.radius_m <= 0 || !Number.isFinite(d.x) || !Number.isFinite(d.y) || !Number.isFinite(d.radius_m)) {
+            setPreviewRing(null);
             setBeaconHidden(true);
             break;
           }
+          setPreviewRing({ x: d.x, y: d.y, radius_m: d.radius_m });
           setBeaconHidden(false);
           const elev = sampleBaseGroundY(d.x, d.y);
           const slope = sampleSlopeDegrees(d.x, d.y);
@@ -976,26 +1097,7 @@ export const App: React.FC = () => {
         }
         case "set-cracks": {
           // Lab crack segments in app mine-frame metres; empty list clears.
-          const segs = Array.isArray(d.segments) ? d.segments : [];
-          setCrackLines(
-            segs
-              .filter(
-                (s) =>
-                  s &&
-                  Number.isFinite(s.x0) &&
-                  Number.isFinite(s.y0) &&
-                  Number.isFinite(s.x1) &&
-                  Number.isFinite(s.y1),
-              )
-              .map((s) => ({
-                x0: s.x0,
-                y0: s.y0,
-                x1: s.x1,
-                y1: s.y1,
-                width_mm: Number.isFinite(s.width_mm) ? s.width_mm : 0,
-                isNew: s.isNew === true,
-              })),
-          );
+          setCrackLines(sanitizeCracks(d.segments));
           break;
         }
         default:
@@ -1219,6 +1321,11 @@ export const App: React.FC = () => {
             nodeFilter={embedNodes}
             crackLines={crackLines}
             previewLine={previewLine}
+            eventZones={eventZones}
+            previewZone={previewZone}
+            zoneRings={!engineReadOnly}
+            tiltArrows={tiltArrows}
+            crackDusts={crackDusts}
           />
         </div>
       </div>

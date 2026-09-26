@@ -9,6 +9,12 @@ interface TargetBeaconProps {
   zElev?: number;
   exaggeration?: number;
   perturbations?: Perturbation[];
+  /**
+   * Draw the amber R ring and the red 1.2 R alert ring. FORGE turns these off:
+   * its rings are the white / red hazard zones (EventZones), and a second,
+   * differently sized set on the same target would contradict them.
+   */
+  showRings?: boolean;
 }
 
 /**
@@ -35,6 +41,7 @@ export const TargetBeacon: React.FC<TargetBeaconProps> = ({
   radiusM = 75,
   exaggeration = 1.0,
   perturbations,
+  showRings = true,
 }) => {
   // Safe scalars captured before the hooks so `useMemo` can run
   // unconditionally even when `target` is null — React requires hook order
@@ -157,32 +164,36 @@ export const TargetBeacon: React.FC<TargetBeaconProps> = ({
 
       {/* 3. Outer Physical Perimeter Outline (radius R - dashed) */}
       {/* Dashes need per-vertex line distances, which only the Line object computes */}
-      <lineLoop geometry={lineGeo} onUpdate={(l: THREE.LineLoop) => l.computeLineDistances()}>
-        <lineDashedMaterial
-          color="#ffaa00"
-          linewidth={2}
-          dashSize={6}
-          gapSize={3}
-          depthTest={true}
-          depthWrite={false}
-          polygonOffset={true}
-          polygonOffsetFactor={-8}
-          polygonOffsetUnits={-8}
-        />
-      </lineLoop>
+      {showRings && (
+        <>
+          <lineLoop geometry={lineGeo} onUpdate={(l: THREE.LineLoop) => l.computeLineDistances()}>
+            <lineDashedMaterial
+              color="#ffaa00"
+              linewidth={2}
+              dashSize={6}
+              gapSize={3}
+              depthTest={true}
+              depthWrite={false}
+              polygonOffset={true}
+              polygonOffsetFactor={-8}
+              polygonOffsetUnits={-8}
+            />
+          </lineLoop>
 
-      {/* 3b. 1.2x Red Alert Boundary Outline (radius 1.2 * R) */}
-      <lineLoop geometry={alertLineGeo}>
-        <lineBasicMaterial
-          color="#ff3333"
-          linewidth={3}
-          depthTest={true}
-          depthWrite={false}
-          polygonOffset={true}
-          polygonOffsetFactor={-8}
-          polygonOffsetUnits={-8}
-        />
-      </lineLoop>
+          {/* 3b. 1.2x Red Alert Boundary Outline (radius 1.2 * R) */}
+          <lineLoop geometry={alertLineGeo}>
+            <lineBasicMaterial
+              color="#ff3333"
+              linewidth={3}
+              depthTest={true}
+              depthWrite={false}
+              polygonOffset={true}
+              polygonOffsetFactor={-8}
+              polygonOffsetUnits={-8}
+            />
+          </lineLoop>
+        </>
+      )}
 
       {/* 4. Conformal Inner Reticle Ring (Cyan Ground Decal) */}
       <mesh geometry={innerRingGeo}>

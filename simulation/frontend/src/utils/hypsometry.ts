@@ -161,6 +161,37 @@ export const DEPTH_STOPS: [number, string][] = [
   [1.00, "#690003"], // at S_max     L* 20.1  C* 51
 ];
 
+/**
+ * Event-drop ramp: yellow -> orange -> red -> dark red, for the drop an event
+ * (cave-in, tilt) has carved on top of the settlement bowl.
+ *
+ * The bowl ramp above tops out at one seam's worth of settlement (2.25 m), so
+ * a 10 m cave-in would sit off the end of it. Events span 5 cm to 25 m, three
+ * orders of magnitude, so this ramp is indexed on a log scale (`eventDropT`)
+ * and is deliberately warm where DEPTH_STOPS is cool: the two never read as
+ * the same signal.
+ */
+export const HOT_STOPS: [number, string][] = [
+  [0.00, "#FFE066"], // 5 cm
+  [0.25, "#FF9A1F"],
+  [0.50, "#E8341C"],
+  [0.75, "#8B0A0A"],
+  [1.00, "#3D0000"], // 25 m
+];
+
+/** Event drops at or below this are left to the bowl ramp, m. */
+export const EVENT_DROP_MIN_M = 0.02;
+/** Drop at t = 0 on the log scale, m (the ramp's first tick). */
+export const EVENT_RAMP_MIN_M = 0.05;
+/** Drop at t = 1 on the log scale, m. */
+export const EVENT_RAMP_MAX_M = 25.0;
+
+/** Position on HOT_STOPS for an event drop `d` (m): ln(1 + d/5cm) / ln(1 + 25m/5cm). */
+export function eventDropT(d: number): number {
+  return Math.log(1.0 + Math.max(0.0, d) / EVENT_RAMP_MIN_M) /
+    Math.log(1.0 + EVENT_RAMP_MAX_M / EVENT_RAMP_MIN_M);
+}
+
 // Where the ramp starts. Was 0.1 to keep land off gist_earth's ocean-black
 // bottom; HEIGHT_STOPS has no such dead zone, so the whole ramp is usable.
 // Must equal RAMP_FLOOR in sandbox/hypsometry.py.
@@ -190,6 +221,11 @@ export function heightColor(t: number): [number, number, number] {
  */
 export function depthColor(t: number): [number, number, number] {
   return sampleRamp(t, DEPTH_STOPS);
+}
+
+/** Colour for `t` in [0, 1] on HOT_STOPS; see `eventDropT`. */
+export function hotColor(t: number): [number, number, number] {
+  return sampleRamp(t, HOT_STOPS);
 }
 
 /**

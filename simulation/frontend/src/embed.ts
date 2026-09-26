@@ -82,6 +82,10 @@ export type EmbedParentCommand =
         perturbations?: Array<{ cx: number; cy: number; radius_m: number; amp: number; yield?: number }>;
         nodes?: Array<{ id: number; node_id?: number; node_state?: string; [key: string]: any }>;
         node_states?: Record<string, string>;
+        /** Hazard zones of started events (white/red rings), panel-frame metres. */
+        zones?: Array<{ event_index: number; kind: "cave_in" | "crack"; cx?: number; cy?: number; polyline?: [number, number][]; r_white: number; r_red: number }>;
+        /** Strain and drawn cracks; when present replaces the crack overlay. */
+        cracks?: Array<{ x0: number; y0: number; x1: number; y1: number; width_mm: number; isNew: boolean }>;
         [key: string]: any;
       };
     }
@@ -89,13 +93,17 @@ export type EmbedParentCommand =
       source: typeof R4_SIM_EMBED_SOURCE;
       cmd: "forge-effect";
       /** FORGE only: dust, shake and toast. The ground comes from forge-frame. */
-      type: "cave_in" | "tilt" | "vibration";
+      type: "cave_in" | "tilt" | "crack" | "vibration";
       cx: number;
       cy: number;
       rad: number;
       depth: number;
       /** vibration only: PPV in mm/s */
       ppv?: number;
+      /** tilt only: compass bearing the ground tilts toward; cx, cy is the bowl centre one radius along it from the target. */
+      direction_deg?: number;
+      /** crack only: the segment the dust line runs along. */
+      line?: { x0: number; y0: number; x1: number; y1: number };
     }
   | {
       source: typeof R4_SIM_EMBED_SOURCE;
@@ -103,8 +111,8 @@ export type EmbedParentCommand =
       x?: number | null;
       y?: number | null;
       radius_m?: number | null;
-      /** CRACK preview: a dashed line A-B in panel-frame metres; replaces the ring. */
-      line?: { x0: number; y0: number; x1: number; y1: number } | null;
+      /** CRACK preview: the zone around the segment A-B in panel-frame metres (width_m sizes its rings); replaces the ring. */
+      line?: { x0: number; y0: number; x1: number; y1: number; width_m?: number } | null;
     };
 
 export type EmbedChildEvent =

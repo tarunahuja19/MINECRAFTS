@@ -1,15 +1,27 @@
 import React, { useState } from "react";
-import { HEIGHT_STOPS, RAMP_FLOOR, DEPTH_STOPS } from "../utils/hypsometry";
-import { CUMULATIVE_DEPTH_MAX_M } from "../utils/geomechanicsEngine";
-import { SUBSIDENCE_SHADOW, CONTOUR_INTERVAL_M } from "./TerrainMesh";
+import {
+  HEIGHT_STOPS,
+  RAMP_FLOOR,
+  DEPTH_STOPS,
+  HOT_STOPS,
+  EVENT_RAMP_MAX_M,
+  EVENT_RAMP_MIN_M,
+  eventDropT,
+} from "../utils/hypsometry";
+import {
+  SUBSIDENCE_SHADOW,
+  BOWL_RAMP_MAX_M,
+  BOWL_CONTOUR_INTERVAL_M,
+  EVENT_CONTOUR_INTERVAL_M,
+} from "./TerrainMesh";
 
 /**
  * Explains what the viewport's colours mean.
  *
  * One fused scale is painted onto the mesh: a height ramp everywhere, with a
- * depth ramp overlaid once the ground has moved. Without this, a violet patch
- * is ambiguous between "the bowl is deepening" and some other signal
- * entirely.
+ * depth ramp overlaid once the ground has moved, and a warm ramp for the drop
+ * an event has carved on top of the bowl. Without this, a violet patch is
+ * ambiguous between "the bowl is deepening" and some other signal entirely.
  */
 
 interface TerrainLegendProps {
@@ -114,7 +126,7 @@ export const TerrainLegend: React.FC<TerrainLegendProps> = ({
   const hasElev = elevMinM !== undefined && elevMaxM !== undefined;
   const mid = hasElev ? (elevMinM! + elevMaxM!) / 2 : undefined;
 
-  const title = "TERRAIN: HEIGHT / DEPTH";
+  const title = "TERRAIN: HEIGHT / DEPTH / EVENT";
 
   return (
     <div style={PANEL}>
@@ -138,30 +150,58 @@ export const TerrainLegend: React.FC<TerrainLegendProps> = ({
             shaded by Horn (1981) hillshade. m AMSL.
           </div>
 
-          {/* Ground that has MOVED is drawn on a second, separate scale,
+          {/* Ground that has MOVED is drawn on second and third scales,
               overlaid once a bowl forms — otherwise a colour is ambiguous
               between "high ridge" and "deep bowl". */}
           <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
-            DEPTH vs ORIGINAL GROUND
+            SETTLEMENT BOWL
           </div>
           <div style={{ marginTop: 4 }}>
             <RampBar stops={DEPTH_STOPS} shadow />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", color: "#a3a4a6", marginTop: 3 }}>
             {[0, 0.25, 0.5, 0.75, 1].map((frac) => (
-              <span key={frac}>{(frac * CUMULATIVE_DEPTH_MAX_M).toFixed(0)} m</span>
+              <span key={frac}>{(frac * BOWL_RAMP_MAX_M).toFixed(frac === 0 ? 0 : 2)} m</span>
             ))}
           </div>
           <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
-            How far the ground has carved in below where it started, not its
-            height above sea level. Blue = just moved, red ={" "}
-            {CUMULATIVE_DEPTH_MAX_M.toFixed(0)} m down. Carve-in is a fraction
-            of this panel's {(
-              (elevMaxM ?? 370) - (elevMinM ?? 196)
-            ).toFixed(0)} m relief, so it needs its own scale to be visible at
-            all. Dark rings are depth contours every{" "}
-            {CONTOUR_INTERVAL_M.toFixed(0)} m — closely spaced rings mean a
-            steep flank, wide spacing means a flat floor.
+            How far the ground has settled below where it started: blue =
+            just moved, red = {BOWL_RAMP_MAX_M.toFixed(2)} m, one seam's
+            worth. Dark rings every {BOWL_CONTOUR_INTERVAL_M.toFixed(2)} m —
+            closely spaced rings mean a steep flank, wide spacing a flat floor.
+          </div>
+
+          <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
+            EVENT DROP (LOG SCALE)
+          </div>
+          <div style={{ marginTop: 4 }}>
+            <RampBar stops={HOT_STOPS} />
+          </div>
+          {/* Log scale, so the ticks are not evenly spaced: each sits where
+              eventDropT puts its drop. */}
+          <div style={{ position: "relative", height: 12, color: "#a3a4a6", marginTop: 3 }}>
+            {[EVENT_RAMP_MIN_M, 0.5, 1, 5, EVENT_RAMP_MAX_M].map((d) => {
+              const t = eventDropT(d);
+              return (
+                <span
+                  key={d}
+                  style={{
+                    position: "absolute",
+                    left: `${t * 100}%`,
+                    transform: t >= 1 ? "translateX(-100%)" : t <= 0 ? "none" : "translateX(-50%)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {d < 1 ? `${d * 100} cm` : `${d} m`}
+                </span>
+              );
+            })}
+          </div>
+          <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
+            Drop carved by a cave-in or tilt on top of the bowl, shown where
+            it exceeds 2 cm. Dark rings every {EVENT_CONTOUR_INTERVAL_M.toFixed(0)} m.
+            Panel relief is {((elevMaxM ?? 370) - (elevMinM ?? 196)).toFixed(0)} m, so
+            these need scales of their own to be visible at all.
           </div>
         </>
       )}

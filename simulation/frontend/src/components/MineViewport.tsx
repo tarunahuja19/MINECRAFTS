@@ -3,14 +3,22 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { CrackLine, PreviewLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
+import type { CrackLine, EventZone, PreviewLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
 import type { EmbedClipBounds } from "../embed";
-import { sampleBaseGroundY } from "../utils/terrainSampler";
+import { sampleBaseGroundY, sampleGroundY } from "../utils/terrainSampler";
 import { TerrainMesh } from "./TerrainMesh";
 import { NodeMarkers } from "./NodeMarkers";
 import { TargetBeacon } from "./TargetBeacon";
 import { TerrainLegend } from "./TerrainLegend";
 import { CollapseDust, type ImpactBurst } from "./CollapseDust";
+import {
+  CrackDustLines,
+  EventZones,
+  TiltArrows,
+  type CrackDustSpec,
+  type PreviewZone,
+  type TiltArrowSpec,
+} from "./EventZones";
 
 export type CameraPreset = "overview" | "highland" | "pit" | "cutaway" | "topdown";
 
@@ -71,11 +79,21 @@ interface MineViewportProps {
   crackLines?: CrackLine[];
   /** FORGE CRACK preview: dashed line A-B while drawing; null = none. */
   previewLine?: PreviewLine | null;
+  /** FORGE hazard zones (white / red rings and fills) from the :8020 frame. */
+  eventZones?: EventZone[];
+  /** FORGE zone preview drawn dashed before an event is fired; null = none. */
+  previewZone?: PreviewZone | null;
+  /** FORGE: the target beacon shows only its beam and reticle; rings come from `eventZones` / `previewZone`. */
+  zoneRings?: boolean;
+  /** Live tilt direction arrows (FORGE); each removed by the parent after it fades. */
+  tiltArrows?: TiltArrowSpec[];
+  /** Live crack dust lines (FORGE). */
+  crackDusts?: CrackDustSpec[];
 }
 
-/** Dashed amber line A-B riding the base ground (FORGE DRAW CRACK preview). */
-function PreviewLineOverlay({ line }: { line: PreviewLine | null }) {
-  const geo = useMemo(() => {
+/** Dashed amber line A-B riding the deformed ground (FORGE DRAW CRACK preview). */
+function PreviewLineOverlay({ line, exaggeration, perturbations }: { line: PreviewLine | null; exaggeration: number; perturbations: Perturbation[] }) {
+  const obj = useMemo(() => {
     if (!line) return null;
     const len = Math.hypot(line.x1 - line.x0, line.y1 - line.y0);
     const n = Math.max(2, Math.ceil(len / 5));
@@ -84,44 +102,52 @@ function PreviewLineOverlay({ line }: { line: PreviewLine | null }) {
       const t = i / n;
       const x = line.x0 + (line.x1 - line.x0) * t;
       const y = line.y0 + (line.y1 - line.y0) * t;
-      const h = sampleBaseGroundY(x, y);
-      pos.push(x, (Number.isFinite(h) ? h : 0) + 2.0, y);
+      const h = sampleGroundY(x, y, exaggeration, perturbations);
+      pos.push(x, (Number.isFinite(h) ? h : 0) + CRACK_LIFT_M, y);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    return g;
-  }, [line]);
+    const l = new THREE.Line(g, new THREE.LineDashedMaterial({ color: "#ffaa00", dashSize: 6, gapSize: 3, depthWrite: false }));
+    l.computeLineDistances();
+    l.frustumCulled = false;
+    return l;
+  }, [line, exaggeration, perturbations]);
 
-  useEffect(() => () => geo?.dispose(), [geo]);
+  useEffect(() => () => {
+    obj?.geometry.dispose();
+    (obj?.material as THREE.Material | undefined)?.dispose();
+  }, [obj]);
 
-  if (!geo) return null;
-  return (
-    <line geometry={geo} onUpdate={(l: THREE.Line) => l.computeLineDistances()}>
-      <lineDashedMaterial color="#ffaa00" dashSize={6} gapSize={3} depthWrite={false} />
-    </line>
-  );
+  return obj ? <primitive object={obj} /> : null;
 }
+
+/** Cracks and preview lines lie this far above the deformed surface, m. */
+const CRACK_LIFT_M = 0.5;
 
 /**
  * Crack ground-break overlay: new segments draw red with a dark split core,
- * pre-existing segments draw dim orange. Lines ride ~2 m above the sampled
- * base ground so they never z-fight the mesh. WebGL draws 1 px lines, so the
- * "break" read comes from the dark-core-over-red pairing, not width.
+ * pre-existing segments draw dim orange. Each end sits CRACK_LIFT_M above the
+ * DEFORMED surface — the height TerrainMesh writes, exaggeration included — so
+ * a line lies on a pit's floor instead of floating over the pit's rim. WebGL
+ * draws 1 px lines, so the "break" read comes from the dark-core-over-red
+ * pairing, not width.
  */
-function CrackLinesOverlay({ lines }: { lines: CrackLine[] }) {
+function CrackLinesOverlay({ lines, exaggeration, perturbations, tick }: { lines: CrackLine[]; exaggeration: number; perturbations: Perturbation[]; tick?: unknown }) {
   const geoms = useMemo(() => {
     const fresh: number[] = [];
     const old: number[] = [];
     const core: number[] = [];
+    const heightAt = (x: number, y: number) => {
+      const h = sampleGroundY(x, y, exaggeration, perturbations);
+      return Number.isFinite(h) ? h : 0;
+    };
     for (const s of lines) {
-      const y0 = sampleBaseGroundY(s.x0, s.y0);
-      const y1 = sampleBaseGroundY(s.x1, s.y1);
-      const h0 = Number.isFinite(y0) ? y0 : 0;
-      const h1 = Number.isFinite(y1) ? y1 : 0;
+      const h0 = heightAt(s.x0, s.y0);
+      const h1 = heightAt(s.x1, s.y1);
       const target = s.isNew ? fresh : old;
-      target.push(s.x0, h0 + 2.0, s.y0, s.x1, h1 + 2.0, s.y1);
+      target.push(s.x0, h0 + CRACK_LIFT_M, s.y0, s.x1, h1 + CRACK_LIFT_M, s.y1);
       if (s.isNew) {
-        core.push(s.x0, h0 + 2.7, s.y0, s.x1, h1 + 2.7, s.y1);
+        core.push(s.x0, h0 + CRACK_LIFT_M + 0.1, s.y0, s.x1, h1 + CRACK_LIFT_M + 0.1, s.y1);
       }
     }
     const mk = (arr: number[]) => {
@@ -130,7 +156,8 @@ function CrackLinesOverlay({ lines }: { lines: CrackLine[] }) {
       return g;
     };
     return { fresh: mk(fresh), old: mk(old), core: mk(core) };
-  }, [lines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines, exaggeration, perturbations, tick]);
 
   useEffect(() => {
     return () => {
@@ -143,13 +170,13 @@ function CrackLinesOverlay({ lines }: { lines: CrackLine[] }) {
   if (lines.length === 0) return null;
   return (
     <group>
-      <lineSegments geometry={geoms.old}>
+      <lineSegments geometry={geoms.old} frustumCulled={false}>
         <lineBasicMaterial color="#FF8800" transparent opacity={0.75} />
       </lineSegments>
-      <lineSegments geometry={geoms.fresh}>
+      <lineSegments geometry={geoms.fresh} frustumCulled={false}>
         <lineBasicMaterial color="#FF2222" transparent opacity={0.95} />
       </lineSegments>
-      <lineSegments geometry={geoms.core}>
+      <lineSegments geometry={geoms.core} frustumCulled={false}>
         <lineBasicMaterial color="#050505" transparent opacity={1.0} />
       </lineSegments>
     </group>
@@ -214,8 +241,18 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   nodeFilter = null,
   crackLines = [],
   previewLine = null,
+  eventZones = [],
+  previewZone = null,
+  zoneRings = true,
+  tiltArrows = [],
+  crackDusts = [],
 }, ref) => {
   const controlsRef = useRef<OrbitControlsImpl>(null);
+
+  // Whatever else moves the ground besides `perturbations` (the bowl profile,
+  // the clock, an in-flight event); overlays that ride the surface re-sample
+  // when it changes.
+  const groundTick = `${timeScalar}|${animMs}|${bowlPy ? bowlPy.length : 0}|${bowlPy ? bowlPy[Math.floor(bowlPy.length / 2)] : 0}`;
 
   const focusOnBounds = (b: EmbedClipBounds) => {
     if (!controlsRef.current) return;
@@ -417,16 +454,30 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
             radiusM={collapseRadiusM}
             exaggeration={exaggeration}
             perturbations={perturbations}
+            showRings={zoneRings}
           />
 
-          {/* Lab crack ground-break overlay (embed `set-cracks` command) */}
-          <CrackLinesOverlay lines={crackLines} />
+          {/* FORGE hazard zones: white/red rings + fills, and their dashed preview */}
+          <EventZones
+            zones={eventZones}
+            preview={previewZone}
+            exaggeration={exaggeration}
+            perturbations={perturbations}
+            tick={groundTick}
+          />
+
+          {/* Lab / FORGE crack ground-break overlay (`set-cracks`, `forge-frame`) */}
+          <CrackLinesOverlay lines={crackLines} exaggeration={exaggeration} perturbations={perturbations} tick={groundTick} />
 
           {/* FORGE CRACK preview (embed `forge-preview` with a line) */}
-          <PreviewLineOverlay line={previewLine} />
+          <PreviewLineOverlay line={previewLine} exaggeration={exaggeration} perturbations={perturbations} />
 
           {/* Impact dust thrown by collapse / tilt triggers */}
           <CollapseDust bursts={bursts} />
+
+          {/* FORGE event looks: tilt direction arrow, crack dust line */}
+          <TiltArrows arrows={tiltArrows} exaggeration={exaggeration} perturbations={perturbations} tick={groundTick} />
+          <CrackDustLines dusts={crackDusts} />
         </ShakeGroup>
       </Canvas>
 

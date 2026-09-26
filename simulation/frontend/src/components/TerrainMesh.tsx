@@ -4,21 +4,37 @@ import type { Perturbation, SimulationPacket } from "../types";
 import type { EmbedClipBounds } from "../embed";
 import { SeismicWaveOverlay } from "./SeismicWaveOverlay";
 import { evaluateNaturalElevation } from "../utils/proceduralTerrain";
-import { globalGeomechanics, CUMULATIVE_DEPTH_MAX_M } from "../utils/geomechanicsEngine";
+import { ADRIYALA, globalGeomechanics, CUMULATIVE_DEPTH_MAX_M } from "../utils/geomechanicsEngine";
 
 // --- Subsidence overlay tuning ---------------------------------------------
 
 /**
- * Depth between subsidence contour rings, m.
+ * Settlement-bowl ramp ceiling, m: one seam's worth of subsidence,
+ * S_max = a * m (0.75 * 3.0 = 2.25 m). The blue DEPTH_STOPS run 0 -> this.
  *
- * 5 m divides the 50 m carve-in ceiling into 10 bands, keeping the ring count
- * that made the old 0.25 m / 2.25 m pairing readable. The count is what
- * matters, not the absolute interval: a full-depth bowl needs enough rings to
- * read as a shape while each ring still covers several render cells (the grid
- * is 3.77 m per cell). Scaling the ceiling without scaling this would put 200
- * rings on the bowl and alias into moire against the mesh.
+ * Not S_MAX_FULL_M (5 m, the per-event carve-in ceiling) and not
+ * CUMULATIVE_DEPTH_MAX_M (50 m): a 2 m bowl on a 50 m ramp used 4% of it and
+ * drew no contours. Drop beyond a seam is an event's doing and is coloured by
+ * the hot ramp instead (see HOT_STOPS in hypsometry.ts).
  */
-export const CONTOUR_INTERVAL_M = 5.0;
+export const BOWL_RAMP_MAX_M = ADRIYALA.A_SUBS * ADRIYALA.M_SEAM_M;
+
+/**
+ * Depth between contour rings, m. The bowl gets the same 9 rings the old
+ * 5 m / 50 m pairing gave a full-depth bowl; the event drop gets 1 m rings.
+ * The count matters more than the absolute interval: each ring must still
+ * cover several render cells (3.77 m per cell) or it aliases into moire.
+ */
+export const BOWL_CONTOUR_INTERVAL_M = 0.25;
+export const EVENT_CONTOUR_INTERVAL_M = 1.0;
+
+/**
+ * Slope at which event contours reach full strength, m/m. Same idea as
+ * CONTOUR_MIN_SLOPE_MM_PER_M below, in the units the perturbation gradient
+ * comes out in: a 10 m cave-in over 40 m peaks near 0.2, so 0.03 gives the
+ * flanks lines and leaves the floor and skirt plain.
+ */
+const EVENT_CONTOUR_MIN_SLOPE = 0.03;
 
 /** Half-width of a contour line, as a fraction of one interval. */
 const CONTOUR_WIDTH = 0.16;
@@ -42,7 +58,7 @@ export const SUBSIDENCE_EPS_M = 0.002;
  * Depth over which the overlay fades in from fully transparent.
  *
  * Prevents a hard colour boundary on ground that has barely moved. 0.12 m is
- * about 5% of the ceiling — small enough that a real bowl is fully tinted
+ * about 5% of the bowl ramp — small enough that a real bowl is fully tinted
  * almost everywhere, wide enough that the outer edge dissolves rather than
  * ending on a line.
  */
@@ -87,9 +103,31 @@ import {
   buildElevationCdf,
   depthColor,
   equalAreaT,
+  eventDropT,
+  EVENT_DROP_MIN_M,
   heightColor,
   hillshade,
+  hotColor,
 } from "../utils/hypsometry";
+
+/**
+ * Darkening strength (0..1) of a depth contour ring at `drop`, m.
+ *
+ * 1 at each multiple of `interval`, falling to 0 within CONTOUR_WIDTH of an
+ * interval on both sides and squared, so the core stays dark while the edges
+ * taper like a drawn line. `slopeGate` (0..1+) suppresses it on flat ground,
+ * where an entire region can sit inside one band and the "line" would flood
+ * it.
+ */
+function contourStrength(drop: number, interval: number, slopeGate: number): number {
+  const gate = Math.min(1.0, slopeGate);
+  if (gate <= 0.0) return 0.0;
+  const phase = (drop / interval) % 1.0;
+  const edgeDist = Math.min(phase, 1.0 - phase);
+  if (edgeDist >= CONTOUR_WIDTH) return 0.0;
+  const strength = (1.0 - edgeDist / CONTOUR_WIDTH) * gate;
+  return strength * strength;
+}
 
 interface TerrainMeshProps {
   z0Mesh?: number[][];
@@ -336,13 +374,27 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
         const state = globalGeomechanics.evaluatePoint(xCoord, yCoord, z0, nowSec);
 
         // Include any server perturbations if present
+        // The event drop is kept apart from the bowl (`state.dropDistanceM`)
+        // because the two are coloured on different ramps. Its gradient is
+        // accumulated alongside, for the event contours' slope gate.
         let serverPerturbDrop = 0.0;
+        let eventGradX = 0.0;
+        let eventGradY = 0.0;
         if (perturbations && perturbations.length > 0) {
           for (const p of perturbations) {
-            const dist = Math.hypot(xCoord - p.cx, yCoord - p.cy);
+            const ddx = xCoord - p.cx;
+            const ddy = yCoord - p.cy;
+            const dist = Math.hypot(ddx, ddy);
             if (dist < p.radius_m) {
-              const profile = Math.exp(-Math.pow(dist / (p.radius_m * 0.7), 2.2));
+              const scale = p.radius_m * 0.7;
+              const q = dist / scale;
+              const profile = Math.exp(-Math.pow(q, 2.2));
               serverPerturbDrop += p.amp * profile;
+              if (dist > 1e-6) {
+                const dDrop = (-p.amp * profile * 2.2 * Math.pow(q, 1.2)) / scale;
+                eventGradX += (dDrop * ddx) / dist;
+                eventGradY += (dDrop * ddy) / dist;
+              }
             }
           }
         }
@@ -433,131 +485,84 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
         }
 
         // ------------------------------------------------------------
-        // Depth overlay: blue -> violet -> red by how far the surface has
-        // moved from where it started.
+        // Depth overlays: the settlement bowl (blue) and the event drop (hot)
         // ------------------------------------------------------------
         //
-        // This is the layer that makes a cave-in visible, and it exists as
-        // its own ramp because the alternative is measurably impossible.
-        // The height tint above is stretched across this panel's full
-        // natural relief of 174.1 m (196.2-370.3 m AMSL), and it is an
-        // ABSOLUTE scale: it answers "how high is this ground above sea
-        // level", which is not the question a subsidence display is asked.
+        // These make a bowl and a cave-in visible at all. The height tint
+        // above is stretched across this panel's full natural relief of
+        // 174.1 m and answers "how high is this ground above sea level",
+        // which is not the question a subsidence display is asked. These
+        // ramps measure displacement from the original surface instead.
         //
-        // The question here is how far the ground has carved in from where
-        // it started, so this ramp measures exactly that — displacement
-        // from the original surface — normalised to CUMULATIVE_DEPTH_MAX_M,
-        // the deepest total carve-in the panel supports. Normalising to the
-        // total rather than to one event's S_MAX_FULL_M is what keeps the
-        // colour meaningful after repeated collapses: keyed to a single
-        // event's 5 m ceiling, the second collapse in the same place would
-        // paint a hole already saturated at the ramp's red end and every
-        // further metre would look identical.
-        //
-        // Blue = just moved. Violet = deepening. Red = at the deepest
-        // carve-in the panel supports. So the colour reads directly as
-        // depth below the original ground: roughly 10 m at the blue-indigo
-        // transition, 25 m mid-ramp, 50 m at full red.
-        if (totalDrop > SUBSIDENCE_EPS_M) {
-          const dropFactor = Math.min(1.0, totalDrop / CUMULATIVE_DEPTH_MAX_M);
-
-          // Linear in depth, deliberately. An earlier version used sqrt to
-          // "front-load" the shallow end, but that is backwards for this
-          // shape: it spends ramp on the outer skirt where almost nothing
-          // is happening and compresses the deep end where the bowl is.
-          // Linear keeps equal depth = equal colour step, which is also
-          // what makes the contour bands below evenly spaced in depth.
-          const t = dropFactor;
+        // Two drops, two ramps, because they differ by an order of magnitude
+        // and one ramp cannot show both. On the old single 50 m ramp a 2 m
+        // bowl used 4% of the colour range and drew no contours, and a 10 m
+        // cave-in only 20%.
+        //   * bowl  (`state.dropDistanceM`): the blue DEPTH_STOPS over one
+        //     seam's worth of settlement, BOWL_RAMP_MAX_M, contoured every
+        //     0.25 m.
+        //   * event (`serverPerturbDrop`): HOT_STOPS on a log scale from 5 cm
+        //     to 25 m, contoured every 1 m, blended over the bowl colour.
+        const bowlDrop = state.dropDistanceM;
+        if (bowlDrop > SUBSIDENCE_EPS_M) {
+          // Linear in depth, deliberately: equal depth = equal colour step,
+          // which is also what makes the contour bands evenly spaced in
+          // depth. (An earlier sqrt spent ramp on the outer skirt.)
+          const t = Math.min(1.0, bowlDrop / BOWL_RAMP_MAX_M);
           const [cr, cg, cb] = depthColor(t);
           rampColor.setRGB(cr, cg, cb, THREE.SRGBColorSpace);
 
-          // ---- Depth contours -------------------------------------
-          // The single most important part of this overlay, because a
-          // smooth ramp CANNOT show the bowl's floor. Measured across an
-          // R = 85 m, full-depth bowl: from the centre out to 40 m the
-          // ground only rises from 2.25 m to 2.15 m of drop, which is
-          // 0.02-0.04 of the colour ramp depending on tone curve — a flat
-          // wash over the entire floor, i.e. more than half the bowl's
-          // radius carries no shape information at all.
-          //
-          // Contour banding solves what a gradient cannot: quantising
-          // depth into fixed intervals turns that invisible 0.1 m of
-          // relief into a countable set of rings. The same bowl gains 9
-          // distinct bands, and the eye reads the shape from the ring
-          // spacing (tight rings = steep flank, wide rings = flat floor)
-          // exactly as it reads a topographic map. This is standard
-          // cartographic practice for the same reason: gradients lose
-          // low-relief structure, isolines preserve it.
-          const bandPhase = (totalDrop / CONTOUR_INTERVAL_M) % 1.0;
-          // Darken a narrow strip at each interval crossing. `strength`
-          // is 1 at the crossing and falls to 0 within CONTOUR_WIDTH,
-          // measured on both sides so the line is symmetric. Squaring it
-          // keeps the line's core dark while its edges taper, which reads
-          // as a drawn contour rather than a wide dirty band.
-          const edgeDist = Math.min(bandPhase, 1.0 - bandPhase);
-          if (edgeDist < CONTOUR_WIDTH) {
-            // Gate on the ground's SLOPE, not just on the phase. A contour
-            // is a line only where the surface is actually crossing depths;
-            // where the surface is flat, an entire region can sit inside one
-            // band and the "line" floods it. That is not hypothetical here:
-            // the floor of an R = 85 m bowl varies by 0.02 m over its inner
-            // 25 m, so an ungated test fired on every sample from 0-25 m and
-            // painted the whole floor dark instead of drawing a ring.
-            //
-            // `tiltMmPerM` is the analytic |dS/dx| already computed for this
-            // vertex, in mm per m. Requiring a minimum slope means contours
-            // appear on the flanks (where they carry shape information) and
-            // fade out on the floor and the far skirt (where they would only
-            // add noise), which is also how a cartographer treats a plateau.
-            const slopeGate = Math.min(
-              1.0,
+          // Contours: a smooth ramp cannot show a bowl's floor (an R = 85 m
+          // bowl varies by 0.02 m over its inner 25 m), so depth is quantised
+          // into rings that the eye reads by spacing, as on a topographic
+          // map. Gated on the analytic slope `tiltMmPerM` so they outline
+          // flanks and fade out on flat ground instead of flooding it.
+          rampColor.multiplyScalar(
+            1.0 - 0.34 * contourStrength(
+              bowlDrop,
+              BOWL_CONTOUR_INTERVAL_M,
               state.tiltMmPerM / CONTOUR_MIN_SLOPE_MM_PER_M,
-            );
-            if (slopeGate > 0.0) {
-              const strength = (1.0 - edgeDist / CONTOUR_WIDTH) * slopeGate;
-              rampColor.multiplyScalar(1.0 - 0.34 * strength * strength);
-            }
-          }
+            ),
+          );
 
-          // ---- Blend, faded smoothly at the outer edge -------------
-          // The overlay used to switch on at a fixed threshold with a
-          // floor of 0.35 opacity, which drew a hard colour ring on
-          // ground that had not actually moved. Fading the blend in from
-          // zero over the first few centimetres removes that edge, so the
-          // bowl dissolves into undisturbed terrain instead of ending at
-          // a line.
-          //
-          // `fadeIn` alone is the blend weight — it used to also carry a
-          // (0.55 + 0.45 * t) factor scaling by depth, a SECOND depth
-          // encoding stacked on top of the ramp's own colour, which is not
-          // needed and is not safe: it lets the overlay stay partially
-          // transparent even at full depth, letting the (lighter) height
-          // base show through and brightening the composite as the bowl
-          // deepens. That used to defeat a band gap between HEIGHT_STOPS and
-          // DEPTH_STOPS; that gap is gone (see hypsometry.ts), and the
-          // guarantee now rests on the excavation shadow below, which is
-          // sized assuming blend reaches 1. Dropping the factor is still
-          // load-bearing — see verify_bowl_physics.mjs's composite sweep.
-          const blend = Math.min(1.0, totalDrop / SUBSIDENCE_FADE_M);
+          // Blend, faded in over the first few centimetres so the bowl
+          // dissolves into undisturbed terrain instead of ending on a ring.
+          // `blend` alone is the weight; a second depth factor on top would
+          // let the lighter height base show through at full depth (see
+          // verify_bowl_physics.mjs's composite sweep).
+          const blend = Math.min(1.0, bowlDrop / SUBSIDENCE_FADE_M);
           tempColor.lerp(rampColor, blend);
 
-          // Excavation shadow: darkens the blend result, strongest at ramp entry
-          // (blend ~= 1, t ~= 0, i.e. ground that has just crossed into the overlay)
-          // and releasing as the ramp darkens on its own with depth. Must multiply
-          // AFTER the lerp above, not before — it darkens the blended result, not
-          // just the ramp colour being blended in. The (1 - t) decay is essential: a
-          // flat `1 - SUBSIDENCE_SHADOW * blend` crushes the deep end and reintroduces
-          // composite violations (measured: 1260 at shadow >= 0.55). See hypsometry.ts
-          // and verify_bowl_physics.mjs for the invariant this maintains.
+          // Excavation shadow: darkens the blended result, strongest at ramp
+          // entry and releasing as the ramp darkens on its own. It must
+          // multiply AFTER the lerp, and the (1 - t) decay is essential: a
+          // flat `1 - SUBSIDENCE_SHADOW * blend` crushes the deep end (1260
+          // composite violations at shadow >= 0.55). See hypsometry.ts.
           tempColor.multiplyScalar(1.0 - SUBSIDENCE_SHADOW * blend * (1.0 - t));
+        }
 
-          // Keep the hillshade relief visible through the overlay, so the
-          // bowl still reads as a 3-D depression rather than a flat decal
-          // painted onto the terrain.
-          if (elevationShading) {
-            const relief = 0.88 + 0.12 * elevationShading.shade[vIdx];
-            tempColor.multiplyScalar(relief);
-          }
+        if (serverPerturbDrop > EVENT_DROP_MIN_M) {
+          rampColor.setRGB(...hotColor(eventDropT(serverPerturbDrop)), THREE.SRGBColorSpace);
+          rampColor.multiplyScalar(
+            1.0 - 0.34 * contourStrength(
+              serverPerturbDrop,
+              EVENT_CONTOUR_INTERVAL_M,
+              Math.hypot(eventGradX, eventGradY) / EVENT_CONTOUR_MIN_SLOPE,
+            ),
+          );
+          // Fades in over 2 -> 5 cm so the event's edge is not a hard line.
+          const eventBlend = Math.min(
+            1.0,
+            (serverPerturbDrop - EVENT_DROP_MIN_M) / 0.03,
+          );
+          tempColor.lerp(rampColor, eventBlend);
+        }
+
+        // Keep the hillshade relief visible through the overlays, so the
+        // bowl still reads as a 3-D depression rather than a flat decal.
+        if (elevationShading && (bowlDrop > SUBSIDENCE_EPS_M || serverPerturbDrop > EVENT_DROP_MIN_M)) {
+          const relief = 0.88 + 0.12 * elevationShading.shade[vIdx];
+          tempColor.multiplyScalar(relief);
         }
 
         // Ejecta scorch: thrown rock and settled dust stain the ground in and

@@ -37,8 +37,8 @@ import { bowlProfile, bowlProfileDerivative, bowlProfileSecondDerivative,
          RIM_PEAK_RATIO, RIM_HEIGHT_FRAC,
          S_MAX_FULL_M, CUMULATIVE_DEPTH_MAX_M,
          LiveGeomechanicsEngine } from '../src/utils/geomechanicsEngine.ts';
-import { depthColor, heightColor, DEPTH_STOPS, HEIGHT_STOPS } from '../src/utils/hypsometry.ts';
-import { SUBSIDENCE_EPS_M, SUBSIDENCE_FADE_M, SUBSIDENCE_SHADOW } from '../src/components/TerrainMesh.tsx';
+import { depthColor, heightColor, hotColor, eventDropT, EVENT_DROP_MIN_M, DEPTH_STOPS, HEIGHT_STOPS } from '../src/utils/hypsometry.ts';
+import { SUBSIDENCE_EPS_M, SUBSIDENCE_FADE_M, SUBSIDENCE_SHADOW, BOWL_RAMP_MAX_M } from '../src/components/TerrainMesh.tsx';
 
 let fail = 0;
 const ok = (c, m) => { console.log((c?'  PASS  ':'  FAIL  ')+m); if(!c) fail++; };
@@ -182,7 +182,8 @@ console.log('\n=== COMPOSITE SWEEP: rebuilds exactly what TerrainMesh renders, m
 function compositeColor(hT, drop) {
   const base = heightColor(hT);
   if (drop <= SUBSIDENCE_EPS_M) return base;
-  const t = Math.min(1, drop / CUMULATIVE_DEPTH_MAX_M);
+  // The bowl ramp spans one seam's worth of settlement, not the 50 m ceiling.
+  const t = Math.min(1, drop / BOWL_RAMP_MAX_M);
   const ramp = depthColor(t);
   const blend = Math.min(1, drop / SUBSIDENCE_FADE_M);
   const blended = lerpRGB(base, ramp, blend);
@@ -197,10 +198,9 @@ function compositeColor(hT, drop) {
     const hT = hi / 20;
     let prevL = -Infinity;
     for (let di = 0; di <= 250; di++) {
-      // 0 .. CUMULATIVE_DEPTH_MAX_M in 251 samples, so the sweep covers the
-      // full depth the mesh can actually render rather than stopping at one
-      // event's ceiling and leaving the deep end of the ramp untested.
-      const drop = (di / 250) * CUMULATIVE_DEPTH_MAX_M;
+      // 0 .. BOWL_RAMP_MAX_M in 251 samples: the whole bowl ramp. Deeper
+      // drops are the event ramp's, checked separately below.
+      const drop = (di / 250) * BOWL_RAMP_MAX_M;
       const L = lightness(compositeColor(hT, drop));
       if (di > 0 && L > prevL + 0.01) {
         violations++;
@@ -213,6 +213,28 @@ function compositeColor(hT, drop) {
   ok(violations === 0, `composite never brightens as depth increases ${violations===0?'':'(first violation: '+worst+')'}`);
 }
 
+console.log('\n=== EVENT RAMP: hot ramp darkens with drop and is distinct from the bowl ramp ===');
+{
+  let prevL = Infinity, violations = 0;
+  for (let i = 0; i <= 250; i++) {
+    const L = lightness(hotColor(i / 250));
+    if (L > prevL + 0.01) violations++;
+    prevL = L;
+  }
+  ok(violations === 0, `hot ramp lightness never rises with drop (${violations} violations)`);
+  ok(Math.abs(eventDropT(0.05) - Math.log(2) / Math.log(501)) < 1e-12 && Math.abs(eventDropT(25) - 1) < 1e-12,
+     `log scale maps 25 m -> 1 (t(0.05)=${eventDropT(0.05).toFixed(4)})`);
+  const hT = 0.5;
+  const undisturbed = heightColor(hT);
+  for (const d of [EVENT_DROP_MIN_M * 1.5, 0.5, 1, 5, 10, 25]) {
+    const dE = deltaE(undisturbed, hotColor(eventDropT(d)));
+    ok(dE > 20, `event drop ${d.toFixed(2)} m is clearly distinct at hT=${hT}: deltaE=${dE.toFixed(1)}`);
+  }
+  // A 2 m event must not read as a 2 m bowl: same drop, different ramps.
+  const dE = deltaE(depthColor(2 / BOWL_RAMP_MAX_M), hotColor(eventDropT(2)));
+  ok(dE > 20, `2 m of event drop differs from 2 m of bowl: deltaE=${dE.toFixed(1)}`);
+}
+
 console.log('\n=== The bowl is actually VISIBLE (this is the whole point) ===');
 // A 0.10 m drop must still read as clearly distinct from undisturbed ground
 // AT THE SAME TERRAIN HEIGHT — comparing against the bare ramp (as before)
@@ -220,7 +242,7 @@ console.log('\n=== The bowl is actually VISIBLE (this is the whole point) ===');
 {
   const hT = 0.5;
   const undisturbed = compositeColor(hT, 0);
-  for (const drop of [0.10, 0.50, 2.25, 10.0, 50.0]) {
+  for (const drop of [0.10, 0.50, 2.25]) {
     const c = compositeColor(hT, drop);
     const dE = deltaE(undisturbed, c);
     ok(dE > 20, `a ${drop.toFixed(2)} m drop is clearly distinct at hT=${hT}: deltaE=${dE.toFixed(1)}`);

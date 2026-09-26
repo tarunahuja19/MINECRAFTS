@@ -117,6 +117,23 @@ export interface PreviewLine {
   y0: number;
   x1: number;
   y1: number;
+  /** Crack zone width; the preview rings sit at 1.2x and 1.5x of it. */
+  width_m?: number;
+}
+
+/**
+ * A FORGE hazard zone from the :8020 frame (`zones`): white ring at r_white
+ * (CRITICAL), red ring at r_red (WARNING), around a point (`cx`, `cy`) for a
+ * cave-in or along `polyline` for a crack. Panel-frame metres.
+ */
+export interface EventZone {
+  event_index: number;
+  kind: "cave_in" | "crack";
+  cx?: number;
+  cy?: number;
+  polyline?: [number, number][];
+  r_white: number;
+  r_red: number;
 }
 
 /**
