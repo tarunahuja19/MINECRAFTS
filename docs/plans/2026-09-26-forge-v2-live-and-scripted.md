@@ -257,17 +257,33 @@ One event per step, same pattern as B2c: the event goes into FORGE's event list,
 - Screenshots: before firing (with the preview ring), during settling, after END, and with a node selected.
 **Commit:** `feat(forge): right column health strip, node detail and mini map from FORGE node states`
 
-### Status 27 Sep (review of Antigravity's A3/B3 run)
-- **A3: done** (f4092dc). Walkthrough has real PASS output; boot reset is in `main.js`.
-- **B3: about 10% done.** Only the receiving side of `forge-preview` exists (`App.tsx`, `embed.ts`), and the beacon's R ring is now dashed orange. It did not type-check (null into non-null state; `computeLineDistances` called on a geometry). Both fixed by Claude, committed as `wip(forge)`.
-- **Still to do in B3:**
-  1. `sim-tab.js`: send `forge-preview` on every radius-slider `input` and every terrain click (nothing sends it yet).
-  2. Clearing the preview on FIRE / RESET FORGE. The receiver ignores bad input today, so clearing needs an explicit `{x:null}` → hide-ring path.
-  3. `renderForgeHealth` (`sim-tab.js` ~1278) still reads `fixtureProvider` states. Switch it to the frame's `node_states`.
-  4. Health strip, node detail card, mini map (reuse `js/map/*`), FORGE alarm lines.
-  5. Remove the :8010 calls from FORGE (`LAB_API_BASE` at `sim-tab.js` 23, 346, 475, 482, 1812, 1882) and the two lab panels.
-  6. The B3 test and walkthrough.
-- **Environment blocker:** iCloud has offloaded repo files ("dataless"). `backend/.env` is one of them, so `npm start` hangs after the preflight checks, before the DB reset. Mark the folder "Keep Downloaded" in Finder, or open `backend/.env` once so it downloads.
+### Status 27 Sep (Claude, after reviewing Antigravity's A3/B3 run)
+
+**Done**
+- **A3** (f4092dc, Antigravity). A3 had also deleted `HEARTBEAT_TIMEOUT_MS` from `live-provider.js`, so every live packet threw and the dashboard showed no live data. That is fixed.
+- **B3** (Claude). Walkthrough: `walkthroughs/forge-v2/B3.md`.
+- **B2e TILT and B2f VIBRATION** (Claude), using engine maths only. Walkthrough: `walkthroughs/forge-v2/B2ef.md`.
+- **iCloud:** "Keep Downloaded" is on and every working file is local again. 17 loose objects under `.git/objects` are still iCloud stubs (see Blockers).
+
+**Tests:** 8 dashboard test files pass; `acceptance_s3.js` was retired with B3. `simulation/tests` has 91 passing (the 1000-trial stress test was not run). tsc is clean.
+
+**Next: B2d · CRACK (needs Adarsh's decision first).** The live engine has no crack model; only the 690-day lab on :8010 has one, and FORGE must not call it. Options:
+1. **Strain-threshold cracks from engine maths (recommended).**
+   - At each frame, mark cells where the horizontal strain from `surface.channels` + `collapse_deltas` exceeds a tensile limit, say 3 mm/m, which is the usual onset of visible surface cracking.
+   - Return them as short line segments along the bowl rim. The 3D view already draws segments (`set-cracks`, `CrackLinesOverlay`).
+   - A CRACK event is then "a cave-in plus the cracks it opens", or just an overlay on the current ground.
+   - No new physics in the engine: the strain grid already exists.
+2. Port the lab's crack model into `simulation/sandbox`. This is more work and touches the frozen 690-day code path.
+3. Drop CRACK from FORGE.
+
+**Then: Phase C (scripted demo).**
+- C1 and C2 need CRACK decided, since the demo script uses crack events. TILT (offset collapse) and VIBRATION (`apply_vibration`) can be scripted today.
+- Rough size: C1 loader and validator, small. C2 is scripted firing in `Session` plus hashes, medium. C3 is a runner script, small. C4 is docs and QA, small.
+
+**Blockers and notes**
+- **17 git objects are still iCloud stubs,** and `git cat-file` on them hangs. Everyday git works. If a command ever hangs at 0% CPU, move those files out of `.git/objects` and `git fetch` (Claude was not allowed to).
+- **`verify_sim_controls.js` needs the `mine_subsidence_test` database.** Create it with `PGDATABASE=mine_subsidence_test node backend/db/migrate.js`.
+- **`dashboard_electron/test/check_html_error.js` and `test_electron_load.js`** are Antigravity's untracked debug scripts. They are safe to delete.
 
 ### A3 (old, replaced by the round-3 A3 above) · Live PLAY/PAUSE in the dashboard header, greyed dashboard while paused
 **Files:** `dashboard_electron/renderer/index.html` (header), `js/app.js`, `js/data/live-provider.js`, `css/*`, a new test in `dashboard_electron/test/`
