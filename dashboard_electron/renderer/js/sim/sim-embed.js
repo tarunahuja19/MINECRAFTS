@@ -404,6 +404,10 @@ var simEmbed = (function () {
       var slot = slots[slotName];
       if (slot) postToSlot(slot, { cmd: 'set-cracks', segments: segments || [] });
     },
+    resetLocal: function (slotName) {
+      var slot = slots[slotName];
+      if (slot) postToSlot(slot, { cmd: 'reset-local' });
+    },
     clearSelection: function (slotName) {
       var slot = slots[slotName];
       if (!slot) return;

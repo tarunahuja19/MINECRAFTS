@@ -10,7 +10,7 @@
  *   for the shown day), right data inspector (click a node in 3D). Selections,
  *   sandbox sessions and experiments NEVER alter this tab.
  * - FORGE tab: sandbox lab. Left controls (day, segment scope, CRACK / TILT /
- *   VIBRATION / CAVE-IN + per-event params, RUN EXPERIMENT), middle 3D region
+ *   VIBRATION / CAVE-IN + per-event params, FIRE EVENT), middle 3D region
  *   view (embedded app clipped to the selection; local-preview triggers +
  *   crack lines), right dashboard (district health dots + clone list +
  *   sandbox notifications + consequence results). MAP SIM-box selections
@@ -34,6 +34,8 @@ var simTab = (function () {
   var currentDay = 0;
   var currentSegment = '3';
   var selectedScenarioType = 'crack'; // 'crack', 'tilt', 'vibration', 'sudden_sinking'
+  // Node ids the operator unticked in FORGE's node list. Display-only for now.
+  var forgeExcludedNodes = {};
   var isFrozen = false;
   var segmentsData = [];
   var lastSnapshotData = null;
@@ -263,11 +265,31 @@ var simTab = (function () {
     });
     updateScenarioParamsVisibility(selectedScenarioType || 'crack');
 
-    // 6. RUN EXPERIMENT button
+    // 5b. Event sliders: each badge shows its slider's live value + unit.
+    var sliders = document.querySelectorAll('#sim-left .forge-slider');
+    sliders.forEach(function (slider) {
+      var badge = document.querySelector('.forge-slider-val[data-for="' + slider.id + '"]');
+      if (!badge) return;
+      var paint = function () {
+        badge.textContent = slider.value + ' ' + (badge.getAttribute('data-unit') || '');
+      };
+      slider.addEventListener('input', paint);
+      paint();
+    });
+
+    // 6. FIRE EVENT button
     var btnRunScenario = document.getElementById('btn-sim-run-scenario');
     if (btnRunScenario) {
       btnRunScenario.addEventListener('click', function () {
         runScenario();
+      });
+    }
+
+    // 6b. RESET FORGE: drop every FORGE-only effect; the live ground stays.
+    var btnForgeReset = document.getElementById('btn-forge-reset');
+    if (btnForgeReset) {
+      btnForgeReset.addEventListener('click', function () {
+        resetForge();
       });
     }
 
@@ -887,6 +909,45 @@ var simTab = (function () {
       '</div>';
   }
 
+  function resetForge() {
+    if (typeof simEmbed !== 'undefined' && simEmbed.resetLocal) {
+      simEmbed.resetLocal('forge');
+    }
+    addSandboxNotification({
+      type: 'RESET',
+      title: 'FORGE RESET',
+      severity: 'info',
+      time: 'Day ' + Math.round(currentDay),
+      message: 'All FORGE events cleared — ground is back to the live state.'
+    });
+  }
+
+  /**
+   * FORGE node checklist: every district node (same pool as the MAP tab),
+   * all ticked by default. Unticking only greys the node out for now.
+   */
+  function renderForgeNodeList(allNodes) {
+    var list = document.getElementById('forge-node-list');
+    var count = document.getElementById('forge-node-count');
+    if (!list) return;
+    var ids = allNodes.map(function (n) { return n.node_id || n.id; }).filter(Boolean);
+    var included = ids.filter(function (id) { return !forgeExcludedNodes[id]; }).length;
+    if (count) count.textContent = included + ' / ' + ids.length;
+    list.innerHTML = ids.map(function (id) {
+      var off = !!forgeExcludedNodes[id];
+      return '<label class="' + (off ? 'excluded' : '') + '">' +
+        '<input type="checkbox" data-node-id="' + id + '"' + (off ? '' : ' checked') + '>' + id + '</label>';
+    }).join('');
+    list.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+      box.addEventListener('change', function () {
+        var id = box.getAttribute('data-node-id');
+        if (box.checked) delete forgeExcludedNodes[id];
+        else forgeExcludedNodes[id] = true;
+        renderForgeNodeList(allNodes);
+      });
+    });
+  }
+
   /**
    * FORGE district health board: one dot per district node (FULL pool, not
    * just the selection), colored by the same state rule as MAP markers.
@@ -898,6 +959,7 @@ var simTab = (function () {
       ? (fixtureProvider.getNodes() || [])
       : [];
     if (badge) badge.textContent = allNodes.length + ' NODES';
+    renderForgeNodeList(allNodes);
     if (!body) return;
     if (allNodes.length === 0) {
       body.innerHTML = '<div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No district nodes loaded yet.</div>';
@@ -1134,7 +1196,7 @@ var simTab = (function () {
             '<span class="sim-badge-success">OFF-LINE COPY</span>' +
           '</div>' +
           '<div style="font-size:10.5px; color:var(--text-primary); line-height:1.4;">' +
-            'Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press RUN EXPERIMENT — the consequence forecast for this isolated region appears here.' +
+            'Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press FIRE EVENT — the consequence forecast for this isolated region appears here.' +
           '</div>' +
           '<div style="font-size:9.5px; color:var(--text-secondary); line-height:1.35; margin-top:2px;">' +
             'This simulation runs in an isolated sandbox. Events injected here will <b>NOT</b> alter active sensor thresholds or alert logs on the live dashboard.' +
@@ -1506,7 +1568,7 @@ var simTab = (function () {
               '<span class="sim-badge-success">OFF-LINE COPY</span>' +
             '</div>' +
             '<div style="font-size:10.5px; color:var(--text-primary); line-height:1.4;">' +
-              'Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press RUN EXPERIMENT — the consequence forecast for this isolated region appears here.' +
+              'Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press FIRE EVENT — the consequence forecast for this isolated region appears here.' +
             '</div>' +
             '<div style="font-size:9.5px; color:var(--text-secondary); line-height:1.35; margin-top:2px;">' +
               'This simulation runs in an isolated sandbox. Events injected here will <b>NOT</b> alter active sensor thresholds or alert logs on the live dashboard.' +
@@ -1773,7 +1835,7 @@ var simTab = (function () {
       .then(function (data) {
         lastScenarioData = data;
         if (btnRun) {
-          btnRun.textContent = 'RUN EXPERIMENT';
+          btnRun.textContent = 'FIRE EVENT';
           btnRun.disabled = false;
         }
         renderScenarioResult(data);
@@ -1781,7 +1843,7 @@ var simTab = (function () {
       .catch(function (err) {
         console.error('[sim-tab] Scenario run error:', err);
         if (btnRun) {
-          btnRun.textContent = 'RUN EXPERIMENT';
+          btnRun.textContent = 'FIRE EVENT';
           btnRun.disabled = false;
         }
         var resultBody = document.getElementById('sim-scenario-result-body');

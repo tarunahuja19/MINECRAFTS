@@ -802,6 +802,18 @@ export const App: React.FC = () => {
         case "pause":
           pauseRef.current();
           break;
+        case "reset-local":
+          // Only this frame's own experiments: live packets keep driving
+          // `perturbations`, so the ground falls back to the live state.
+          globalGeomechanics.reset();
+          setCrackLines([]);
+          setBursts([]);
+          setImpacts([]);
+          setEventEndsAt(null);
+          setVibrationActive(false);
+          vibrationActiveRef.current = false;
+          setVibrationPPV(0);
+          break;
         case "trigger": {
           // Move the targeting beacon to the injected event so the parent's
           // RUN visibly lands where the ground is about to move.

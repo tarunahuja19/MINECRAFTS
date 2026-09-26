@@ -48,6 +48,8 @@ export type EmbedParentCommand =
   | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "select-node"; id: number | null }
   | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "start" }
   | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "pause" }
+  /** Clear this frame's own triggered effects; the live ground is untouched. */
+  | { source: typeof R4_SIM_EMBED_SOURCE; cmd: "reset-local" }
   | {
       source: typeof R4_SIM_EMBED_SOURCE;
       cmd: "trigger";

@@ -747,79 +747,89 @@
                 </div>
               </div>
 
-              <!-- Region comes ONLY from the MAP SIM-box selection (no zone picker) -->
+              <!-- Nodes in the experiment (all ticked for now; unticking only greys a node out) -->
               <div class="sim-section-box">
-                <div class="sim-section-title">EXPERIMENT REGION</div>
-                <div id="sim-region-readout" style="font-size:10.5px; color:var(--text-secondary); line-height:1.5; font-family:monospace;">
-                  No region — draw a SIM box on MAP.
+                <div class="sim-section-title" style="display:flex; justify-content:space-between;">
+                  <span>NODES IN EXPERIMENT</span><span id="forge-node-count" style="color:#00FF88;"></span>
                 </div>
+                <div id="sim-region-readout" style="font-size:10px; color:var(--text-secondary); line-height:1.4; font-family:monospace; margin-bottom:4px;">
+                  Entire Mine Domain
+                </div>
+                <div id="forge-node-list" class="forge-node-list"></div>
               </div>
 
               <!-- Freeze Action (removed from FORGE flow) -->
               <button id="btn-sim-freeze" class="sim-btn-freeze" style="display:none;">FREEZE</button>
 
-              <!-- Hypothetical Event Selection -->
+              <!-- Event type -->
               <div class="sim-section-box">
-                <div class="sim-section-title">HYPOTHETICAL EVENT INJECTION</div>
+                <div class="sim-section-title">EVENT</div>
                 <div class="sim-scenario-grid">
+                  <button class="sim-scenario-btn" data-type="sudden_sinking">CAVE-IN</button>
                   <button class="sim-scenario-btn active" data-type="crack">CRACK</button>
                   <button class="sim-scenario-btn" data-type="tilt">TILT</button>
                   <button class="sim-scenario-btn" data-type="vibration">VIBRATION</button>
-                  <button class="sim-scenario-btn" data-type="sudden_sinking">CAVE-IN</button>
                 </div>
               </div>
 
-              <!-- Per-Event Parameters -->
+              <!-- Per-event parameters (sliders; ranges sit inside the :8010 lab limits) -->
               <div class="sim-section-box" id="sim-event-params-section">
                 <div class="sim-section-title">EVENT PARAMETERS</div>
-                <!-- CRACK params -->
-                <div id="sim-params-crack" class="sim-event-param-group">
-                  <div class="sim-row" style="margin-bottom:4px;">
-                    <span class="sim-label">DAYS AHEAD:</span>
-                    <input type="number" id="sim-days-ahead" class="sim-input-number" min="1" max="180" value="30">
-                  </div>
-                  <div class="sim-row">
-                    <span class="sim-label">RADIUS:</span>
-                    <input type="number" id="sim-crack-radius" class="sim-input-number" min="10" max="500" value="150" step="10">
-                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">m</span>
-                  </div>
-                </div>
-                <!-- TILT params -->
-                <div id="sim-params-tilt" class="sim-event-param-group" style="display:none;">
-                  <div class="sim-row" style="margin-bottom:4px;">
-                    <span class="sim-label">TILT RATE:</span>
-                    <input type="number" id="sim-tilt-rate" class="sim-input-number" min="0.1" max="50" value="5.0" step="0.5">
-                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">mm/m</span>
-                  </div>
-                  <div class="sim-row" style="margin-bottom:4px;">
-                    <span class="sim-label">DIRECTION:</span>
-                    <input type="number" id="sim-tilt-dir" class="sim-input-number" min="0" max="360" value="0" step="15">
-                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">°</span>
-                  </div>
-                  <div class="sim-row">
-                    <span class="sim-label">RADIUS:</span>
-                    <input type="number" id="sim-tilt-radius" class="sim-input-number" min="10" max="500" value="100" step="10">
-                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">m</span>
-                  </div>
-                </div>
-                <!-- VIBRATION params -->
-                <div id="sim-params-vibration" class="sim-event-param-group" style="display:none;">
-                  <div style="font-size:10px; color:var(--text-secondary); line-height:1.35;">
-                    Dynamic roof caving vibration &amp; DGMS PPV limits across sector (zero ground change).
-                  </div>
-                </div>
-                <!-- CAVE-IN params -->
                 <div id="sim-params-sudden_sinking" class="sim-event-param-group" style="display:none;">
-                  <div class="sim-row">
-                    <span class="sim-label">COLLAPSE RADIUS:</span>
-                    <input type="number" id="sim-cavein-radius" class="sim-input-number" min="5" max="400" value="60" step="5">
-                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">m</span>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">CARVE DEPTH</span><span class="forge-slider-val" data-for="sim-cavein-depth" data-unit="m"></span></div>
+                    <input type="range" id="sim-cavein-depth" class="forge-slider" min="0.5" max="25" step="0.5" value="2">
+                  </div>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">RADIUS</span><span class="forge-slider-val" data-for="sim-cavein-radius" data-unit="m"></span></div>
+                    <input type="range" id="sim-cavein-radius" class="forge-slider" min="10" max="300" step="5" value="60">
+                  </div>
+                </div>
+                <div id="sim-params-crack" class="sim-event-param-group">
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">DAYS AHEAD</span><span class="forge-slider-val" data-for="sim-days-ahead" data-unit="d"></span></div>
+                    <input type="range" id="sim-days-ahead" class="forge-slider" min="1" max="90" step="1" value="30">
+                  </div>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">RADIUS</span><span class="forge-slider-val" data-for="sim-crack-radius" data-unit="m"></span></div>
+                    <input type="range" id="sim-crack-radius" class="forge-slider" min="10" max="500" step="10" value="150">
+                  </div>
+                </div>
+                <div id="sim-params-tilt" class="sim-event-param-group" style="display:none;">
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">TILT RATE</span><span class="forge-slider-val" data-for="sim-tilt-rate" data-unit="mm/m"></span></div>
+                    <input type="range" id="sim-tilt-rate" class="forge-slider" min="0.5" max="30" step="0.5" value="5">
+                  </div>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">DIRECTION</span><span class="forge-slider-val" data-for="sim-tilt-dir" data-unit="°"></span></div>
+                    <input type="range" id="sim-tilt-dir" class="forge-slider" min="0" max="360" step="5" value="0">
+                  </div>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">RADIUS</span><span class="forge-slider-val" data-for="sim-tilt-radius" data-unit="m"></span></div>
+                    <input type="range" id="sim-tilt-radius" class="forge-slider" min="10" max="500" step="10" value="100">
+                  </div>
+                </div>
+                <div id="sim-params-vibration" class="sim-event-param-group" style="display:none;">
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">PPV</span><span class="forge-slider-val" data-for="sim-vib-ppv" data-unit="mm/s"></span></div>
+                    <input type="range" id="sim-vib-ppv" class="forge-slider" min="1" max="100" step="1" value="35">
+                  </div>
+                  <div class="forge-slider-row">
+                    <div class="forge-slider-head"><span class="sim-label">RADIUS</span><span class="forge-slider-val" data-for="sim-vib-radius" data-unit="m"></span></div>
+                    <input type="range" id="sim-vib-radius" class="forge-slider" min="10" max="500" step="10" value="150">
                   </div>
                 </div>
               </div>
 
-              <!-- Run Scenario Button -->
-              <button id="btn-sim-run-scenario" class="sim-btn-run">RUN EXPERIMENT</button>
+              <!-- Target (click the 3D terrain to move it) -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">TARGET</div>
+                <div id="forge-target-readout" style="font-size:10.5px; font-family:monospace; color:var(--text-primary);">x 0 m · y 0 m (panel centre)</div>
+                <div style="font-size:9.5px; color:var(--text-secondary); margin-top:2px;">Click the terrain to move the target.</div>
+              </div>
+
+              <button id="btn-sim-run-scenario" class="sim-btn-run">FIRE EVENT</button>
+              <button id="btn-forge-reset" class="sim-btn-run forge-btn-reset">RESET FORGE</button>
             </div>
           </div>
 
@@ -954,7 +964,7 @@
                     <span class="sim-badge-success">OFF-LINE COPY</span>
                   </div>
                   <div style="font-size:10.5px; color:var(--text-primary); line-height:1.4;">
-                    Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press RUN EXPERIMENT — the consequence forecast for this isolated segment appears here.
+                    Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press FIRE EVENT — the consequence forecast for this isolated segment appears here.
                   </div>
                   <div style="font-size:9.5px; color:var(--text-secondary); line-height:1.35; margin-top:2px;">
                     This simulation runs in an isolated sandbox. Events injected here will <b>NOT</b> alter active sensor thresholds or alert logs on the live dashboard.
