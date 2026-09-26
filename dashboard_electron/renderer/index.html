@@ -794,12 +794,18 @@
               <!-- Target (click the 3D terrain to move it) -->
               <div class="sim-section-box">
                 <div class="sim-section-title">TARGET</div>
-                <div id="forge-target-readout" style="font-size:10.5px; font-family:monospace; color:var(--text-primary);">x 0 m · y 0 m (panel centre)</div>
+                <div id="forge-target-readout" style="font-size:10.5px; font-family:monospace; color:var(--text-primary);">x 0 m · y 0 m (default)</div>
                 <div style="font-size:9.5px; color:var(--text-secondary); margin-top:2px;">Click the terrain to move the target.</div>
               </div>
 
               <button id="btn-sim-run-scenario" class="sim-btn-run">FIRE EVENT</button>
               <button id="btn-forge-reset" class="sim-btn-run forge-btn-reset">RESET FORGE</button>
+
+              <!-- FORGE timeline events (seeded live cave-ins are marked "(live)") -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">EVENTS</div>
+                <div id="forge-event-list" class="forge-event-list"><div class="forge-event-empty">No events yet.</div></div>
+              </div>
             </div>
           </div>
 

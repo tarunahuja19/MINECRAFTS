@@ -567,6 +567,27 @@ export const App: React.FC = () => {
   // ONLY and never send engine commands — otherwise a FORGE experiment would
   // deform every other view through the engine broadcast. Experiment truth
   // for embeds lives in the dashboard + :8010 lab, not the engine.
+  const spawnImpactBurst = (bx: number, by: number, radiusM: number, magM: number) => {
+    const id = ++burstIdRef.current;
+    setBursts((prev) => [...prev.slice(-3), { id, x: bx, y: by, radiusM, magM }]);
+    window.setTimeout(() => {
+      setBursts((prev) => prev.filter((b) => b.id !== id));
+    }, 3000);
+  };
+  const addImpact = (amp0: number, tau: number) => {
+    const t0 = Date.now();
+    setImpacts((prev) => [...prev.slice(-5), { t0, amp0, tau }]);
+  };
+
+  // FORGE cave-in look: the same dust, shake and toast as a collapse trigger,
+  // but no triggerCollapse — FORGE's ground comes only from :8020 frames, so
+  // carving here too would draw the bowl twice.
+  const playForgeCaveInEffect = (cx: number, cy: number, rad: number, depth: number) => {
+    spawnImpactBurst(cx, cy, rad, depth);
+    addImpact(0.7, 0.9);
+    showToast(`💥 VOID ROOF CAVE-IN: ΔZ=${depth.toFixed(2)}m at (${cx.toFixed(0)}m, ${cy.toFixed(0)}m)`);
+  };
+
   const handleTriggerEvent = (
     type: PhysicalEventType,
     cx: number,
@@ -622,17 +643,7 @@ export const App: React.FC = () => {
     // sequence of a roof fall.
     const IMPACT_LEAD_S = 0.35;
     const bowlT0 = performance.now() / 1000 + IMPACT_LEAD_S;
-    const spawnBurst = (bx: number, by: number) => {
-      const id = ++burstIdRef.current;
-      setBursts((prev) => [...prev.slice(-3), { id, x: bx, y: by, radiusM: rad, magM: sev }]);
-      window.setTimeout(() => {
-        setBursts((prev) => prev.filter((b) => b.id !== id));
-      }, 3000);
-    };
-    const addImpact = (amp0: number, tau: number) => {
-      const t0 = Date.now();
-      setImpacts((prev) => [...prev.slice(-5), { t0, amp0, tau }]);
-    };
+    const spawnBurst = (bx: number, by: number) => spawnImpactBurst(bx, by, rad, sev);
 
     if (type === "collapse") {
       globalGeomechanics.triggerCollapse(
@@ -730,6 +741,9 @@ export const App: React.FC = () => {
       slopeDeg: slope,
       zoneName: zone,
     });
+    if (engineReadOnly) {
+      postEmbedEvent({ event: "terrain-target", x: clickX, y: clickY, elev, slopeDeg: slope, zoneName: zone });
+    }
   };
 
   // Selecting a sensor node or a zone opens a panel of live readings, so it
@@ -750,10 +764,12 @@ export const App: React.FC = () => {
   // closures (run state, event speed) without resubscribing per render.
   // Assigned in an effect (same as isRunningRef above), never during render.
   const triggerEventRef = useRef(handleTriggerEvent);
+  const forgeCaveInEffectRef = useRef(playForgeCaveInEffect);
   const startRef = useRef(handleStart);
   const pauseRef = useRef(handlePause);
   useEffect(() => {
     triggerEventRef.current = handleTriggerEvent;
+    forgeCaveInEffectRef.current = playForgeCaveInEffect;
     startRef.current = handleStart;
     pauseRef.current = handlePause;
   });
@@ -835,6 +851,26 @@ export const App: React.FC = () => {
             max_amp: maxAmp,
             time_scalar: frame.time_scalar ?? 0,
           });
+          break;
+        }
+        case "forge-effect": {
+          if (!engineReadOnly || d.type !== "cave_in") break;
+          if (![d.cx, d.cy, d.rad, d.depth].every(Number.isFinite)) break;
+          // Beacon on the event, same as the `trigger` command.
+          {
+            const elev = sampleBaseGroundY(d.cx, d.cy);
+            const slope = sampleSlopeDegrees(d.cx, d.cy);
+            setTargetLocation({
+              x: d.cx,
+              y: d.cy,
+              label: `Cave-in (${d.cx.toFixed(0)}m, ${d.cy.toFixed(0)}m)`,
+              elev,
+              slopeDeg: slope,
+              zoneName: classifyTerrainZone(elev, slope),
+            });
+          }
+          setCollapseRadiusM(d.rad);
+          forgeCaveInEffectRef.current(d.cx, d.cy, d.rad, d.depth);
           break;
         }
         case "trigger": {

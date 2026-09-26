@@ -245,6 +245,8 @@ var simTab = (function () {
 
     // 6c. FORGE Timeline toolbar (slider, play/pause, speed, seed)
     initForgeTimeline();
+    renderForgeTarget();
+    renderForgeEvents();
 
     // 7. 3D Toolbar Controls
     var btnTilt65 = document.getElementById('sim-cam-tilt65');
@@ -831,14 +833,138 @@ var simTab = (function () {
     if (typeof simEmbed !== 'undefined' && simEmbed.resetLocal) {
       simEmbed.resetLocal('forge');
     }
+    pauseForge();
+    forgeState.events = forgeState.events.filter(function (ev) { return ev.source === 'live'; });
+    renderForgeEvents();
     addSandboxNotification({
       type: 'RESET',
       title: 'FORGE RESET',
       severity: 'info',
-      time: 'Day ' + Math.round(currentDay),
-      message: 'All FORGE events cleared — ground is back to the live state.'
+      time: 'Day ' + forgeState.day.toFixed(1),
+      message: 'FORGE events cleared — only the copied live cave-ins remain.'
     });
-    requestForgeFrame(forgeState.day);
+    updateForgeRange(function () {
+      if (forgeState.day > forgeState.endDay) forgeState.day = forgeState.endDay;
+      updateForgeUI();
+      requestForgeFrame(forgeState.day);
+    });
+  }
+
+  // POST /forge/range for the current events -> endDay, then cb().
+  function updateForgeRange(cb) {
+    callForgeApi('/forge/range', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: forgeState.events })
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (rangeData) {
+        if (!rangeData || typeof rangeData.end_day !== 'number') throw new Error('no end_day');
+        forgeState.endDay = rangeData.end_day;
+        updateForgeUI();
+        if (cb) cb();
+      })
+      .catch(function (err) {
+        console.warn('[FORGE] /forge/range failed:', err);
+      });
+  }
+
+  // Click-to-target: (0, 0) until the FORGE terrain is clicked.
+  var forgeTarget = { x: 0, y: 0, isDefault: true };
+
+  function setForgeTarget(t) {
+    if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y)) return;
+    forgeTarget = {
+      x: t.x,
+      y: t.y,
+      elev: t.elev,
+      slopeDeg: t.slopeDeg,
+      zoneName: t.zoneName,
+      isDefault: false
+    };
+    renderForgeTarget();
+  }
+
+  function renderForgeTarget() {
+    var el = document.getElementById('forge-target-readout');
+    if (!el) return;
+    var txt = 'x ' + Math.round(forgeTarget.x) + ' m · y ' + Math.round(forgeTarget.y) + ' m';
+    if (forgeTarget.isDefault) {
+      txt += ' (default)';
+    } else {
+      // elev is height above the mesh datum (same number the sim panel shows as "+N m").
+      if (Number.isFinite(forgeTarget.elev)) txt += ' · elev +' + forgeTarget.elev.toFixed(1) + ' m';
+      if (Number.isFinite(forgeTarget.slopeDeg)) txt += ' · ' + forgeTarget.slopeDeg.toFixed(1) + '°';
+      if (forgeTarget.zoneName) txt += ' · ' + forgeTarget.zoneName;
+    }
+    el.textContent = txt;
+  }
+
+  function forgeEventLine(ev) {
+    return 'Day ' + Number(ev.day).toFixed(1) + ' · CAVE-IN ' + fmtNum(ev.depth_m) + ' m / ' +
+      fmtNum(ev.radius_m) + ' m at (' + Math.round(ev.x) + ', ' + Math.round(ev.y) + ')' +
+      (ev.source === 'live' ? ' (live)' : '');
+  }
+
+  function fmtNum(v) {
+    return (Math.round(v * 10) / 10).toString();
+  }
+
+  function renderForgeEvents() {
+    var list = document.getElementById('forge-event-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (forgeState.events.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'forge-event-empty';
+      empty.textContent = 'No events yet.';
+      list.appendChild(empty);
+      return;
+    }
+    forgeState.events.forEach(function (ev) {
+      var row = document.createElement('div');
+      row.className = 'forge-event-row' + (ev.source === 'live' ? ' live' : '');
+      row.textContent = forgeEventLine(ev);
+      list.appendChild(row);
+    });
+  }
+
+  // FIRE with CAVE-IN: the cave-in becomes an event on FORGE's timeline at the
+  // current FORGE day. :8020 computes the ground; the slot only plays the look.
+  // duration_h: there is no duration control, so the engine default
+  // (apply_collapse duration_hours=4.8) is used.
+  var FORGE_CAVEIN_DURATION_H = 4.8;
+
+  function fireForgeCaveIn() {
+    var depthEl = document.getElementById('sim-cavein-depth');
+    var radiusEl = document.getElementById('sim-cavein-radius');
+    var depth = depthEl ? parseFloat(depthEl.value) : NaN;
+    var radius = radiusEl ? parseFloat(radiusEl.value) : NaN;
+    if (!(depth > 0) || !(radius > 0)) {
+      console.warn('[FORGE] CAVE-IN needs depth and radius sliders');
+      return;
+    }
+    var ev = {
+      type: 'cave_in',
+      x: forgeTarget.x,
+      y: forgeTarget.y,
+      radius_m: radius,
+      depth_m: depth,
+      day: forgeState.day,
+      duration_h: FORGE_CAVEIN_DURATION_H
+    };
+    pauseForge();
+    forgeState.events.push(ev);
+    renderForgeEvents();
+    if (typeof simEmbed !== 'undefined' && simEmbed.sendForgeEffect) {
+      simEmbed.sendForgeEffect('cave_in', ev.x, ev.y, ev.radius_m, ev.depth_m);
+    }
+    updateForgeRange(function () {
+      playForge();
+    });
   }
 
   // =========================================================================
@@ -1052,6 +1178,7 @@ var simTab = (function () {
           forgeState.day = 0;
         }
         forgeState.events = Array.isArray(seedData.events) ? seedData.events : [];
+        renderForgeEvents();
         if (note) {
           note.style.display = 'none';
           note.textContent = '';
@@ -1074,6 +1201,7 @@ var simTab = (function () {
             var liveDay = Math.round((seconds / 86400) * 10) / 10;
             forgeState.day = liveDay;
             forgeState.events = [];
+            renderForgeEvents();
             if (note) {
               note.style.display = '';
               note.textContent = 'live cave-ins not copied (' + reason + ')';
@@ -1953,6 +2081,9 @@ var simTab = (function () {
     }
 
     setViewportLit(true);
+    if ((selectedScenarioType || 'crack') === 'sudden_sinking') {
+      fireForgeCaveIn();
+    }
     var btnRun = document.getElementById('btn-sim-run-scenario');
     if (btnRun) {
       btnRun.textContent = 'RUNNING...';
@@ -2124,7 +2255,7 @@ var simTab = (function () {
             '<div class="sim-header-title-row">' +
               '<span class="sim-consequence-title">' + headerTitle + '</span>' +
               '<div style="display:flex; align-items:center; gap:6px;">' +
-                '<span class="sim-badge-refusal">REFUSED</span>' +
+                '<span class="sim-badge-refusal">OUTSIDE LAB MODEL</span>' +
                 '<b class="sim-scenario-id">#' + scenarioId + '</b>' +
               '</div>' +
             '</div>' +
@@ -2132,8 +2263,8 @@ var simTab = (function () {
           '</div>' +
           '<div class="sim-refusal-box" style="margin-top:6px;">' +
             '<div class="sim-refusal-title">' +
-              '<span class="sim-badge-refusal">REFUSED</span>' +
-              '<span>SCENARIO REJECTED BY SAFETY GATE</span>' +
+              '<span class="sim-badge-refusal">OUTSIDE LAB MODEL</span>' +
+              '<span>:8010 lab numbers not available for this event</span>' +
             '</div>' +
             '<div style="font-weight:bold; margin-bottom:6px; color:#FFFFFF;">Scenario #' + scenarioId + '</div>' +
             '<div style="font-size:11px; line-height:1.4;">' + reason + '</div>' +
@@ -2147,11 +2278,12 @@ var simTab = (function () {
 
       addSandboxNotification({
         type: selectedScenarioType,
-        title: typeLabel + ' REFUSED',
+        title: typeLabel + ' · OUTSIDE LAB MODEL',
         severity: 'info',
         time: 'Day ' + dayVal,
-        message: 'Scenario #' + scenarioId + ' rejected: ' + (reason || 'Safety threshold check failed')
+        message: 'Scenario #' + scenarioId + ': ' + (reason || 'outside the lab model')
       });
+      fireForgeTrigger(data, lowerType, maxExtraSinking);
       return;
     }
 
@@ -2348,7 +2480,7 @@ var simTab = (function () {
    * SIM slot's ground can never move. Magnitudes come from the lab result.
    */
   function fireForgeTrigger(data, lowerType, maxExtraSinking) {
-    if (!data || !data.possible) return;
+    if (!data) return;
     if (typeof simEmbed === 'undefined' || !simEmbed.triggerScenario) return;
 
     var cx = 0;
@@ -2367,10 +2499,7 @@ var simTab = (function () {
     if (t === 'crack') {
       return; // cracks are lines only; the ground preview stays still
     } else if (t === 'sudden_sinking' || t === 'sink' || t === 'edge_collapse' || t === 'collapse' || t === 'cave-in') {
-      var rad = (params.collapse_radius_m != null) ? params.collapse_radius_m : 60;
-      var sevM = Math.abs(maxExtraSinking || 0) / 1000;
-      if (!(sevM > 0)) sevM = 0.5;
-      simEmbed.triggerScenario('forge', 'collapse', cx, cy, sevM, rad);
+      return; // CAVE-IN is a FORGE timeline event (fireForgeCaveIn); :8020 draws the ground
     } else if (t === 'tilt') {
       var tRad = (params.radius_m != null) ? params.radius_m : 60;
       var tiltRate = (params.tilt_mm_per_m != null) ? params.tilt_mm_per_m : 2;
@@ -2435,7 +2564,9 @@ var simTab = (function () {
     seedForge: seedForge,
     requestForgeFrame: requestForgeFrame,
     playForge: playForge,
-    pauseForge: pauseForge
+    pauseForge: pauseForge,
+    setForgeTarget: setForgeTarget,
+    getForgeTarget: function () { return Object.assign({}, forgeTarget); }
   };
 })();
 

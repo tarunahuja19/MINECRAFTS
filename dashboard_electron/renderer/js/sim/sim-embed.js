@@ -315,6 +315,10 @@ var simEmbed = (function () {
         tDays: d.tDays,
         nodes: d.nodes
       };
+    } else if (d.event === 'terrain-target') {
+      if (slot.name === 'forge' && typeof simTab !== 'undefined' && simTab.setForgeTarget) {
+        try { simTab.setForgeTarget(d); } catch (_) {}
+      }
     } else if (d.event === 'forge-frame-applied') {
       slot.lastForgeFrameApplied = d;
       if (typeof window !== 'undefined' && window.dispatchEvent) {
@@ -455,6 +459,10 @@ var simEmbed = (function () {
     sendForgeFrame: function (frame) {
       var slot = slots.forge;
       if (slot) postToSlot(slot, { cmd: 'forge-frame', frame: frame });
+    },
+    sendForgeEffect: function (type, cx, cy, rad, depth) {
+      var slot = slots.forge;
+      if (slot) postToSlot(slot, { cmd: 'forge-effect', type: type, cx: cx, cy: cy, rad: rad, depth: depth });
     },
     getLastForgeFrameApplied: function () {
       return slots.forge ? slots.forge.lastForgeFrameApplied || null : null;

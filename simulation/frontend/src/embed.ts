@@ -82,6 +82,16 @@ export type EmbedParentCommand =
         node_states?: Record<string, string>;
         [key: string]: any;
       };
+    }
+  | {
+      source: typeof R4_SIM_EMBED_SOURCE;
+      cmd: "forge-effect";
+      /** FORGE only: dust, shake and toast. The ground comes from forge-frame. */
+      type: "cave_in";
+      cx: number;
+      cy: number;
+      rad: number;
+      depth: number;
     };
 
 export type EmbedChildEvent =

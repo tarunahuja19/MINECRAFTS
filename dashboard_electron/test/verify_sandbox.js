@@ -398,7 +398,50 @@ async function runTest() {
     }
 
     console.log('[STEP 5] Running CAVE-IN...');
+    // CAVE-IN is a FORGE timeline event: FIRE adds it to FORGE's events, a
+    // /forge/frame request carrying it follows, and the FORGE slot applies a
+    // frame with the carve (perturbations >= 1). Needs :8020 running.
+    await evaluate(`
+      (function() {
+        window.__s5 = { frameBodies: [], applied: [], effects: [] };
+        var origEffect = simEmbed.sendForgeEffect;
+        simEmbed.sendForgeEffect = function(type) {
+          window.__s5.effects.push(type);
+          return origEffect.apply(this, arguments);
+        };
+        var origFetch = window.fetch;
+        window.fetch = function(url, opts) {
+          if (String(url).indexOf('/forge/frame') !== -1 && opts && opts.body) {
+            try { window.__s5.frameBodies.push(JSON.parse(opts.body)); } catch (_) {}
+          }
+          return origFetch.apply(this, arguments);
+        };
+        window.addEventListener('message', function(e) {
+          if (e.data && e.data.event === 'forge-frame-applied') window.__s5.applied.push(e.data);
+        });
+      })()
+    `);
     await runExperiment('sudden_sinking');
+    let caveIn = null;
+    for (let i = 0; i < 20; i++) {
+      caveIn = await evaluate(`
+        (function() {
+          var own = function(e) { return e.type === 'cave_in' && e.source !== 'live'; };
+          var idx = -1;
+          window.__s5.frameBodies.forEach(function(b, i) { if (idx < 0 && (b.events || []).some(own)) idx = i; });
+          return {
+            events: simTab.getForgeState().events.filter(own),
+            effects: window.__s5.effects,
+            frameWithEvent: idx >= 0,
+            maxAppliedPerturbations: window.__s5.applied.reduce(function(m, a) { return Math.max(m, a.perturbations); }, 0)
+          };
+        })()
+      `);
+      if (caveIn.frameWithEvent && caveIn.maxAppliedPerturbations >= 1) break;
+      await sleep(250);
+    }
+    console.log('[STEP 5] CAVE-IN on the FORGE timeline:', JSON.stringify(caveIn));
+    await evaluate('simTab.pauseForge()');
     cmds = await evaluate(`
       (function() {
         var session = simTab.getSandboxSession();
@@ -418,10 +461,20 @@ async function runTest() {
     if (!cmds.sessionExists || cmds.nodeCount !== 4) {
       throw new Error('Sandbox session or cloned nodes lost after running scenario!');
     }
-    if (cmds.forge.indexOf('trigger') === -1) {
-      throw new Error('CAVE-IN did not post a trigger to the FORGE slot!');
+    if (caveIn.events.length !== 1) {
+      throw new Error('CAVE-IN was not added to FORGE\'s events!');
     }
-    if (cmds.sim.indexOf('trigger') !== -1 || cmds.sim.indexOf('set-cracks') !== -1) {
+    if (!caveIn.frameWithEvent) {
+      throw new Error('No /forge/frame request carried the CAVE-IN event!');
+    }
+    if (caveIn.maxAppliedPerturbations < 1) {
+      throw new Error('FORGE slot never applied a frame with the carve (perturbations >= 1)!');
+    }
+    if (caveIn.effects.indexOf('cave_in') === -1) {
+      throw new Error('CAVE-IN did not post forge-effect (dust/shake/toast) to the FORGE slot!');
+    }
+    if (cmds.sim.indexOf('trigger') !== -1 || cmds.sim.indexOf('set-cracks') !== -1 ||
+        cmds.sim.indexOf('forge-effect') !== -1 || cmds.sim.indexOf('forge-frame') !== -1) {
       throw new Error('Experiment visuals leaked to the SIM slot! FORGE-only rule violated.');
     }
     if (Math.abs(cmds.dashCenter.lat - preDashboardState.center.lat) > 1e-4 ||

@@ -1142,6 +1142,34 @@
   height: 6px;
 }
 
+/* FORGE left: timeline event list */
+.forge-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 140px;
+  overflow-y: auto;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 10px;
+}
+
+.forge-event-row {
+  color: var(--text-primary);
+  padding: 2px 4px;
+  border-left: 2px solid #FF5252;
+  background: rgba(255, 82, 82, 0.06);
+}
+
+.forge-event-row.live {
+  border-left-color: #00E676;
+  background: rgba(0, 230, 118, 0.06);
+}
+
+.forge-event-empty {
+  color: var(--text-secondary);
+  font-size: 9.5px;
+}
+
 /* Right: FORGE dashboard column (360px, stacked sections) */
 #forge-right {
   width: 360px;
