@@ -270,7 +270,10 @@ def test_node_strain_is_microstrain_and_reaches_dgms_limits():
 # here instead of silently making the control aim at the wrong ring.
 
 _TENSILE_PEAK_RADIUS_RATIO = math.sqrt(3.0)
-_STRAIN_GEOMETRY_C = 86315.9
+# Same derivation as geomechanicsEngine.ts STRAIN_GEOMETRY_C. The old
+# hardcoded 86315.9 was 2.8x this and only matched while collapse.py kept the
+# yield boost on after the step completed (fixed in FORGE v3 P1).
+_STRAIN_GEOMETRY_C = constants.B_HORIZ * 2.0 * math.exp(-1.5) * 1000.0
 
 
 def _peak_tensile(radius_m: float, magnitude_m: float):
@@ -324,46 +327,29 @@ def test_peak_strain_scales_as_magnitude_over_radius_squared():
         )
 
 
-def test_solved_strain_intervention_breaches_dgms_at_named_sensors():
-    """End to end: the solved geometry must make the sensors ON the selected
-    ring actually report a DGMS tensile breach.
+def _run_strain_intervention(ui_radius: float):
+    """Drive the solved STRAIN geometry for a ring through a live session.
 
-    This is the gate that matters for the operator — not that a field
-    somewhere breaches, but that the monuments they aimed at report it.
+    Mirrors solveStrainIntervention: radius = ring / sqrt(3), magnitude asked
+    for = 1.08 x the DGMS tensile limit, clamped to S_MAX_FULL. Returns
+    (asked_magnitude, delivered_magnitude, aimed ids, breached ids, live nodes).
     """
     from sandbox.session import SimulationSession
 
-    # The PHYSICAL claim this gate makes is that the monuments on the aimed
-    # ring report the breach — not that any particular node id does.
-    #
-    # "Aimed" is therefore resolved by PROXIMITY to the ring, not by exact
-    # coordinate equality. It used to select nodes at exactly (+-120, 0),
-    # which only a uniform grid can provide; under Poisson-disc placement
-    # (MESH_UPGRADE_BRIEF.md section 2) no node lands on a round number, so
-    # that lookup found nothing and the gate could never run. Ids are still
-    # never hardcoded — an id is just a row index and changes whenever the
-    # layout does.
+    # "Aimed" is resolved by PROXIMITY to the ring, not by exact coordinate
+    # equality: under Poisson-disc placement (MESH_UPGRADE_BRIEF.md section 2)
+    # no node lands on a round number. Ids are never hardcoded.
     #
     # Only strain-carrying tiers can report a tensile breach at all: 1B
-    # carries the gauge, and the tension band is exactly where 1B lives.
-    # Aim at a ring the strain-carrying tier actually occupies. 1B is sited
-    # in the tensile band (|x| ~ 177-233 m), so the ring is placed there
-    # rather than at the old 120 m — at 120 m the only monuments present are
-    # 1A/1C/2A/2B, none of which carry a strain gauge, so no breach could be
-    # reported no matter how the ground behaved.
-    ui_radius = 205.0
+    # carries the gauge and is sited in the tensile band (|x| ~ 177-233 m).
     ring_tol_m = 45.0
-    # `strain_x` is the x-derivative of the bowl, so tensile strain peaks
-    # ON the x-axis and falls away off it — a monument at the right radius
-    # but 120 m off-axis legitimately reads far less. The original test
-    # encoded this by requiring ny == 0.0 exactly; with irregular placement
-    # the same physical statement becomes a band around the axis.
+    # `strain_x` is the x-derivative of the bowl, so tensile strain peaks ON
+    # the x-axis and falls away off it: a band around the axis, not ny == 0.
     axis_tol_m = 60.0
     radius = ui_radius / _TENSILE_PEAK_RADIUS_RATIO
     target = constants.EPS_TENSILE_LIMIT * 1.08
-    magnitude = min(
-        (target * radius * radius) / _STRAIN_GEOMETRY_C, constants.S_MAX_FULL
-    )
+    asked = (target * radius * radius) / _STRAIN_GEOMETRY_C
+    magnitude = min(asked, constants.S_MAX_FULL)
 
     s = SimulationSession()
     s.start()
@@ -380,7 +366,6 @@ def test_solved_strain_intervention_breaches_dgms_at_named_sensors():
         n["id"] for n in live
         if n["strain"] / 1000.0 > constants.EPS_TENSILE_LIMIT
     }
-    positions = layout.node_positions()
     ids = layout.node_ids()
     tiers = layout.node_tiers()
     strain_carrying = {
@@ -390,16 +375,52 @@ def test_solved_strain_intervention_breaches_dgms_at_named_sensors():
     }
     aimed = {
         int(nid)
-        for nid, (nx, ny) in zip(ids, positions)
+        for nid, (nx, ny) in zip(ids, layout.node_positions())
         if int(nid) in strain_carrying
         and abs(float(np.hypot(nx, ny)) - ui_radius) < ring_tol_m
         and abs(float(ny)) < axis_tol_m
     }
     assert aimed, (
         f"no strain-carrying monument within {ring_tol_m} m of the "
-        f"{ui_radius} m ring — nothing on that ring could report a breach"
+        f"{ui_radius} m ring; nothing on that ring could report a breach"
     )
+    return asked, magnitude, aimed, breached, live
+
+
+def test_solved_strain_intervention_breaches_dgms_at_named_sensors():
+    """End to end: where a breach is physically possible, the solved geometry
+    makes the sensors ON the selected ring report a DGMS tensile breach.
+
+    The 1B gauges sit at ~205 m. Aiming at 190 m needs 2.23 m of the 2.25 m
+    available and puts them just outside the peak, still over the limit.
+    """
+    ui_radius = 190.0
+    asked, magnitude, aimed, breached, _ = _run_strain_intervention(ui_radius)
+    assert asked <= constants.S_MAX_FULL, "this ring must be reachable"
+    assert magnitude == pytest.approx(asked)
     assert aimed <= breached, (
         f"aimed the tensile ring at {ui_radius} m (nodes {sorted(aimed)}) but "
         f"the nodes reporting a breach were {sorted(breached)}"
     )
+
+
+def test_solved_strain_intervention_is_capped_where_no_breach_is_possible():
+    """The honest result at 205 m: the ask (2.60 m) exceeds S_MAX_FULL (2.25 m),
+    so the control clamps, the peak it quotes stays under the DGMS limit, and
+    the ground agrees: no monument reports a tensile breach.
+
+    The largest breachable ring is sqrt(3 * S_MAX_FULL * C / limit) = 198 m.
+    """
+    ui_radius = 205.0
+    asked, magnitude, _, breached, live = _run_strain_intervention(ui_radius)
+    assert asked > constants.S_MAX_FULL
+    assert magnitude == constants.S_MAX_FULL
+
+    radius = ui_radius / _TENSILE_PEAK_RADIUS_RATIO
+    quoted_peak = magnitude * _STRAIN_GEOMETRY_C / radius**2
+    assert quoted_peak < constants.EPS_TENSILE_LIMIT
+    delivered_peak, _ = _peak_tensile(radius, magnitude)
+    assert delivered_peak == pytest.approx(quoted_peak, rel=0.001)
+
+    assert live, "session produced no live strain readings"
+    assert not breached, f"nodes {sorted(breached)} breached a limit the control says is out of reach"

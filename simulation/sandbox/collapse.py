@@ -170,8 +170,9 @@ def collapse_deltas(
             X, Y, ev.cx, ev.cy, ev.radius_m
         )
 
-        # Pre-collapse yield boosts curvature/strain at the perimeter even before full step drop
-        yield_boost = 1.0 + 1.8 * yield_frac
+        # Pre-collapse yield boosts curvature/strain at the perimeter even before full step drop.
+        # The boost fades as the step completes, so a settled pit's tilt is the true slope of delta_s.
+        yield_boost = 1.0 + 1.8 * yield_frac * (1.0 - collapsed_frac)
         effective_amp = ev.magnitude_m * step_frac
 
         delta_s += ev.magnitude_m * step_frac * g
