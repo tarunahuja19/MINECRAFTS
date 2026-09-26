@@ -33,8 +33,8 @@ This module deliberately does NOT take that shortcut. It builds the
 extraction footprint as a real 2-D array `A` and convolves it with the
 kernel numerically. The reason is that this sandbox's later sessions need:
   - a TRAVELLING extraction face (the mined area grows along the panel
-    over simulated time), which has no rectangle at all, let alone an
-    axis-aligned one;
+    over simulated time — implemented below), which has no rectangle at
+    all, let alone an axis-aligned one;
   - arbitrary / non-rectangular footprints in general.
 The erf product cannot represent either. Convolving a mask is the only
 form that generalises. Where this module currently builds a fixed
@@ -74,22 +74,29 @@ the continuous convolution to within 0.01% at native dx = 2.5 m (measured),
 which is what step 4's gate needs, without any change to the physics.
 
 ------------------------------------------------------------------------
-Padding and the travelling-face along-strike extent
+Padding and the travelling face
 ------------------------------------------------------------------------
-The kernel is truncated at `_TRUNC_R = 4 * R_INFL` (~789 m) since its tail
-is negligible beyond that. The mask is built on a grid padded by at least
-`_TRUNC_R` on every side and convolved with an explicit zero ('constant')
-boundary, so that nothing wraps around or clamps into the 600x600 m window
-— wrap-around would contaminate the panel edges, which is exactly where
-the tensile strain band lives (the part of the field this sandbox cares
-about most).
+The mask is separable, A(x, y) = mask_x(x) * mask_y(y), and the panel is
+not mined all at once: the longwall face starts at `FACE_START_Y_M` (one
+radius of influence south of the window) and advances north at
+`FACE_ADVANCE_M_PER_DAY`. `mask_y` is therefore split into one strip per
+along-strike grid cell; strip j is mined on day tau_j and settles as
+1 - exp(-c*(t - tau_j)). Each strip's 1-D y-profile is convolved with k, dk
+and d2k once at import; `channels(t)` is a time-weighted sum of those
+profiles times the static x-profile. At t -> infinity this reproduces the
+fully-settled bowl (`_BASE_S`).
 
-Along y the panel is L_PANEL_M = 2500 m long, far longer than the 600 m
-window, so the padded mask's y-extent must represent the panel's TRUE
-length (extending far beyond the window in both directions), not just the
-portion of the panel visible inside the window. Get this wrong (e.g. clip
-the mask to the window) and the along-strike profile factor stops
-saturating at 1.0, understating peak subsidence.
+The kernel is truncated at `_TRUNC_R = 4 * R_INFL` (~789 m) since its tail
+is negligible beyond that. The strips live on a grid padded by at least
+`_TRUNC_R` on every side and are convolved with an explicit zero
+('constant') boundary, so that nothing wraps around or clamps into the
+600x600 m window — wrap-around would contaminate the panel edges, which is
+exactly where the tensile strain band lives (the part of the field this
+sandbox cares about most).
+
+Along y the mined interval runs to the panel's TRUE far end (+L_PANEL_M/2,
+well past the window) so the along-strike profile saturates at 1.0 and peak
+subsidence is not understated.
 """
 
 from typing import NamedTuple
@@ -101,6 +108,8 @@ from sandbox.constants import (
     A_SUBS,
     B_HORIZ,
     C_KNOTHE,
+    FACE_ADVANCE_M_PER_DAY,
+    FACE_START_Y_M,
     GRID_N,
     L_PANEL_M,
     M_SEAM_M,
@@ -156,13 +165,31 @@ def _fractional_mask_1d(axis: np.ndarray, dx: float, half_width_m: float) -> np.
     return np.clip(overlap, 0.0, None) / dx
 
 
-# Extraction footprint mask A, on the padded working grid: the panel
-# rectangle, W_PANEL_M across strike (x) by L_PANEL_M along strike (y),
-# centred on the origin. Built once at import time since it does not depend
-# on t. Separable: A(x, y) = mask_x(x) * mask_y(y).
+# Extraction footprint mask, on the padded working grid. Separable in x and
+# y: the x factor (W_PANEL_M across strike, centred on the origin) is static;
+# the y factor is split into one strip per padded-grid cell, because each
+# strip is mined at a different day as the face travels north.
 _MASK_X = _fractional_mask_1d(_AXIS_PADDED, _DX_M, W_PANEL_M / 2.0)
-_MASK_Y = _fractional_mask_1d(_AXIS_PADDED, _DX_M, L_PANEL_M / 2.0)
-_A = np.outer(_MASK_Y, _MASK_X)  # shape (N_PADDED, N_PADDED), indexed [y, x]
+
+# Mined interval along strike: [FACE_START_Y_M, +L_PANEL_M/2]. Per-cell
+# fractional coverage (same antialiasing as the x mask) so the start edge is
+# not aliased against the grid either. Only cells with coverage > 0 become
+# strips.
+_Y_MINED_LO_M = FACE_START_Y_M
+_Y_MINED_HI_M = L_PANEL_M / 2.0
+_STRIP_COVERAGE = np.clip(
+    np.minimum(_AXIS_PADDED + _DX_M / 2.0, _Y_MINED_HI_M)
+    - np.maximum(_AXIS_PADDED - _DX_M / 2.0, _Y_MINED_LO_M),
+    0.0,
+    None,
+) / _DX_M
+_STRIP_IDX = np.flatnonzero(_STRIP_COVERAGE > 0.0)
+_STRIP_Y_M = _AXIS_PADDED[_STRIP_IDX]
+
+# Day on which each strip is mined: the face reaches y_j at tau_j. A strip
+# whose centre lies just south of FACE_START_Y_M (partial start-edge cell) is
+# clamped to day 0 so that nothing has subsided at t = 0.
+_STRIP_TAU_DAYS = np.maximum((_STRIP_Y_M - FACE_START_Y_M) / FACE_ADVANCE_M_PER_DAY, 0.0)
 
 
 def _kernel_1d(dx: float, r: float, trunc_r: float) -> np.ndarray:
@@ -206,35 +233,42 @@ _DK_WEIGHTS = _DK * _DX_M
 _D2K_WEIGHTS = _D2K * _DX_M
 
 
-def _convolve_separable(mask: np.ndarray, x_weights: np.ndarray, y_weights: np.ndarray) -> np.ndarray:
-    """Convolve `mask` (shape (N_PADDED, N_PADDED), axes [y, x]) with a
-    separable kernel: 1-D `x_weights` along the x axis, then 1-D
-    `y_weights` along the y axis. 'constant' boundary with cval=0 is exact
-    here (mined area outside the padded domain is genuinely zero, not an
-    edge-effect approximation), and is what makes the >= 4r padding
-    meaningful rather than silently wrapping or clamping the tail.
+def _strip_profiles(weights: np.ndarray) -> np.ndarray:
+    """Each strip's 1-D y-profile: the strip (a one-cell-wide slice of the
+    y mask, scaled by its fractional coverage) convolved along y with the
+    1-D kernel `weights`, cropped to the public window. Shape
+    (n_strips, GRID_N). 'constant' boundary with cval=0 is exact here (mined
+    area outside the padded domain is genuinely zero) and is what makes the
+    >= 4r padding meaningful rather than silently wrapping or clamping.
     """
-    out = convolve1d(mask, x_weights, axis=1, mode="constant", cval=0.0)
-    out = convolve1d(out, y_weights, axis=0, mode="constant", cval=0.0)
-    return out
+    strips = np.zeros((_STRIP_IDX.size, _N_PADDED))
+    strips[np.arange(_STRIP_IDX.size), _STRIP_IDX] = _STRIP_COVERAGE[_STRIP_IDX]
+    return convolve1d(strips, weights, axis=1, mode="constant", cval=0.0)[:, _CROP]
 
 
-# Precompute static spatial base convolution fields once at module import time.
-# Because _A and the convolution kernels do not depend on time t, precomputing
-# the spatial base grids eliminates re-running 10 expensive 2D convolutions on
-# every single tick, speeding up evaluation from ~250ms to <0.05ms per tick.
+def _x_profile(weights: np.ndarray) -> np.ndarray:
+    """The static across-strike profile: `_MASK_X` convolved along x with
+    `weights`, cropped to the public window. Shape (GRID_N,)."""
+    return convolve1d(_MASK_X, weights, mode="constant", cval=0.0)[_CROP]
+
+
+# Precomputed once at import: every convolution the model ever needs. The
+# per-strip y-profiles convolve each strip with k, dk and d2k; the x profiles
+# do the same for the static x mask. channels(t) is then only a
+# time-weighted sum of strip profiles and a handful of outer products — no
+# convolution at run time — and every derivative is still the SAME mask
+# convolved with the analytic derivative kernel, never a finite difference.
 _A_M = A_SUBS * M_SEAM_M
-_BASE_S_PADDED = _convolve_separable(_A, _K_WEIGHTS, _K_WEIGHTS)
-_BASE_DSDX_PADDED = _convolve_separable(_A, _DK_WEIGHTS, _K_WEIGHTS)
-_BASE_DSDY_PADDED = _convolve_separable(_A, _K_WEIGHTS, _DK_WEIGHTS)
-_BASE_D2SDX2_PADDED = _convolve_separable(_A, _D2K_WEIGHTS, _K_WEIGHTS)
-_BASE_D2SDY2_PADDED = _convolve_separable(_A, _K_WEIGHTS, _D2K_WEIGHTS)
+_MY_K = _strip_profiles(_K_WEIGHTS)
+_MY_DK = _strip_profiles(_DK_WEIGHTS)
+_MY_D2K = _strip_profiles(_D2K_WEIGHTS)
+_PX_K = _x_profile(_K_WEIGHTS)
+_PX_DK = _x_profile(_DK_WEIGHTS)
+_PX_D2K = _x_profile(_D2K_WEIGHTS)
 
-_BASE_S = (_A_M * _BASE_S_PADDED[_CROP, _CROP]).copy()
-_BASE_TILT_X = (_A_M * _BASE_DSDX_PADDED[_CROP, _CROP]).copy()
-_BASE_TILT_Y = (_A_M * _BASE_DSDY_PADDED[_CROP, _CROP]).copy()
-_BASE_CURV_X = (_A_M * _BASE_D2SDX2_PADDED[_CROP, _CROP]).copy()
-_BASE_CURV_Y = (_A_M * _BASE_D2SDY2_PADDED[_CROP, _CROP]).copy()
+# The fully-settled (t -> infinity) subsidence field: every strip mined and
+# fully settled. Still used by server.py's /config and hypsometry.
+_BASE_S = _A_M * np.outer(_MY_K.sum(axis=0), _PX_K)
 
 
 def grid() -> tuple[np.ndarray, np.ndarray]:
@@ -248,10 +282,20 @@ def grid() -> tuple[np.ndarray, np.ndarray]:
     return X, Y
 
 
-def _time_factor(t: float) -> float:
-    """s(t) = 1 - exp(-c*t), t in days; s(t) = 0 for t <= 0."""
-    t = np.asarray(t, dtype=float)
-    return np.where(t > 0.0, 1.0 - np.exp(-C_KNOTHE * t), 0.0)
+def face_y(t: float) -> float:
+    """Along-strike position of the longwall face in metres at day `t`:
+    FACE_START_Y_M at t <= 0, advancing FACE_ADVANCE_M_PER_DAY, stopping at
+    the panel's far end (+L_PANEL_M/2)."""
+    return float(
+        min(FACE_START_Y_M + FACE_ADVANCE_M_PER_DAY * max(t, 0.0), _Y_MINED_HI_M)
+    )
+
+
+def _strip_weights(t: float) -> np.ndarray:
+    """Settlement factor of every strip at day `t`: 1 - exp(-c*(t - tau_j))
+    once the face has passed strip j, 0 before (and everywhere for t <= 0)."""
+    dt = np.maximum(float(t) - _STRIP_TAU_DAYS, 0.0)
+    return 1.0 - np.exp(-C_KNOTHE * dt)
 
 
 def S(X: np.ndarray, Y: np.ndarray, t: float) -> np.ndarray:
@@ -266,12 +310,22 @@ def S(X: np.ndarray, Y: np.ndarray, t: float) -> np.ndarray:
     their values are not otherwise used. A caller wanting subsidence at
     off-grid points is out of scope for this sandbox session.
 
-    `t` is elapsed time in days since mining started; `t <= 0` gives
-    S == 0 everywhere; large `t` (t >> 1/C_KNOTHE, e.g. 1e6) approaches the
-    fully-settled bowl `S_MAX_FULL * (A convolved with k)`, subcritical
+    `t` is elapsed time in days since the face started; `t <= 0` gives
+    S == 0 everywhere; large `t` (t >> panel length / face speed + 1/C_KNOTHE,
+    e.g. 1e6) approaches `_BASE_S`, the fully-settled bowl, subcritical
     because W_PANEL_M is narrower than a few R_INFL (see constants.py).
     """
-    return _BASE_S * _time_factor(t)
+    return channels(X, Y, t)["s"]
+
+
+def bowl_profiles(t: float) -> tuple[np.ndarray, np.ndarray]:
+    """The separable bowl at day `t`, downsampled x2 to (GRID_N+1)//2 = 121
+    points: `(px, py)` with `outer(py, px) * A_SUBS * M_SEAM_M ==
+    channels(...)['s'][::2, ::2]` (indexed [y, x]). `px` is static; `py`
+    carries all the time dependence, so a client can hold `px` once and
+    redraw the moving bowl from `py` alone.
+    """
+    return _PX_K[::2].copy(), (_strip_weights(t) @ _MY_K)[::2]
 
 
 class Channels(NamedTuple):
@@ -294,26 +348,29 @@ class Channels(NamedTuple):
 
 
 def channels(X: np.ndarray, Y: np.ndarray, t: float) -> dict:
-    """Compute S and all derivative channels at once, sharing one pair of
-    mask convolutions per axis so the module does exactly the convolutions
-    it needs and no more. Returns a dict (also accessible as a `Channels`
-    namedtuple's fields) with keys: 's', 'tilt_x', 'tilt_y', 'curvature_x',
+    """Compute S and all derivative channels at once. Returns a dict (also
+    accessible as a `Channels` namedtuple's fields) with keys: 's', 'tilt_x', 'tilt_y', 'curvature_x',
     'curvature_y', 'displacement_x', 'displacement_y', 'strain_x',
     'strain_y'.
 
-    Every derivative is a convolution of the SAME mask `A` with the
-    analytic derivative of the kernel — never a finite difference of `s`.
-    The kernel is separable (k(x,y) = k(x)*k(y)), so e.g. dS/dx is `A`
-    convolved with dk/dx along x and with plain k along y, matching the
-    plan's separable convolution pattern.
+    Every derivative is a convolution of the SAME mask with the analytic
+    derivative of the kernel — never a finite difference of `s`. The kernel
+    is separable (k(x,y) = k(x)*k(y)), so e.g. dS/dx is the mask convolved
+    with dk/dx along x and with plain k along y. The convolutions were done
+    once at import (per along-strike strip); here each field is the outer
+    product of the y-profile (time-weighted sum of strip profiles) and the
+    static x-profile.
     """
-    time_factor = _time_factor(t)
+    w = _strip_weights(t)
+    sy_k = w @ _MY_K
+    sy_dk = w @ _MY_DK
+    sy_d2k = w @ _MY_D2K
 
-    s = _BASE_S * time_factor
-    tilt_x = _BASE_TILT_X * time_factor
-    tilt_y = _BASE_TILT_Y * time_factor
-    curvature_x = _BASE_CURV_X * time_factor
-    curvature_y = _BASE_CURV_Y * time_factor
+    s = _A_M * np.outer(sy_k, _PX_K)
+    tilt_x = _A_M * np.outer(sy_k, _PX_DK)
+    tilt_y = _A_M * np.outer(sy_dk, _PX_K)
+    curvature_x = _A_M * np.outer(sy_k, _PX_D2K)
+    curvature_y = _A_M * np.outer(sy_d2k, _PX_K)
 
     return dict(
         s=s,

@@ -88,6 +88,17 @@ WINDOW_SIZE_M = 600.0    # metres, both axes
 GRID_N = 241              # grid points per axis -> spacing = 600/(241-1) = 2.5 m
 
 # ---------------------------------------------------------------------------
+# Travelling longwall face — the panel is mined progressively along strike (y),
+# not all on day 0. The face starts one radius of influence south of the
+# window's southern edge (the setup room), so that at day 0 nothing inside the
+# window has been undermined, and advances north at a constant rate until it
+# reaches the far end of the panel at +L_PANEL_M/2.
+# ---------------------------------------------------------------------------
+
+FACE_START_Y_M = -(WINDOW_SIZE_M / 2.0 + R_INFL)  # ~ -497 m, ASSUMED - flag to SCCL
+FACE_ADVANCE_M_PER_DAY = 5.0                      # ASSUMED - flag to SCCL/CIL
+
+# ---------------------------------------------------------------------------
 # Session C & telemetry parameters
 # ---------------------------------------------------------------------------
 

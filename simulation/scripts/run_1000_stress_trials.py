@@ -147,16 +147,17 @@ def run_1000_stress_battery():
             iy_pos = int(np.argmin(np.abs(Y[:, 0] - qy)))
             iy_neg = int(np.argmin(np.abs(Y[:, 0] - (-qy))))
 
-            # Invariant 1: S(x, y) symmetry across quadrants
+            # Invariant 1: S(x, y) is symmetric in x only. The travelling
+            # longwall face makes the field asymmetric along y.
             s1 = base_s_settled[iy_pos, ix_pos]
             s2 = base_s_settled[iy_pos, ix_neg]
             s3 = base_s_settled[iy_neg, ix_pos]
             s4 = base_s_settled[iy_neg, ix_neg]
 
-            max_quad_diff = max(abs(s1 - s2), abs(s1 - s3), abs(s1 - s4))
+            max_quad_diff = max(abs(s1 - s2), abs(s3 - s4))
             if max_quad_diff > 1e-10:
                 passed = False
-                err = f"Symmetry broken across quadrants: diff = {max_quad_diff:.2e}"
+                err = f"x-symmetry broken: diff = {max_quad_diff:.2e}"
 
             # Invariant 2: Aviershin displacement relation U_x = B * Tilt_x
             tilt_x = settled_ch["tilt_x"][iy_pos, ix_pos]

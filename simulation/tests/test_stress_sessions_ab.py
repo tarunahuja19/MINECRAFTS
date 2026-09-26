@@ -65,20 +65,16 @@ def test_surface_field_symmetries():
 
     s = ch["s"]
     tilt_x = ch["tilt_x"]
-    tilt_y = ch["tilt_y"]
     curv_x = ch["curvature_x"]
     disp_x = ch["displacement_x"]
     strain_x = ch["strain_x"]
 
-    # S(x, y) must be symmetric in x and y (axis-aligned rectangular panel)
+    # S(x, y) must be symmetric in x. It is NOT symmetric in y: the
+    # travelling longwall face mines the panel south to north.
     assert np.max(np.abs(s - np.fliplr(s))) < 1e-12
-    assert np.max(np.abs(s - np.flipud(s))) < 1e-12
 
     # Tilt_x is anti-symmetric in x
     assert np.max(np.abs(tilt_x + np.fliplr(tilt_x))) < 1e-12
-
-    # Tilt_y is anti-symmetric in y
-    assert np.max(np.abs(tilt_y + np.flipud(tilt_y))) < 1e-12
 
     # Curvature_x is symmetric in x
     assert np.max(np.abs(curv_x - np.fliplr(curv_x))) < 1e-12
