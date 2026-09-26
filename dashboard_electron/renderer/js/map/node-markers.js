@@ -280,7 +280,7 @@ var nodeMarkers = (function () {
       // consumer report the same place the marker sits.
       n.lat = pos[0];
       n.lng = pos[1];
-      n.state = (simState === 'RUNNING') ? (n.state || 'active') : 'dead';
+      n.state = (simState === 'RUNNING' && window.__SIM_PLAYING__) ? (n.state || 'active') : 'dead';
       nodeData[n.node_id] = n;
 
       var marker = L.marker(pos, {
@@ -329,11 +329,34 @@ var nodeMarkers = (function () {
     }
 
     bus.on('node-status-change', function (data) {
+      if (!window.__SIM_PLAYING__) return;
       updateState(data.node_id, data.state);
+    });
+
+    bus.on('simulation-play', function () {
+      simState = 'RUNNING';
+      var ids = Object.keys(nodeData);
+      for (var k = 0; k < ids.length; k++) {
+        var rid = ids[k];
+        nodeData[rid].state = 'active';
+        if (markers[rid]) {
+          markers[rid].setIcon(createIcon('active', roleOf(nodeData[rid]), tierLetterOf(nodeData[rid])));
+          markers[rid].setTooltipContent(buildTooltip(nodeData[rid]));
+        }
+      }
+      updateNodeCount();
+    });
+
+    bus.on('simulation-stop', function () {
+      simState = 'PAUSED';
+      updateNodeCount();
     });
 
     bus.on('simulation-status', function (data) {
       var newState = data.state || (data.is_running ? 'RUNNING' : 'STOPPED');
+      if (!window.__SIM_PLAYING__) {
+        newState = (newState === 'PAUSED' || simState === 'PAUSED') ? 'PAUSED' : 'STOPPED';
+      }
       if (newState === simState) return;
       simState = newState;
       console.log('[node-markers] Simulation state transitioned to: ' + simState);
@@ -389,6 +412,7 @@ var nodeMarkers = (function () {
     });
 
     bus.on('telemetry', function (t) {
+      if (!window.__SIM_PLAYING__) return;
       var nodeId = t._node_id || t.node_id;
       if (!nodeId) return;
 

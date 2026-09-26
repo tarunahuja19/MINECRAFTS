@@ -1,5 +1,9 @@
 'use strict';
 
+if (typeof window !== 'undefined' && typeof window.__SIM_PLAYING__ === 'undefined') {
+  window.__SIM_PLAYING__ = false;
+}
+
 var bus = (function () {
   var listeners = {};
 

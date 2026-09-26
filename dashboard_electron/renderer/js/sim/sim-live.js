@@ -51,6 +51,7 @@ var simLive = (function () {
         if (msg.type === 'simulation_status' || msg.event === 'simulation_status') {
           applyStatus(msg.data || msg);
         } else if (msg.type === 'packet_available') {
+          if (!window.__SIM_PLAYING__) return;
           updateLedBlink();
           if (currentSimState !== 'RUNNING') {
             applyStatus({ is_running: true, is_paused: false, state: 'RUNNING' });
@@ -85,8 +86,9 @@ var simLive = (function () {
   }
 
   function init() {
-    // 1. Initial status poll
-    pollStatus();
+    // 1. Initial display state: STOPPED
+    updateHud('STOPPED');
+    updateStatusBar('STOPPED');
 
     // 2. Connect WebSocket
     connectWs();
@@ -95,8 +97,16 @@ var simLive = (function () {
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(pollStatus, pollIntervalMs);
 
-    // 3. Listen to bus events emitted by liveProvider (WebSocket & system)
+    // 4. Listen to bus events emitted by liveProvider (WebSocket & system)
     if (typeof bus !== 'undefined' && bus.on) {
+      bus.on('simulation-play', function () {
+        applyStatus({ is_running: true, is_paused: false, state: 'RUNNING' });
+      });
+
+      bus.on('simulation-stop', function () {
+        applyStatus({ is_running: false, is_paused: true, state: 'PAUSED' });
+      });
+
       bus.on('simulation-status', function (data) {
         if (!data) return;
         applyStatus(data);
@@ -104,6 +114,7 @@ var simLive = (function () {
 
       bus.on('packet_available', function (msg) {
         // A new packet is available from the running simulation
+        if (!window.__SIM_PLAYING__) return;
         updateLedBlink();
         if (currentSimState !== 'RUNNING') {
           applyStatus({ is_running: true, is_paused: false, state: 'RUNNING' });
@@ -117,6 +128,9 @@ var simLive = (function () {
   }
 
   function pollStatus() {
+    if (!window.__SIM_PLAYING__) {
+      return;
+    }
     var url = getApiBase() + '/simulation/status';
     fetch(url)
       .then(function (res) {
@@ -126,6 +140,7 @@ var simLive = (function () {
         return res.json();
       })
       .then(function (data) {
+        if (!window.__SIM_PLAYING__) return;
         applyStatus(data);
       })
       .catch(function (err) {
@@ -138,7 +153,11 @@ var simLive = (function () {
     if (!data) return;
     var isRunning = Boolean(data.is_running);
     var isPaused = Boolean(data.is_paused);
-    var state = (data.state || (isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED')).toUpperCase();
+    var rawState = (data.state || (isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED')).toUpperCase();
+    var state = rawState;
+    if (!window.__SIM_PLAYING__) {
+      state = (rawState === 'PAUSED' || currentSimState === 'PAUSED') ? 'PAUSED' : 'STOPPED';
+    }
     currentSimState = state;
 
     updateHud(state);

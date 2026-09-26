@@ -46,7 +46,7 @@ var nodeSensors = (function () {
 
   if (typeof bus !== 'undefined' && bus.on) {
     bus.on('simulation-status', function (data) {
-      if (!data || !data.is_running) {
+      if (!data || (data.state === 'STOPPED' && !data.is_paused)) {
         nodeTelemetryCache = {};
       }
     });

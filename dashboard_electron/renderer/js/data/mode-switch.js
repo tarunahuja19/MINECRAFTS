@@ -8,9 +8,6 @@ var modeSwitch = (function () {
   function init() {
     modeIndicator = document.getElementById('mode-indicator');
 
-    // Automatically listen on liveProvider WebSocket in background
-    liveProvider.start();
-
     // Auto-detect if live backend is running and default to LIVE mode
     fetch('http://localhost:8080/api/health')
       .then(function (res) {
@@ -31,6 +28,22 @@ var modeSwitch = (function () {
         setMode('live');
       }
     });
+
+    bus.on('simulation-play', function () {
+      if (currentMode === 'live') {
+        liveProvider.start();
+      } else {
+        fixtureProvider.startLiveSimulation();
+      }
+    });
+
+    bus.on('simulation-stop', function () {
+      if (currentMode === 'live') {
+        liveProvider.stop();
+      } else {
+        fixtureProvider.stopReplay();
+      }
+    });
   }
 
   function setMode(mode) {
@@ -42,11 +55,15 @@ var modeSwitch = (function () {
 
       fixtureProvider.loadFixtures('../fixtures').then(function () {
         bus.emit('fixture-started', null);
-        fixtureProvider.startLiveSimulation();
+        if (window.__SIM_PLAYING__) {
+          fixtureProvider.startLiveSimulation();
+        }
       });
     } else {
       fixtureProvider.stopReplay();
-      liveProvider.start();
+      if (window.__SIM_PLAYING__) {
+        liveProvider.start();
+      }
       updateModeDisplay('LIVE SIMULATION', false);
 
       // Load canonical nodes from live PostgreSQL backend
@@ -57,6 +74,7 @@ var modeSwitch = (function () {
         })
         .catch(function (err) {
           console.warn('[mode-switch] Failed to fetch nodes from live backend:', err.message);
+          fixtureProvider.loadFixtures('../fixtures');
         });
 
       // Load initial alarms from live PostgreSQL backend

@@ -766,9 +766,9 @@ export const App: React.FC = () => {
           setEmbedClip(d.bounds ?? null);
           setEmbedNodes(d.nodes ?? null);
           if (d.label !== undefined) setEmbedLabel(d.label);
-          if (!d.bounds) {
-            viewportRef.current?.resetCamera();
-          }
+          // No camera move here: clears that must reframe (session CLOSE)
+          // carry an explicit recenter command, and an auto-reset would also
+          // snap the SIM slot's camera on every tab revisit.
           break;
         case "set-view":
           viewportRef.current?.setView(d.pitchDeg, d.bearingDeg);

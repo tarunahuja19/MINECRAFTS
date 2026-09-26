@@ -166,6 +166,9 @@ var simTab = (function () {
           console.log('[SIM_TAB] system-reset ignored: sandbox session ' + sandboxSession.id + ' is active and isolated');
           return;
         }
+        if (isPlaying) {
+          stopPlay();
+        }
       });
       bus.on('selection-changed', function () {
         updateGateState();
@@ -199,6 +202,14 @@ var simTab = (function () {
       assertNodeParity();
     }, 1500);
     renderForgeHealth();
+    var inspectorBody = document.getElementById('sim-inspector-body');
+    if (inspectorBody && !inspectorBody.innerHTML.trim()) {
+      inspectorBody.innerHTML = '<div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No nodes in active sandbox session. Draw a SIM box on MAP to begin.</div><div id="sim-active-node-detail-container"></div>';
+    }
+    var notifBody = document.getElementById('sim-notifications-body');
+    if (notifBody && !notifBody.innerHTML.trim()) {
+      notifBody.innerHTML = '<div class="sim-empty-notif" style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No scenario alarms. Draw a SIM box on MAP and run an experiment to observe consequences.</div>';
+    }
     if (typeof bus !== 'undefined' && typeof bus.on === 'function') {
       bus.on('nodes-loaded', function () {
         renderForgeHealth();
@@ -646,6 +657,11 @@ var simTab = (function () {
     }
     if (!notifBody) return;
 
+    var emptyNotif = notifBody.querySelector('.sim-empty-notif');
+    if (emptyNotif) {
+      emptyNotif.remove();
+    }
+
     var isDanger = notif.severity === 'high' || notif.type === 'sudden_sinking' || notif.type === 'edge_collapse' || notif.type === 'ERROR';
     var itemEl = document.createElement('div');
     itemEl.className = 'sim-notif-item' + (isDanger ? ' danger' : '');
@@ -775,16 +791,21 @@ var simTab = (function () {
     var color = nodeStateColor(nd.state || 'active');
     var lat = (typeof nd.lat === 'number') ? nd.lat : (nd.latitude || (Array.isArray(nd.pos) ? nd.pos[0] : null));
     var lng = (typeof nd.lng === 'number') ? nd.lng : (nd.longitude || (Array.isArray(nd.pos) ? nd.pos[1] : null));
+    // CLONED means membership in THIS session's clone set — not merely that a
+    // session exists. Health dots cover every district node, so a dot outside
+    // the selection must read MONITORED, never ISOLATED.
+    var isClone = Boolean(sandboxSession && Array.isArray(sandboxSession.nodes) &&
+      sandboxSession.nodes.some(function (n) { return (n.node_id || n.id) === nodeId; }));
 
     detailContainer.innerHTML =
       '<div style="padding:6px; background:var(--bg-chrome); border-radius:3px; border:1px solid var(--border-bevel-dark); display:flex; flex-direction:column; gap:4px;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<span style="font-size:11px; font-weight:bold; color:#FFFFFF; font-family:monospace;">NODE ' + nodeId + (sandboxSession ? ' (CLONED)' : '') + '</span>' +
+          '<span style="font-size:11px; font-weight:bold; color:#FFFFFF; font-family:monospace;">NODE ' + nodeId + (isClone ? ' (CLONED)' : '') + '</span>' +
           '<span class="state-badge" style="font-size:9px; font-weight:bold; padding:1px 5px; background:rgba(0,0,0,0.4); color:' + color + '; border:1px solid ' + color + '; border-radius:2px;">' + state + '</span>' +
         '</div>' +
         '<div style="display:flex; justify-content:space-between; font-size:9.5px;"><span style="color:var(--text-secondary);">ROLE:</span><b>' + role.toUpperCase() + ' (Tier ' + tier + ')</b></div>' +
         '<div style="display:flex; justify-content:space-between; font-size:9.5px;"><span style="color:var(--text-secondary);">LAT / LNG:</span><b style="font-family:monospace;">' + (lat ? lat.toFixed(5) : '--') + ', ' + (lng ? lng.toFixed(5) : '--') + '</b></div>' +
-        '<div style="display:flex; justify-content:space-between; font-size:9.5px;"><span style="color:var(--text-secondary);">STATUS:</span><b style="color:' + color + ';">' + (sandboxSession ? 'SANDBOX CLONE &bull; ISOLATED' : 'MONITORED') + '</b></div>' +
+        '<div style="display:flex; justify-content:space-between; font-size:9.5px;"><span style="color:var(--text-secondary);">STATUS:</span><b style="color:' + color + ';">' + (isClone ? 'SANDBOX CLONE &bull; ISOLATED' : 'MONITORED') + '</b></div>' +
         (sandboxSession ? '<div style="display:flex; justify-content:space-between; font-size:9px; color:#A4B8C4; padding-top:2px; border-top:1px solid rgba(255,255,255,0.06); font-family:monospace;"><span>SESSION:</span><span>' + sandboxSession.id + '</span></div>' : '') +
       '</div>';
   }
@@ -898,10 +919,20 @@ var simTab = (function () {
       var nodeId = n.node_id || n.id || 'N??';
       var state = (n.state || 'active').toLowerCase();
       var color = nodeStateColor(state);
-      html += '<span class="forge-health-dot" title="' + nodeId + ' — ' + state.toUpperCase() + '">' +
+      html += '<span class="forge-health-dot" data-node-id="' + nodeId + '" style="cursor:pointer;" title="' + nodeId + ' — ' + state.toUpperCase() + ' (click to inspect)">' +
         '<i style="background:' + color + ';"></i>' + nodeId + '</span>';
     });
     body.innerHTML = html;
+
+    var dots = body.querySelectorAll('.forge-health-dot');
+    dots.forEach(function (dot) {
+      dot.addEventListener('click', function () {
+        var nid = this.getAttribute('data-node-id');
+        if (nid) {
+          selectNode(nid);
+        }
+      });
+    });
   }
 
   /* --- Sandbox Session & Pipeline Helpers --- */
@@ -1072,9 +1103,11 @@ var simTab = (function () {
       labBadge.style.background = '#1B445A';
     }
 
-    // Clear notifications feed
+    // Reset notifications feed with empty state placeholder
     var notifBody = document.getElementById('sim-notifications-body');
-    if (notifBody) notifBody.innerHTML = '';
+    if (notifBody) {
+      notifBody.innerHTML = '<div class="sim-empty-notif" style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No scenario alarms. Draw a SIM box on MAP and run an experiment to observe consequences.</div>';
+    }
     var notifBadge = document.getElementById('sim-notifications-badge');
     if (notifBadge) notifBadge.textContent = 'OFFLINE FEED';
     inTabNotifications = [];
@@ -1085,11 +1118,9 @@ var simTab = (function () {
       scenarioBanner.style.display = 'none';
     }
 
-    // Hide the FORGE dashboard (no session = nothing shown). The SIM
-    // selection was released above, so the readout falls back to the
-    // select-nodes prompt.
+    // Keep the FORGE dashboard column visible (small dashboard replica remains visible).
     var forgeRight = document.getElementById('forge-right');
-    if (forgeRight) forgeRight.style.display = 'none';
+    if (forgeRight) forgeRight.style.display = '';
     var storeSel = null;
     try {
       storeSel = (typeof selectionStore !== 'undefined' && selectionStore.has('sim'))
@@ -1097,10 +1128,10 @@ var simTab = (function () {
     } catch (_) {}
     renderRegionReadout(storeSel);
 
-    // Reset clone mini dashboard
+    // Reset clone mini dashboard with detail card slot
     var inspectorBody = document.getElementById('sim-inspector-body');
     if (inspectorBody) {
-      inspectorBody.innerHTML = '<div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No nodes in active sandbox session. Draw a SIM box on MAP to begin.</div>';
+      inspectorBody.innerHTML = '<div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No nodes in active sandbox session. Draw a SIM box on MAP to begin.</div><div id="sim-active-node-detail-container"></div>';
     }
     var countBadge = document.getElementById('sim-nodes-count-badge');
     if (countBadge) countBadge.textContent = '0 CLONED';
@@ -2099,16 +2130,32 @@ var simTab = (function () {
 
   function startPlay() {
     isPlaying = true;
+    window.__SIM_PLAYING__ = true;
     var btnPlay = document.getElementById('sim-btn-play');
     if (btnPlay) {
       btnPlay.innerHTML = '❚❚ PAUSE';
       btnPlay.classList.add('active');
+    }
+    if (typeof bus !== 'undefined' && bus.emit) {
+      bus.emit('simulation-play', null);
+      bus.emit('simulation-status', { is_running: true, is_paused: false, state: 'RUNNING' });
+    }
+    var mode = (typeof modeSwitch !== 'undefined' && modeSwitch.getMode) ? modeSwitch.getMode() : 'fixture';
+    if (mode === 'live') {
+      if (typeof liveProvider !== 'undefined' && liveProvider.start) {
+        liveProvider.start();
+      }
+    } else {
+      if (typeof fixtureProvider !== 'undefined' && fixtureProvider.startLiveSimulation) {
+        fixtureProvider.startLiveSimulation();
+      }
     }
     restartPlayTimer();
   }
 
   function stopPlay() {
     isPlaying = false;
+    window.__SIM_PLAYING__ = false;
     var btnPlay = document.getElementById('sim-btn-play');
     if (btnPlay) {
       btnPlay.innerHTML = '▶ PLAY';
@@ -2117,6 +2164,16 @@ var simTab = (function () {
     if (playTimer) {
       clearInterval(playTimer);
       playTimer = null;
+    }
+    if (typeof bus !== 'undefined' && bus.emit) {
+      bus.emit('simulation-stop', null);
+      bus.emit('simulation-status', { is_running: false, is_paused: true, state: 'PAUSED' });
+    }
+    if (typeof liveProvider !== 'undefined' && liveProvider.stop) {
+      liveProvider.stop();
+    }
+    if (typeof fixtureProvider !== 'undefined' && fixtureProvider.stopReplay) {
+      fixtureProvider.stopReplay();
     }
   }
 

@@ -1,5 +1,9 @@
 'use strict';
 
+if (typeof window !== 'undefined') {
+  window.__SIM_PLAYING__ = false;
+}
+
 // Tab switching
 document.getElementById('tab-bar').addEventListener('click', function (e) {
   var btn = e.target.closest('.tab-btn');

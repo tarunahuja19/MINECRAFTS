@@ -8,6 +8,7 @@
     "dev": "electron . --dev",
     "serve": "node serve.js",
     "test:forge-close": "node test/verify_forge_close.js",
+    "test:sim-gate": "node test/verify_sim_gate.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },

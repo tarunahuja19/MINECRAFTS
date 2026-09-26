@@ -146,7 +146,7 @@ function run(expr) {
   return vm.runInContext(expr, ctx, { filename: 'test-expr.js' });
 }
 function el(id) {
-  return registry[id];
+  return documentStub.getElementById(id);
 }
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -204,6 +204,7 @@ async function main() {
     assert.strictEqual(el('sim-select-badge').style.display, 'none');
     assert.strictEqual(el('send-to-sim-badge').style.display, 'none');
     assert.strictEqual(el('btn-send-to-sim').disabled, true);
+    assert.notStrictEqual(el('forge-right').style.display, 'none', 'forge-right visible on fresh state');
   });
 
   await check('0-node selection: still gated, still no numbers', async () => {
@@ -248,12 +249,21 @@ async function main() {
     assert.ok(el('sim-session-chip-container').innerHTML.includes('SANDBOX'));
     assert.strictEqual(el('btn-sim-close-session').disabled, false);
 
+    // Detail card labels clone MEMBERSHIP, not mere session existence: a
+    // health dot outside the selection must read MONITORED, never ISOLATED.
+    run('simTab.selectNode("N01")');
+    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('(CLONED)'));
+    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('ISOLATED'));
+    run('simTab.selectNode("N31")');
+    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('MONITORED'));
+    assert.ok(!el('sim-active-node-detail-container').innerHTML.includes('CLONED'));
+
     run('simTab.closeSandboxSession();');
     await sleep(50); // badge updaters defer one tick on clear
     assert.strictEqual(run('simTab.getSandboxSession()'), null);
     assert.strictEqual(run('selectionStore.has("sim")'), false);
     assert.strictEqual(run('selectionStore.has("3d")'), true);
-    assert.strictEqual(el('forge-right').style.display, 'none');
+    assert.notStrictEqual(el('forge-right').style.display, 'none', 'forge-right dashboard stays visible after close');
     assert.strictEqual(el('sim-session-chip-container').innerHTML, '');
     assert.strictEqual(el('sim-gate-banner').style.display, 'flex');
     assert.strictEqual(el('btn-sim-run-scenario').disabled, true);
@@ -262,6 +272,10 @@ async function main() {
     assert.strictEqual(el('send-to-sim-badge').style.display, 'none');
     assert.strictEqual(el('btn-send-to-sim').disabled, true);
     assert.strictEqual(el('sim-nodes-count-badge').textContent, '0 CLONED');
+    assert.ok(el('sim-inspector-body').innerHTML.includes('No nodes in active sandbox session'));
+    run('simTab.selectNode("N01")');
+    assert.ok(el('sim-active-node-detail-container').innerHTML.includes('MONITORED'),
+      'no session => MONITORED');
 
     // Camera & selection reset contract (prevents view lock on forge close)
     const forgeSlot = run('simEmbed.getSlotInfo("forge")');

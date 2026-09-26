@@ -91,6 +91,11 @@ var replayController = (function () {
     if (!liveSuspended) return;
     liveSuspended = false;
 
+    if (!window.__SIM_PLAYING__) {
+      bus.emit('replay-live-resumed', null);
+      return;
+    }
+
     var mode = (typeof modeSwitch !== 'undefined' && modeSwitch.getMode)
       ? modeSwitch.getMode() : 'fixture';
 

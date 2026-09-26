@@ -6,6 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://127.0.0.1:8085 http://localhost:8085 https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://*.google.com https://s3.amazonaws.com https://*.amazonaws.com; frame-src 'self' http://127.0.0.1:* http://localhost:* https://*.google.com https://*.google.co.in; connect-src 'self' ws://localhost:* http://localhost:* http://127.0.0.1:* https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://s3.amazonaws.com https://*.amazonaws.com blob:;">
   <title>R4 Mine Subsidence Dashboard</title>
   <script>
+    window.__SIM_PLAYING__ = false;
     window.addEventListener('error', function (e) {
       console.error('[UNCAUGHT_ERR]', e.message, e.filename, e.lineno);
     });
@@ -920,9 +921,8 @@
             </div>
           </div>
 
-          <!-- Right Column: FORGE DASHBOARD (health board + clones + feed + results, 360px).
-               Hidden until a region is selected (no session = no dashboard). -->
-          <div id="forge-right" style="display:none;">
+          <!-- Right Column: FORGE DASHBOARD (health board + clones + alarms + results, 360px). -->
+          <div id="forge-right">
             <div id="forge-health-panel">
               <div class="panel-header">
                 <span style="color:#00FF88;">DISTRICT HEALTH — ALL NODES</span>
@@ -939,17 +939,18 @@
                 <span id="sim-nodes-count-badge" class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">0 CLONED</span>
               </div>
               <div id="sim-inspector-body" class="sim-panel-scroll">
-                <!-- Populated on sandbox load -->
+                <div style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No nodes in active sandbox session. Draw a SIM box on MAP to begin.</div>
+                <div id="sim-active-node-detail-container"></div>
               </div>
             </div>
 
             <div id="sim-notifications-panel">
               <div class="panel-header" style="background:#182026; border-top:1px solid var(--border-bevel-dark);">
-                <span style="color:#FFA500;">SANDBOX SCENARIO NOTIFICATIONS</span>
+                <span style="color:#FFA500;">SANDBOX SCENARIO ALARMS</span>
                 <span id="sim-notifications-badge" class="panel-badge" style="background:#2A2010; color:#FFA500; border:1px solid #FFA500;">OFFLINE FEED</span>
               </div>
               <div id="sim-notifications-body" class="sim-panel-scroll">
-                <!-- Populated on scenario runs and sandbox events -->
+                <div class="sim-empty-notif" style="color:var(--text-secondary); font-size:10.5px; padding:6px;">No scenario alarms. Draw a SIM box on MAP and run an experiment to observe consequences.</div>
               </div>
             </div>
 

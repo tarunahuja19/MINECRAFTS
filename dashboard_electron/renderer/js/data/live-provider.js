@@ -27,6 +27,7 @@ var liveProvider = (function () {
     // every downstream render and alarm. Wire the handlers exactly once.
     if (started) {
       connectWebSocket();
+      startSimHealthPoll();
       return;
     }
     started = true;
@@ -34,7 +35,7 @@ var liveProvider = (function () {
     // 1. If running under Electron IPC bridge, register window.r4 handlers
     if (window.r4) {
       window.r4.onTelemetry(function (data) {
-        if (!active) return;
+        if (!active || !window.__SIM_PLAYING__) return;
         handleTelemetry(data);
       });
 
@@ -44,7 +45,7 @@ var liveProvider = (function () {
       });
 
       window.r4.onStatus(function (data) {
-        if (!active) return;
+        if (!active || !window.__SIM_PLAYING__) return;
         var nodeId = data._node_id || data.node_id;
         if (nodeId && data.state) {
           bus.emit('node-status-change', { node_id: nodeId, state: data.state });
@@ -133,9 +134,13 @@ var liveProvider = (function () {
 
     // React automatically to Phase 6 notification
     if (msg.type === 'packet_available') {
+      if (!window.__SIM_PLAYING__) {
+        return;
+      }
       console.log('[live-provider] New simulation packet available (# ' + msg.packet_id + '), fetching...');
       fetchSimulationPacket(msg.packet_id);
     } else if (msg.type === 'telemetry') {
+      if (!window.__SIM_PLAYING__) return;
       handleTelemetry(msg);
     } else if (msg.type === 'alarm') {
       // The backend wraps the alarm: { type:'alarm', alarm:{...} }. Emitting
@@ -167,6 +172,11 @@ var liveProvider = (function () {
     var isRunning = Boolean(data.is_running);
     var isPaused = Boolean(data.is_paused);
     var state = data.state || (isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED');
+    if (!window.__SIM_PLAYING__) {
+      state = (currentSimState === 'PAUSED') ? 'PAUSED' : 'STOPPED';
+      isRunning = false;
+      isPaused = (state === 'PAUSED');
+    }
     if (state !== currentSimState) {
       console.log('[live-provider] Simulation state transition: ' + currentSimState + ' -> ' + state);
       currentSimState = state;
@@ -182,7 +192,7 @@ var liveProvider = (function () {
   function startSimHealthPoll() {
     if (simPollTimer) return;
     function poll() {
-      if (!active) return;
+      if (!active || !window.__SIM_PLAYING__) return;
       var simUrl = 'http://127.0.0.1:8000/health';
       fetch(simUrl, { cache: 'no-store' })
         .then(function (r) {
@@ -209,6 +219,7 @@ var liveProvider = (function () {
   }
 
   function fetchSimulationPacket(packetId) {
+    if (!window.__SIM_PLAYING__) return;
     var url = API_BASE + '/simulation/packets/' + packetId;
     fetch(url)
       .then(function (res) {
@@ -216,6 +227,7 @@ var liveProvider = (function () {
         return res.json();
       })
       .then(function (packet) {
+        if (!window.__SIM_PLAYING__) return;
         applySimulationPacket(packet);
       })
       .catch(function (err) {
@@ -224,6 +236,7 @@ var liveProvider = (function () {
   }
 
   function applySimulationPacket(packet) {
+    if (!window.__SIM_PLAYING__) return;
     console.log('[live-provider] Applying simulation packet #' + packet.packet_id, packet);
     bus.emit('simulation-packet', packet);
 
@@ -293,6 +306,8 @@ var liveProvider = (function () {
   }
 
   function handleTelemetry(data) {
+    if (!window.__SIM_PLAYING__) return;
+
     // MQTT telemetry frames carry `t_utc` (the *simulated* wall clock, which
     // races ahead of real time) but no `t_epoch_s` - the field the charts and
     // the "LAST SEEN" readout key off. For a live monitor the honest value is
@@ -356,6 +371,10 @@ var liveProvider = (function () {
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
+    }
+    if (simPollTimer) {
+      clearInterval(simPollTimer);
+      simPollTimer = null;
     }
     Object.keys(heartbeatTimers).forEach(function (id) {
       clearTimeout(heartbeatTimers[id]);

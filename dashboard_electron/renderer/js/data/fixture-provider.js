@@ -103,6 +103,7 @@ var fixtureProvider = (function () {
   function startLiveSimulation() {
     if (liveSimTimer) clearInterval(liveSimTimer);
     if (!telemetry || telemetry.length === 0) return;
+    if (!window.__SIM_PLAYING__) return;
 
     // Cache the LATEST reading for each node (the current active mine state)
     for (var i = 0; i < telemetry.length; i++) {

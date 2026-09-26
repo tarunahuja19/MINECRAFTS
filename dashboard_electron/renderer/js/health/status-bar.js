@@ -25,7 +25,22 @@ var statusBar = (function () {
     updateSimulationIndicator();
 
     bus.on('simulation-status', function (data) {
-      currentSimState = data.state || (data.is_running ? 'RUNNING' : 'STOPPED');
+      var rawState = data.state || (data.is_running ? 'RUNNING' : 'STOPPED');
+      if (!window.__SIM_PLAYING__) {
+        currentSimState = (rawState === 'PAUSED' || currentSimState === 'PAUSED') ? 'PAUSED' : 'STOPPED';
+      } else {
+        currentSimState = rawState;
+      }
+      updateSimulationIndicator();
+    });
+
+    bus.on('simulation-play', function () {
+      currentSimState = 'RUNNING';
+      updateSimulationIndicator();
+    });
+
+    bus.on('simulation-stop', function () {
+      currentSimState = 'PAUSED';
       updateSimulationIndicator();
     });
 
