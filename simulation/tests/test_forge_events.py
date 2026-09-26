@@ -95,9 +95,28 @@ def test_node_in_fringe_is_warning(client):
     assert _frame(client, 50.0, [ev])["node_states"][_node_topic_id(node.node_id)] == "WARNING"
 
 
-def test_big_pit_tilt_makes_the_fringe_critical(client):
-    node = _node_at(1.3, 100.0)
-    assert _frame(client, 50.0, [_cave()])["node_states"][_node_topic_id(node.node_id)] == "CRITICAL"
+def test_big_pit_tilt_does_not_redden_nodes_outside_the_white_ring(client):
+    # A 10 m / 100 m pit tilts ~56 mm/m at 1.3 R and still ~11 mm/m at 250 m. The
+    # rings are the rule for CRITICAL, so those nodes are WARNING, never red.
+    fringe = _node_at(1.3, 100.0)
+    assert _frame(client, 50.0, [_cave()])["node_states"][_node_topic_id(fringe.node_id)] == "WARNING"
+    states = _frame(client, 50.0, [_cave()])["node_states"]
+    for n in _sensor_array.nodes:
+        if math.hypot(n.x_m, n.y_m) > 120.0:
+            assert states[_node_topic_id(n.node_id)] != "CRITICAL", n.node_id
+
+
+def test_rings_and_node_colours_agree_for_a_cave_in(client):
+    states = _frame(client, 50.0, [_cave()])["node_states"]
+    for n in _sensor_array.nodes:
+        d = math.hypot(n.x_m, n.y_m)
+        got = states[_node_topic_id(n.node_id)]
+        if d <= 120.0:
+            assert got == "CRITICAL"
+        elif d <= 150.0:
+            assert got == "WARNING"
+        else:
+            assert got in ("ACTIVE", "WARNING")
 
 
 def test_tilt_event_flags_nodes_by_tilt_only(client):

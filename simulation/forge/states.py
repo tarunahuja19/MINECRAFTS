@@ -12,7 +12,7 @@ from typing import Any, Iterable, Sequence
 
 import numpy as np
 
-from sandbox import constants
+from sandbox import collapse, constants
 from sandbox.collapse import PillarFailure
 from sandbox.mqtt_bridge import _node_topic_id
 from sandbox.session import CRITICAL_RADIUS_FACTOR, WARNING_RADIUS_FACTOR
@@ -46,6 +46,17 @@ def _dist_to_footprint(ev: dict, px: float, py: float) -> tuple[float, float] | 
     return None
 
 
+def _tilt_event_tilt(nodes, started, failures_by_event, day: float) -> np.ndarray:
+    """|tilt| in mm/m at each node from the started TILT events alone."""
+    own = [pf for i, ev in started if ev["type"] == "tilt" for pf in failures_by_event[i]]
+    if not own:
+        return np.zeros(len(nodes))
+    xs = np.array([[n.x_m for n in nodes]])
+    ys = np.array([[n.y_m for n in nodes]])
+    d = collapse.collapse_deltas(xs, ys, day, own)
+    return np.hypot(d["delta_tilt_x"][0], d["delta_tilt_y"][0]) * 1000.0
+
+
 def forge_node_states(
     nodes: Iterable[Any],
     events: Sequence[dict],
@@ -62,8 +73,13 @@ def forge_node_states(
     - Anywhere, from the movement the events themselves add at the node (never
       the Knothe bowl, which would redden the board with no operator input):
       WARNING when tensile strain reaches EPS_TENSILE_LIMIT, compressive strain
-      EPS_COMPRESS_LIMIT, or |tilt| TILT_WARNING_MM_M; CRITICAL when |tilt|
-      reaches TILT_CRITICAL_MM_M.
+      EPS_COMPRESS_LIMIT, or |tilt| TILT_WARNING_MM_M.
+    - CRITICAL from the maths only for a TILT event's own tilt reaching
+      TILT_CRITICAL_MM_M at the node. A cave-in or crack reaches CRITICAL only
+      through its white circle: a 10 m / 100 m pit still tilts 11 mm/m at
+      250 m, and letting that turn the node red would put red nodes far
+      outside the rings drawn on the map. Outside the red circle such an event
+      is capped at WARNING.
 
     The most severe reading wins. Vibration changes no state.
     """
@@ -78,10 +94,11 @@ def forge_node_states(
     sx = delta["delta_strain_x"][iy, ix] * 1000.0
     sy = delta["delta_strain_y"][iy, ix] * 1000.0
     tilt = np.hypot(delta["delta_tilt_x"][iy, ix], delta["delta_tilt_y"][iy, ix]) * 1000.0
+    tilt_own = _tilt_event_tilt(nodes, started, failures_by_event, day)
 
     for k, n in enumerate(nodes):
         state = "ACTIVE"
-        if tilt[k] >= constants.TILT_CRITICAL_MM_M:
+        if tilt_own[k] >= constants.TILT_CRITICAL_MM_M:
             state = "CRITICAL"
         elif (
             max(sx[k], sy[k]) >= constants.EPS_TENSILE_LIMIT
