@@ -10,7 +10,7 @@
  * dashboard_electron/test/verify_forge_close.js (static wiring check).
  */
 
-import { parseEmbedParams } from '../src/embed.ts';
+import { isEngineReadOnly, parseEmbedParams } from '../src/embed.ts';
 
 let fail = 0;
 const ok = (c, m) => { console.log((c ? '  PASS  ' : '  FAIL  ') + m); if (!c) fail++; };
@@ -43,6 +43,12 @@ console.log('\n=== EMBED SLOT PARAM ===');
      p.clip !== null && p.nodeIds !== null && p.nodeIds.length === 2,
      'slot coexists with clip/nodes/day/exag/label params');
 }
+
+console.log('\n=== FORGE IS READ-ONLY TOWARD THE ENGINE ===');
+ok(isEngineReadOnly(parseEmbedParams('embed=1&slot=forge')) === true, 'forge slot is read-only');
+ok(isEngineReadOnly(parseEmbedParams('embed=1&slot=sim')) === false, 'sim slot may drive the engine');
+ok(isEngineReadOnly(parseEmbedParams('embed=1')) === false, 'embed without slot may drive the engine');
+ok(isEngineReadOnly(parseEmbedParams('slot=forge')) === false, 'standalone app may drive the engine');
 
 console.log(fail === 0 ? '\nALL CHECKS PASSED\n' : `\n${fail} CHECK(S) FAILED\n`);
 process.exit(fail ? 1 : 0);

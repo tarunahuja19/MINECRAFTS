@@ -19,6 +19,7 @@ import { setGeoOrigin } from "./utils/geo";
 import { classifyTerrainZone } from "./utils/proceduralTerrain";
 import { sampleBaseGroundY, sampleSlopeDegrees } from "./utils/terrainSampler";
 import {
+  isEngineReadOnly,
   parseEmbedParams,
   postEmbedEvent,
   R4_SIM_EMBED_SOURCE,
@@ -66,6 +67,8 @@ export const App: React.FC = () => {
   // isRunningRef) — so the packet handler reads it through a ref.
   const embedSlotRef = useRef<string | null>(embedParams.slot);
   const isEmbed = embedParams.isEmbed;
+  // FORGE slot: reads the live engine, never writes to it (see embed.ts).
+  const engineReadOnly = isEngineReadOnly(embedParams);
   const [embedClip, setEmbedClip] = useState<EmbedClipBounds | null>(embedParams.clip);
   const [embedNodes, setEmbedNodes] = useState<number[] | null>(embedParams.nodeIds);
   const [embedDay, setEmbedDay] = useState<number | null>(embedParams.day);
@@ -231,14 +234,17 @@ export const App: React.FC = () => {
         setIsConnected(true);
         // Speed is fixed client-side, so tell the server immediately rather
         // than adopting whatever multiplier its session happened to default to.
-        ws.send(JSON.stringify({ action: "set_speed", multiplier: FIXED_SPEED_MULTIPLIER }));
+        // FORGE never steers the engine, so it skips this and the re-arm below.
+        if (!engineReadOnly) {
+          ws.send(JSON.stringify({ action: "set_speed", multiplier: FIXED_SPEED_MULTIPLIER }));
+        }
 
         // Re-arm a run that was in progress before the socket dropped. The
         // server's session survives a disconnect, but a *restarted* backend
         // comes back with `is_running = False`, and this is a reconnect path
         // as well as a first connect — so the client re-states its intent
         // rather than assuming the two sides still agree.
-        if (isRunningRef.current) {
+        if (isRunningRef.current && !engineReadOnly) {
           ws.send(JSON.stringify({ action: "start" }));
         }
 
@@ -469,6 +475,7 @@ export const App: React.FC = () => {
   }, [eventInFlight, impacts.length]);
 
   const sendWsAction = (payload: any) => {
+    if (engineReadOnly) return;
     let sentViaWs = false;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
@@ -508,6 +515,7 @@ export const App: React.FC = () => {
   };
 
   const handleCloseEverything = async () => {
+    if (engineReadOnly) return;
     const confirmed = window.confirm(
       "STOP SIMULATION, WIPE DATABASE & CLOSE SESSION?\n\n" +
       "This will halt the simulation engine, wipe runtime tables in PostgreSQL, and close this session."
@@ -849,10 +857,16 @@ export const App: React.FC = () => {
   // In embed there is no START button of our own — the viewport arms itself
   // once the socket is up so parent scenario triggers land on a live clock.
   // Idempotent: repeated calls just re-state the run intent.
+  // FORGE arms locally at once and needs no engine connection: its triggers
+  // only move its own mesh.
   useEffect(() => {
+    if (engineReadOnly) {
+      setIsRunning(true);
+      return;
+    }
     if (!isEmbed || !isConnected) return;
     if (!isRunningRef.current) startRef.current();
-  }, [isEmbed, isConnected]);
+  }, [isEmbed, isConnected, engineReadOnly]);
 
   // Lightweight status heartbeat so the parent can reflect link/run state.
   useEffect(() => {

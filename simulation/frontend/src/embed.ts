@@ -140,6 +140,15 @@ export function parseEmbedParams(search?: string): EmbedParams {
 }
 
 /**
+ * FORGE is a private playground: it may READ the live engine (ticks, packets,
+ * node details) but must never WRITE to it — no start/pause/speed, no
+ * interventions, no resets. Anything it does stays inside its own frame.
+ */
+export function isEngineReadOnly(p: EmbedParams): boolean {
+  return p.isEmbed && p.slot === "forge";
+}
+
+/**
  * Child-event payloads without the source tag. Written out instead of
  * `Omit<EmbedChildEvent, "source">` because Omit does not distribute over the
  * union and would only accept the properties common to every variant.
