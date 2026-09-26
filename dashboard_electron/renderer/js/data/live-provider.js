@@ -11,6 +11,7 @@ var liveProvider = (function () {
   var reconnectTimer = null;
   var knownNodes = {};
   var heartbeatTimers = {};
+  var HEARTBEAT_TIMEOUT_MS = 60000;
   var getPort = function () {
     if (typeof window !== 'undefined' && window.__TEST_BACKEND_PORT__) return window.__TEST_BACKEND_PORT__;
     if (typeof window !== 'undefined' && window.location && window.location.search) {
