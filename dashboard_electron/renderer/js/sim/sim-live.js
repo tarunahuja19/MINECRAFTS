@@ -163,7 +163,7 @@ var simLive = (function () {
   }
 
   function pollStatus() {
-    var url = getApiBase() + '/simulation/status';
+    var url = getApiBase() + '/api/simulation/status';
     fetch(url)
       .then(function (res) {
         if (!res.ok) {

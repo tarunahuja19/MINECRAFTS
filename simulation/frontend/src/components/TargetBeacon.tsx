@@ -155,11 +155,14 @@ export const TargetBeacon: React.FC<TargetBeaconProps> = ({
         />
       </mesh>
 
-      {/* 3. Outer Physical Perimeter Outline (radius R) */}
-      <lineLoop geometry={lineGeo}>
-        <lineBasicMaterial
-          color="#8fa3ad"
+      {/* 3. Outer Physical Perimeter Outline (radius R - dashed) */}
+      {/* Dashes need per-vertex line distances, which only the Line object computes */}
+      <lineLoop geometry={lineGeo} onUpdate={(l: THREE.LineLoop) => l.computeLineDistances()}>
+        <lineDashedMaterial
+          color="#ffaa00"
           linewidth={2}
+          dashSize={6}
+          gapSize={3}
           depthTest={true}
           depthWrite={false}
           polygonOffset={true}

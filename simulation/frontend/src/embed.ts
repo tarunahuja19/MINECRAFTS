@@ -92,6 +92,13 @@ export type EmbedParentCommand =
       cy: number;
       rad: number;
       depth: number;
+    }
+  | {
+      source: typeof R4_SIM_EMBED_SOURCE;
+      cmd: "forge-preview";
+      x?: number | null;
+      y?: number | null;
+      radius_m?: number | null;
     };
 
 export type EmbedChildEvent =

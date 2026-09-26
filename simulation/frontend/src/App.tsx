@@ -874,6 +874,24 @@ export const App: React.FC = () => {
           forgeCaveInEffectRef.current(d.cx, d.cy, d.rad, d.depth);
           break;
         }
+        case "forge-preview": {
+          if (!engineReadOnly) break;
+          if (d.x == null || d.y == null || d.radius_m == null || d.radius_m <= 0 || !Number.isFinite(d.x) || !Number.isFinite(d.y) || !Number.isFinite(d.radius_m)) {
+            break;
+          }
+          const elev = sampleBaseGroundY(d.x, d.y);
+          const slope = sampleSlopeDegrees(d.x, d.y);
+          setTargetLocation({
+            x: d.x,
+            y: d.y,
+            label: `Target (${d.x.toFixed(0)}m, ${d.y.toFixed(0)}m)`,
+            elev,
+            slopeDeg: slope,
+            zoneName: classifyTerrainZone(elev, slope),
+          });
+          setCollapseRadiusM(d.radius_m);
+          break;
+        }
         case "trigger": {
           // Move the targeting beacon to the injected event so the parent's
           // RUN visibly lands where the ground is about to move.
