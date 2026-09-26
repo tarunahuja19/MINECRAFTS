@@ -65,8 +65,8 @@ var simTab = (function () {
 
     if (daySlider) daySlider.value = currentDay;
     if (timelineSlider) timelineSlider.value = currentDay;
-    if (dayDisplay) dayDisplay.textContent = 'Day ' + Math.round(currentDay);
-    if (timelineDisplay) timelineDisplay.textContent = 'Day ' + Math.round(currentDay);
+    if (dayDisplay) dayDisplay.textContent = 'Day ' + Math.round(currentDay) + ' (Live)';
+    if (timelineDisplay) timelineDisplay.textContent = 'Day ' + Math.round(currentDay) + ' (Live)';
 
     if (sandboxSession) {
       sandboxSession.day = currentDay;
@@ -380,9 +380,9 @@ var simTab = (function () {
     var btnStepNextH = document.getElementById('sim-btn-step-next-h');
 
     if (btnStepPrevD) btnStepPrevD.addEventListener('click', function () { onDayChange(Math.max(0, currentDay - 1)); });
-    if (btnStepNextD) btnStepNextD.addEventListener('click', function () { onDayChange(Math.min(690, currentDay + 1)); });
+    if (btnStepNextD) btnStepNextD.addEventListener('click', function () { onDayChange(currentDay + 1); });
     if (btnStepPrevH) btnStepPrevH.addEventListener('click', function () { onDayChange(Math.max(0, currentDay - (1 / 24))); });
-    if (btnStepNextH) btnStepNextH.addEventListener('click', function () { onDayChange(Math.min(690, currentDay + (1 / 24))); });
+    if (btnStepNextH) btnStepNextH.addEventListener('click', function () { onDayChange(currentDay + (1 / 24)); });
   }
 
   // NOTE: 3D views are the embedded website app (sim-embed.js dual slots).
@@ -2193,14 +2193,6 @@ var simTab = (function () {
       var shouldLoop = loopChk ? loopChk.checked : true;
 
       var nextDay = currentDay + 1;
-      if (nextDay > 690) {
-        if (shouldLoop) {
-          nextDay = 0;
-        } else {
-          stopPlay();
-          return;
-        }
-      }
       onDayChange(nextDay);
     }, intervalMs);
   }

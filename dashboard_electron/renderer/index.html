@@ -697,8 +697,7 @@
               </label>
 
               <div style="flex:1; display:flex; align-items:center; gap:8px; margin-left:10px;">
-                <input type="range" id="sim-timeline-slider" class="sim-slider" min="0" max="690" step="1" value="0">
-                <span id="sim-timeline-day-val" class="sim-val-display" style="white-space:nowrap; min-width:55px;">Day 0</span>
+                <span id="sim-timeline-day-val" class="sim-val-display" style="white-space:nowrap; min-width:65px;">Day 0 (Live)</span>
               </div>
             </div>
           </div>
@@ -743,18 +742,15 @@
               <span class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">LAB 8010</span>
             </div>
             <div class="sim-control-body">
-              <!-- Day Slider Section -->
+              <!-- Engine Status Section (690d slider removed; math runs dynamically) -->
               <div class="sim-section-box">
-                <div class="sim-section-title">TEMPORAL DRIFT CONTROL</div>
+                <div class="sim-section-title">SIMULATION ENGINE STATUS</div>
                 <div class="sim-row">
-                  <span class="sim-label">MINING DAY:</span>
-                  <span class="sim-val-display" id="sim-day-display">Day 0</span>
+                  <span class="sim-label">PHYSICS CLOCK:</span>
+                  <span class="sim-val-display" id="sim-day-display">Day 0 (Live)</span>
                 </div>
-                <input type="range" id="sim-day-slider" class="sim-slider" min="0" max="690" step="1" value="0">
-                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-secondary); font-family:monospace;">
-                  <span>0d (INIT)</span>
-                  <span>172d (BENCH)</span>
-                  <span>690d (FINAL)</span>
+                <div style="font-size:9.5px; color:var(--text-secondary); line-height:1.4; margin-top:3px;">
+                  Continuum geomechanics math running in real-time.
                 </div>
               </div>
 
