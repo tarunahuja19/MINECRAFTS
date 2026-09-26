@@ -193,48 +193,41 @@ async function main() {
     assert.ok(srcs[1].includes('slot=sim'), 'sim src: ' + srcs[1]);
   });
 
-  await check('fresh state: gate up, RUN disabled, no badge numbers', async () => {
+  await check('fresh state: FORGE ungated, RUN enabled on full terrain, SIM buttons removed', async () => {
     run('selectionStore.clear(); simTab.updateGateState();');
-    await sleep(30); // badge updaters defer one tick on clear
-    assert.strictEqual(el('sim-gate-banner').style.display, 'flex');
-    // Gate wording lives in index.html (also pinned by acceptance_s3 CHECK 1).
-    const html = fs.readFileSync(INDEX_HTML, 'utf8');
-    assert.ok(html.includes('Select nodes on the MAP tab first (SIM box tool)'));
-    assert.strictEqual(el('btn-sim-run-scenario').disabled, true);
-    assert.strictEqual(el('sim-select-badge').style.display, 'none');
-    assert.strictEqual(el('send-to-sim-badge').style.display, 'none');
-    assert.strictEqual(el('btn-send-to-sim').disabled, true);
+    await sleep(30);
+    assert.strictEqual(el('sim-gate-banner').style.display, 'none');
+    assert.strictEqual(el('btn-sim-run-scenario').disabled, false);
+    assert.ok(el('sim-region-readout').textContent.includes('Entire Mine Domain'));
     assert.notStrictEqual(el('forge-right').style.display, 'none', 'forge-right visible on fresh state');
+
+    // Verify SIM buttons removed from index.html
+    const html = fs.readFileSync(INDEX_HTML, 'utf8');
+    assert.ok(!html.includes('id="btn-sim-select"'), 'btn-sim-select removed from index.html');
+    assert.ok(!html.includes('id="btn-send-to-sim"'), 'btn-send-to-sim removed from index.html');
   });
 
-  await check('0-node selection: still gated, still no numbers', async () => {
+  await check('0-node selection: falls back to full terrain domain', async () => {
     run(`selectionStore.set({ id: 'CUSTOM',
       bounds: [[18.64, 79.57], [18.65, 79.58]], nodeCount: 0, nodes: [] }, 'sim');
       simTab.updateGateState();`);
     await sleep(30);
-    assert.strictEqual(el('sim-gate-banner').style.display, 'flex');
-    assert.strictEqual(el('btn-sim-run-scenario').disabled, true);
-    assert.strictEqual(el('sim-select-badge').style.display, 'none');
-    assert.strictEqual(el('send-to-sim-badge').style.display, 'none');
-    assert.strictEqual(el('btn-send-to-sim').disabled, true);
-    assert.ok(el('sim-region-readout').textContent.includes('No region'));
+    assert.strictEqual(el('sim-gate-banner').style.display, 'none');
+    assert.strictEqual(el('btn-sim-run-scenario').disabled, false);
+    assert.ok(el('sim-region-readout').textContent.includes('Entire Mine Domain'));
   });
 
-  await check('N-node selection: ungated, badges show the count', async () => {
+  await check('N-node selection: scope displayed in readout', async () => {
     run(`selectionStore.set({ type: 'polygon', nodes: ['N01', 'N02', 'N03', 'N04'],
       sectorId: 'C4', bounds: [[18.642, 79.571], [18.645, 79.574]] }, 'sim');
       simTab.updateGateState();`);
     await sleep(30);
     assert.strictEqual(el('sim-gate-banner').style.display, 'none');
     assert.strictEqual(el('btn-sim-run-scenario').disabled, false);
-    assert.strictEqual(el('sim-select-badge').style.display, 'inline-block');
-    assert.strictEqual(el('sim-select-badge').textContent, '4');
-    assert.strictEqual(el('send-to-sim-badge').style.display, 'inline-block');
-    assert.strictEqual(el('send-to-sim-badge').textContent, '4');
-    assert.strictEqual(el('btn-send-to-sim').disabled, false);
+    assert.ok(el('sim-region-readout').innerHTML.includes('4 nodes'));
   });
 
-  await check('session opens the dashboard, CLOSE releases everything', async () => {
+  await check('session opens the dashboard, CLOSE releases everything to full domain', async () => {
     // A 3D-channel selection on the side: close must not touch it.
     run(`selectionStore.set({ type: 'polygon', nodes: ['N05', 'N06'],
       bounds: [[18.643, 79.572], [18.646, 79.575]] }, '3d');`);
@@ -259,18 +252,15 @@ async function main() {
     assert.ok(!el('sim-active-node-detail-container').innerHTML.includes('CLONED'));
 
     run('simTab.closeSandboxSession();');
-    await sleep(50); // badge updaters defer one tick on clear
+    await sleep(50);
     assert.strictEqual(run('simTab.getSandboxSession()'), null);
     assert.strictEqual(run('selectionStore.has("sim")'), false);
     assert.strictEqual(run('selectionStore.has("3d")'), true);
     assert.notStrictEqual(el('forge-right').style.display, 'none', 'forge-right dashboard stays visible after close');
     assert.strictEqual(el('sim-session-chip-container').innerHTML, '');
-    assert.strictEqual(el('sim-gate-banner').style.display, 'flex');
-    assert.strictEqual(el('btn-sim-run-scenario').disabled, true);
-    assert.ok(el('sim-region-readout').textContent.includes('No region'));
-    assert.strictEqual(el('sim-select-badge').style.display, 'none');
-    assert.strictEqual(el('send-to-sim-badge').style.display, 'none');
-    assert.strictEqual(el('btn-send-to-sim').disabled, true);
+    assert.strictEqual(el('sim-gate-banner').style.display, 'none');
+    assert.strictEqual(el('btn-sim-run-scenario').disabled, false);
+    assert.ok(el('sim-region-readout').textContent.includes('Entire Mine Domain'));
     assert.strictEqual(el('sim-nodes-count-badge').textContent, '0 CLONED');
     assert.ok(el('sim-inspector-body').innerHTML.includes('No nodes in active sandbox session'));
     run('simTab.selectNode("N01")');

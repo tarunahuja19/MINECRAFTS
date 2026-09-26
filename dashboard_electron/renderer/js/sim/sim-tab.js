@@ -449,9 +449,7 @@ var simTab = (function () {
   }
 
   function updateGateState() {
-    // SIM-channel selection only: 3D-box selections never gate or feed FORGE.
-    // A selection record with zero nodes is NOT a selection: the gate stays
-    // up (closed dashboard + select-nodes prompt) until real nodes arrive.
+    // FORGE operates directly on the entire mine domain; it is never gated.
     var hasSelection = false;
     try {
       if (typeof selectionStore !== 'undefined' && typeof selectionStore.has === 'function' &&
@@ -466,36 +464,27 @@ var simTab = (function () {
       }
     } catch (_) { hasSelection = false; }
     var hasSession = Boolean(sandboxSession);
-    var isGated = !hasSelection && !hasSession;
 
-    // Gate banner lives on the FORGE middle view. SIM has no gate: it is a
-    // selection-proof district viewer and its inspector is click-driven.
+    // Gate banner stays hidden: entire terrain is accessible in FORGE
     var gateBanner = document.getElementById('sim-gate-banner');
-    if (gateBanner) gateBanner.style.display = isGated ? 'flex' : 'none';
+    if (gateBanner) gateBanner.style.display = 'none';
 
-    // No region = no experiments: RUN + event buttons stay disabled until a
-    // SIM-box selection or session exists (the old zone fallback is gone).
+    // RUN & event buttons remain active for full terrain scenarios
     var btnRun = document.getElementById('btn-sim-run-scenario');
     if (btnRun) {
-      btnRun.disabled = isGated;
-      btnRun.title = isGated ? 'Draw a SIM box on MAP first' : '';
-      btnRun.style.opacity = isGated ? '0.45' : '1';
-      btnRun.style.cursor = isGated ? 'not-allowed' : 'pointer';
+      btnRun.disabled = false;
+      btnRun.title = 'Run experiment scenario';
+      btnRun.style.opacity = '1';
+      btnRun.style.cursor = 'pointer';
     }
     var scenarioBtns = document.querySelectorAll('.sim-scenario-btn');
     scenarioBtns.forEach(function (b) {
-      if (isGated) {
-        b.setAttribute('disabled', 'disabled');
-        b.style.opacity = '0.45';
-        b.style.cursor = 'not-allowed';
-      } else {
-        b.removeAttribute('disabled');
-        b.style.opacity = '1';
-        b.style.cursor = 'pointer';
-      }
+      b.removeAttribute('disabled');
+      b.style.opacity = '1';
+      b.style.cursor = 'pointer';
     });
 
-    // Region readout mirrors the gate when no session owns it.
+    // Region readout mirrors selection or indicates entire domain
     if (!hasSession) {
       renderRegionReadout(hasSelection ? selectionStore.get('sim') : null);
     }
@@ -512,8 +501,8 @@ var simTab = (function () {
       ids = sandboxSession.nodes.map(function (n) { return n.node_id || n.id; }).filter(Boolean);
     }
     if (ids.length === 0) {
-      el.style.color = 'var(--text-secondary)';
-      el.textContent = 'No region — draw a SIM box on MAP.';
+      el.style.color = 'var(--text-primary)';
+      el.textContent = 'Entire Mine Domain (Full 600m Terrain — 31 Nodes)';
       return;
     }
     var label = (sel && (sel.label || sel.sectorId || sel.id)) ||
@@ -1659,9 +1648,16 @@ var simTab = (function () {
     }
   }
 
+  var DEFAULT_MINE_BOUNDS = {
+    south: 18.640,
+    north: 18.647,
+    west: 79.569,
+    east: 79.576
+  };
+
   function getRunBounds() {
     // Region for a run: live session bounds first, else the current
-    // SIM-channel selection. No zone fallback anymore.
+    // SIM-channel selection, or fallback to the full mine panel bounds.
     if (sandboxSession) {
       if (sandboxSession.bounds && sandboxSession.bounds.south != null) return sandboxSession.bounds;
       if (sandboxSession.selection) {
@@ -1678,7 +1674,7 @@ var simTab = (function () {
         if (bb && bb.south != null) return bb;
       }
     } catch (_) {}
-    return null;
+    return DEFAULT_MINE_BOUNDS;
   }
 
   function runScenario() {
