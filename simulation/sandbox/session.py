@@ -23,7 +23,7 @@ from typing import Any, Callable, Iterable
 
 import numpy as np
 
-from sandbox import collapse, constants, gates, layout, segments, surface
+from sandbox import collapse, constants, events as event_maths, gates, layout, segments, surface
 from sandbox.collapse import PillarFailure
 from sandbox.constants import (
     COLLAPSE_SNAP_SPEED_MULTIPLIER,
@@ -81,10 +81,15 @@ def assign_node_states(
 
     Overlapping carves resolve to the most severe state, so a node in one
     carve's fringe and another's core reads CRITICAL.
+
+    Failures with ``ring=False`` (a TILT event's bowl) are not judged here;
+    see ``assign_tilt_states``.
     """
+    nodes = list(nodes)
     states = {
         _node_topic_id(n.node_id): "ACTIVE" for n in nodes
     }
+    active_collapses = [pf for pf in active_collapses if pf.ring]
     if not active_collapses:
         return states
 
@@ -106,6 +111,44 @@ def assign_node_states(
     return states
 
 
+def assign_tilt_states(
+    nodes: Iterable[Any], active_collapses: list[PillarFailure], t_days: float
+) -> dict[str, str]:
+    """Health state per node id from the ground movement of active TILT events.
+
+    A tilt event has no pit to draw rings around, so its nodes are judged by
+    what it does to them, with the limits FORGE uses (``forge.states``):
+    WARNING at tilt >= TILT_WARNING_MM_M or strain at EPS_TENSILE_LIMIT /
+    EPS_COMPRESS_LIMIT, CRITICAL at tilt >= TILT_CRITICAL_MM_M. Only the tilt
+    failures' own movement counts, never the Knothe bowl.
+    """
+    nodes = list(nodes)
+    states = {_node_topic_id(n.node_id): "ACTIVE" for n in nodes}
+    tilt_pfs = [pf for pf in active_collapses if not pf.ring]
+    if not tilt_pfs:
+        return states
+
+    xs = np.array([[n.x_m for n in nodes]])
+    ys = np.array([[n.y_m for n in nodes]])
+    d = collapse.collapse_deltas(xs, ys, t_days, tilt_pfs)
+    tilt = np.hypot(d["delta_tilt_x"][0], d["delta_tilt_y"][0]) * 1000.0
+    sx = d["delta_strain_x"][0] * 1000.0
+    sy = d["delta_strain_y"][0] * 1000.0
+    for k, n in enumerate(nodes):
+        if tilt[k] >= constants.TILT_CRITICAL_MM_M:
+            state = "CRITICAL"
+        elif (
+            tilt[k] >= constants.TILT_WARNING_MM_M
+            or max(sx[k], sy[k]) >= constants.EPS_TENSILE_LIMIT
+            or min(sx[k], sy[k]) <= -constants.EPS_COMPRESS_LIMIT
+        ):
+            state = "WARNING"
+        else:
+            continue
+        states[_node_topic_id(n.node_id)] = state
+    return states
+
+
 @dataclass
 class SessionConfig:
     """Configuration for a simulation run."""
@@ -124,6 +167,9 @@ class SessionConfig:
     scenario_name: str = "adriyala_sandbox"
     seed: int = 42
     save_packet_json: bool = True
+    # A zone going CRITICAL drops the run to COLLAPSE_SNAP_SPEED_MULTIPLIER
+    # (§2.1). A scripted run turns this off: its speed is the operator's.
+    auto_snap_speed: bool = True
 
 
 class SimulationSession:
@@ -131,6 +177,8 @@ class SimulationSession:
 
     def __init__(self, config: SessionConfig | None = None):
         self.config = config or SessionConfig()
+        # What `reset()` returns to after a script has replaced `self.config`.
+        self._live_config = self.config
         self.out_dir = Path(self.config.out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -156,6 +204,13 @@ class SimulationSession:
         self.vibration_transient: float = 0.0
         self.active_vibration_end_t: float = 0.0
 
+        # Loaded scenario script (`sandbox.script.Script`) and its events that
+        # have not fired yet, in day order. `_script_failures` maps a fired
+        # event's index in the script to the PillarFailures it produced.
+        self.script: Any = None
+        self._pending_script_events: list[tuple[int, dict[str, Any]]] = []
+        self._script_failures: dict[int, list[PillarFailure]] = {}
+
         # Base timestamp reference. Wall-clock now when unset (see SessionConfig).
         if self.config.base_iso_time:
             self.base_dt = datetime.fromisoformat(
@@ -175,7 +230,7 @@ class SimulationSession:
         self.packet_aggregator = PacketAggregator(
             session_id=self.config.scenario_name,
             grid_id="G8",
-            window_duration_sim_s=60.0,
+            window_duration_sim_s=self.config.tick_duration_sim_s,
         )
         self.debug_writer = DebugPacketWriter(
             output_dir=self.out_dir / "simulation_packets",
@@ -287,10 +342,21 @@ class SimulationSession:
         return current_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _assign_node_states(
-        self, active_collapses: list[PillarFailure]
+        self, active_collapses: list[PillarFailure], t_days: float | None = None
     ) -> dict[str, str]:
-        """Health state per node id (``N01``-style) for the current tick."""
-        return assign_node_states(self.sensor_array.nodes, active_collapses)
+        """Health state per node id (``N01``-style) for the current tick.
+
+        Rings decide cave-ins and crack links; with `t_days` given, a TILT
+        event's own tilt decides the rest.
+        """
+        states = assign_node_states(self.sensor_array.nodes, active_collapses)
+        if t_days is not None:
+            for nid, st in assign_tilt_states(
+                self.sensor_array.nodes, active_collapses, t_days
+            ).items():
+                if _STATE_SEVERITY[st] > _STATE_SEVERITY[states[nid]]:
+                    states[nid] = st
+        return states
 
     def tick(self) -> dict[str, Any]:
         """Execute one simulation tick (60 sim-seconds).
@@ -305,6 +371,8 @@ class SimulationSession:
 
         t_sim_days = self.t_sim_seconds / 86400.0
         iso_ts = self.get_iso_time(self.t_sim_seconds)
+
+        self._fire_due_script_events(t_sim_days)
 
         # 1. Evaluate base Knothe ground truth
         base_ch = surface.channels(self.X, self.Y, t_sim_days)
@@ -342,7 +410,8 @@ class SimulationSession:
 
             # Auto-snap speed to 10x on collapse / critical warning (§2.1)
             if tr.to_state in (segments.SegmentState.CRITICAL, segments.SegmentState.FAILED):
-                self.speed_multiplier = min(self.speed_multiplier, COLLAPSE_SNAP_SPEED_MULTIPLIER)
+                if self.config.auto_snap_speed:
+                    self.speed_multiplier = min(self.speed_multiplier, COLLAPSE_SNAP_SPEED_MULTIPLIER)
 
         if transitions and self._events_file:
             self._events_file.flush()
@@ -369,7 +438,7 @@ class SimulationSession:
         # An operator carving a surface is the ONLY thing that reddens a node.
         # Ordinary Knothe subsidence, however far it has progressed, leaves the
         # board green - that is what makes a red node mean something.
-        node_states = self._assign_node_states(active_colls)
+        node_states = self._assign_node_states(active_colls, t_sim_days)
 
         for n in self.sensor_array.nodes:
             st = node_states.get(_node_topic_id(n.node_id), "ACTIVE")
@@ -416,11 +485,13 @@ class SimulationSession:
         # same reason the readings batch is: the tick loop never waits on I/O.
         sensor_nodes = getattr(self.sensor_array, "nodes", None)
         zone_alarms = self.mqtt_bridge.publish_zone_alarms(
-            self.zone_manager.zones, iso_ts, sensor_nodes, active_collapses=active_colls
+            self.zone_manager.zones, iso_ts, sensor_nodes,
+            active_collapses=[pf for pf in active_colls if pf.ring],
         )
         node_alarms = self.mqtt_bridge.publish_node_alarms(
             readings, iso_ts, sensor_nodes, active_collapses=active_colls
         )
+        self._log_node_alarms(node_alarms, iso_ts)
         for alarm in zone_alarms + node_alarms:
             try:
                 asyncio.get_running_loop().create_task(
@@ -589,6 +660,72 @@ class SimulationSession:
 
         return payload
 
+    def _log_node_alarms(self, alarms: list[dict[str, Any]], iso_ts: str) -> None:
+        """One events.csv row per node alarm, so a run's alarms live beside its telemetry."""
+        if not alarms or not self._events_file:
+            return
+        xy = {_node_topic_id(n.node_id): (n.x_m, n.y_m) for n in self.sensor_array.nodes}
+        for alarm in alarms:
+            nid = alarm["affected_nodes"][0]
+            x, y = xy.get(nid, (0.0, 0.0))
+            state = "CRITICAL" if alarm["level"] >= 3 else "WARNING"
+            self._events_file.write(f"{iso_ts},node_alarm,{x:.1f},{y:.1f},,0,{nid} {state}\n")
+        self._events_file.flush()
+
+    def load_script(self, script: Any) -> None:
+        """Replace this session with a fresh run of a validated scenario script.
+
+        Adopts the script's seed, clock origin, tick length and name, rewinds to
+        day 0 and queues its events. Refuses while the run is streaming: the
+        caller stops or resets it first.
+        """
+        if self.is_running:
+            raise RuntimeError("cannot load a script while the simulation is running")
+        self.config = replace(
+            self._live_config,
+            seed=script.seed,
+            base_iso_time=script.base_iso_time,
+            tick_duration_sim_s=script.tick_seconds,
+            scenario_name=script.name,
+            auto_snap_speed=False,
+        )
+        self.base_dt = datetime.fromisoformat(script.base_iso_time.replace("Z", "+00:00"))
+        self.packet_aggregator.session_id = script.name
+        self.packet_aggregator.window_duration_sim_s = script.tick_seconds
+        self._reset_state()
+        self.script = script
+        self._pending_script_events = list(enumerate(script.events))
+
+    def _fire_due_script_events(self, t_sim_days: float) -> None:
+        """Fire every queued script event whose day has come, once, in day order."""
+        while self._pending_script_events and self._pending_script_events[0][1]["day"] <= t_sim_days + 1e-9:
+            index, ev = self._pending_script_events.pop(0)
+            iso_ts = self.get_iso_time(self.t_sim_seconds)
+            kind = ev["type"]
+            if kind == "vibration":
+                self.apply_vibration(
+                    magnitude_ppv=ev["ppv_mm_s"],
+                    duration_s=ev["duration_s"],
+                    note=f"scripted event {index}",
+                )
+                continue
+            failures = event_maths.to_failures(ev)
+            self.pillar_failures.extend(failures)
+            self._script_failures[index] = failures
+            if self._events_file:
+                if kind == "cave_in":
+                    row = (f"{iso_ts},collapse,{ev['x']:.1f},{ev['y']:.1f},,{int(ev['duration_h'] * 3600)},"
+                           f"scripted event {index} pillar_failure mag={ev['depth_m']:.2f}m radius={ev['radius_m']:.1f}m")
+                elif kind == "tilt":
+                    row = (f"{iso_ts},tilt,{ev['x']:.1f},{ev['y']:.1f},,{int(ev['over_days'] * 86400)},"
+                           f"scripted event {index} {ev['rate_mm_per_m']:.1f}mm/m dir={ev['direction_deg']:.0f}deg radius={ev['radius_m']:.1f}m")
+                else:
+                    row = (f"{iso_ts},crack,{(ev['x0'] + ev['x1']) / 2:.1f},{(ev['y0'] + ev['y1']) / 2:.1f},,"
+                           f"{int(ev['open_days'] * 86400)},scripted event {index} throw={ev['throw_m']:.2f}m "
+                           f"width={ev['width_m']:.1f}m ({ev['x0']:.0f},{ev['y0']:.0f})->({ev['x1']:.0f},{ev['y1']:.0f})")
+                self._events_file.write(row + "\n")
+                self._events_file.flush()
+
     def apply_collapse(
         self,
         cx: float,
@@ -660,6 +797,17 @@ class SimulationSession:
     def reset(self) -> None:
         """Return the session to its initial state, discarding all interventions.
 
+        Also unloads any scenario script and goes back to the live configuration.
+        See `_reset_state` for what is cleared.
+        """
+        self.config = self._live_config
+        self.packet_aggregator.session_id = self.config.scenario_name
+        self.packet_aggregator.window_duration_sim_s = self.config.tick_duration_sim_s
+        self._reset_state()
+
+    def _reset_state(self) -> None:
+        """Rewind for the configuration in `self.config`.
+
         Closes any open CSV handles, rewinds sim-time to the configured start,
         and clears every accumulated intervention and derived state. The
         coordinate grid and the boot SNR margin are preserved: the grid is
@@ -672,13 +820,20 @@ class SimulationSession:
         self.tick_index = 0
         self.speed_multiplier = self.config.default_speed
         self.is_paused = False
-        if not self.config.base_iso_time:
+        if self.config.base_iso_time:
+            self.base_dt = datetime.fromisoformat(
+                self.config.base_iso_time.replace("Z", "+00:00")
+            )
+        else:
             self.base_dt = datetime.now(timezone.utc).replace(microsecond=0)
 
         # Interventions and transient disturbances
         self.pillar_failures = []
         self.vibration_transient = 0.0
         self.active_vibration_end_t = 0.0
+        self.script = None
+        self._pending_script_events = []
+        self._script_failures = {}
 
         # Derived state accumulated during a run
         self.last_readings = []

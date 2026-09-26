@@ -47,6 +47,11 @@ class PillarFailure:
         Timescale of the rapid roof collapse in days (e.g. 0.15 days = ~3.6 hours).
     magnitude_m : float
         Maximum vertical step displacement at the centre in metres (positive downward).
+    ring : bool
+        Whether node health around this failure is decided by the 1.2 R / 1.5 R
+        rings (a cave-in, one link of a crack chain). False for a TILT event's
+        bowl, which sits a radius off its target and is judged by the tilt it
+        causes at each node instead. Ground movement is the same either way.
     """
 
     cx: float
@@ -56,6 +61,7 @@ class PillarFailure:
     t_collapse_days: float = 100.5
     duration_days: float = 0.2  # ~4.8 hours
     magnitude_m: float = 0.75
+    ring: bool = True
 
     def __post_init__(self) -> None:
         if self.t_collapse_days <= self.t_init_days:

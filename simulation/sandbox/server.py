@@ -30,13 +30,14 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from sandbox import constants, dem, geo, hypsometry, layout, mesh, segments, surface
 from sandbox.constants import DEFAULT_SPEED_MULTIPLIER
 from sandbox.db import db_manager
+from sandbox.script import ScriptError, load_script
 from sandbox.session import SessionConfig, SimulationSession
 
 
@@ -238,6 +239,14 @@ async def health():
 async def get_interventions():
     """Read-only view of current simulation time and pillar failure interventions."""
     session = get_session()
+    # A scripted crack is a chain of failures and a scripted tilt an offset
+    # bowl; `script_event` says which script event a failure belongs to so a
+    # reader (FORGE's seed) can show the event, not its pieces.
+    owner = {
+        id(pf): index
+        for index, pfs in session._script_failures.items()
+        for pf in pfs
+    }
     failures = [
         {
             "cx": pf.cx,
@@ -247,12 +256,56 @@ async def get_interventions():
             "t_collapse_days": pf.t_collapse_days,
             "duration_days": pf.duration_days,
             "magnitude_m": pf.magnitude_m,
+            "script_event": owner.get(id(pf)),
         }
         for pf in session.pillar_failures
     ]
+    script_events = (
+        {str(i): session.script.events[i] for i in session._script_failures}
+        if session.script is not None
+        else {}
+    )
     return {
         "t_sim_seconds": session.t_sim_seconds,
         "pillar_failures": failures,
+        "script_events": script_events,
+    }
+
+
+class ScriptRunRequest(BaseModel):
+    name: str
+
+
+@app.post("/script/run")
+async def run_script(req: ScriptRunRequest):
+    """Load a scenario script into the live session, ready for `start`.
+
+    Rewinds to day 0 under the script's seed, clock and tick length; the
+    script's events then fire by themselves as the clock reaches their days.
+    Refused (409) while the simulation is running: stop or reset it first.
+    """
+    session = get_session()
+    if session.is_running:
+        raise HTTPException(
+            status_code=409,
+            detail="Simulation is running; reset or stop it before loading a script",
+        )
+    try:
+        script = load_script(req.name)
+    except ScriptError as e:
+        raise HTTPException(status_code=404 if "not found" in str(e) else 422, detail=str(e))
+    session.load_script(script)
+    session.set_speed(script.default_speed)
+    await broadcast_simulation_status(session)
+    return {
+        "status": "loaded",
+        "name": script.name,
+        "duration_days": script.duration_days,
+        "tick_seconds": script.tick_seconds,
+        "n_ticks": script.n_ticks,
+        "base_iso_time": script.base_iso_time,
+        "speed": session.speed_multiplier,
+        "events": list(script.events),
     }
 
 

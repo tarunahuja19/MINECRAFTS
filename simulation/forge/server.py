@@ -311,20 +311,32 @@ async def forge_seed():
 
     t_sim_seconds = float(data.get("t_sim_seconds", 0.0))
     day = round(t_sim_seconds / 86400.0, 2)
-    events = [
-        {
-            "type": "cave_in",
-            "x": float(pf["cx"]),
-            "y": float(pf["cy"]),
-            "radius_m": float(pf["radius_m"]),
-            "depth_m": float(pf["magnitude_m"]),
-            "day": float(pf["t_init_days"]),
-            "duration_h": round(float(pf["duration_days"]) * 24.0, 4),
-            "warning_hours": round(
-                (float(pf["t_collapse_days"]) - float(pf["t_init_days"])) * 24.0, 4
-            ),
-            "source": "live",
-        }
-        for pf in data.get("pillar_failures", [])
-    ]
+    # A failure that belongs to a scripted event stands for that event (a crack
+    # is a chain of failures, a tilt an offset bowl), so it is seeded as the
+    # event itself, once, instead of as cave-ins.
+    script_events = data.get("script_events", {})
+    events = []
+    seeded: set[str] = set()
+    for pf in data.get("pillar_failures", []):
+        owner = pf.get("script_event")
+        if owner is not None and str(owner) in script_events:
+            if str(owner) not in seeded:
+                seeded.add(str(owner))
+                events.append({**script_events[str(owner)], "source": "live"})
+            continue
+        events.append(
+            {
+                "type": "cave_in",
+                "x": float(pf["cx"]),
+                "y": float(pf["cy"]),
+                "radius_m": float(pf["radius_m"]),
+                "depth_m": float(pf["magnitude_m"]),
+                "day": float(pf["t_init_days"]),
+                "duration_h": round(float(pf["duration_days"]) * 24.0, 4),
+                "warning_hours": round(
+                    (float(pf["t_collapse_days"]) - float(pf["t_init_days"])) * 24.0, 4
+                ),
+                "source": "live",
+            }
+        )
     return {"day": day, "events": events}

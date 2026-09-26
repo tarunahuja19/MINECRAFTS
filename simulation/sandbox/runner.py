@@ -8,7 +8,10 @@ and bridges to the existing backend (Folder A) to trigger real-time WebSocket no
 
 import argparse
 import asyncio
+import contextlib
 from datetime import datetime, timezone
+import hashlib
+import io
 import os
 from pathlib import Path
 import sys
@@ -21,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sandbox.constants import DEFAULT_SPEED_MULTIPLIER, TICK_SIM_SECONDS
 from sandbox.db import db_manager
 from sandbox.ml_hook import process_simulation_packet
+from sandbox.script import Script, ScriptError, load_script
 from sandbox.session import SessionConfig, SimulationSession
 
 
@@ -106,14 +110,58 @@ async def run_simulation(
     return completed_packets
 
 
+def run_script_offline(script: Script, out_dir: Path, verbose: bool = False) -> dict[str, str]:
+    """Play a scenario script start to finish with no broker, database or backend.
+
+    Writes ``nodes.csv`` and ``events.csv`` into `out_dir`, exactly as a live run
+    of the same script does, and returns each file's sha256. Same script, same
+    files, byte for byte: the clock, the seed and every event day come from it.
+    """
+    session = SimulationSession(
+        SessionConfig(out_dir=Path(out_dir), save_packet_json=False)
+    )
+    session.mqtt_bridge.enabled = False
+    session.load_script(script)
+    session.start()
+    # Each tick prints a packet line; a year of hourly ticks is 8,760 of them.
+    sink = contextlib.nullcontext() if verbose else contextlib.redirect_stdout(io.StringIO())
+    try:
+        with sink:
+            for _ in range(script.n_ticks):
+                session.tick()
+    finally:
+        session.stop()
+    return {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in (session.nodes_csv_path, session.events_csv_path)
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Mine Subsidence Simulation Runner")
     parser.add_argument("--ticks", type=int, default=None, help="Number of ticks to run (default: infinite)")
     parser.add_argument("--speed", type=float, default=10.0, help="Simulation speed multiplier (default: 10.0)")
     parser.add_argument("--no-json", action="store_true", help="Disable debug JSON file writing")
     parser.add_argument("--collapse", action="store_true", help="Inject a test collapse intervention at startup")
+    parser.add_argument("--script", default=None, help="Play a scenario script offline (name in scenarios/ or a .json path)")
+    parser.add_argument("--out", default=None, help="With --script: output directory (default out/scripted/<name>)")
+    parser.add_argument("--verbose", action="store_true", help="With --script: print every tick")
 
     args = parser.parse_args()
+
+    if args.script:
+        try:
+            script = load_script(args.script)
+        except ScriptError as e:
+            parser.error(str(e))
+        out_dir = Path(args.out) if args.out else Path("out/scripted") / script.name
+        started = time.time()
+        hashes = run_script_offline(script, out_dir, verbose=args.verbose)
+        print(f"[SCRIPT] {script.name}: {script.n_ticks} ticks, {len(script.events)} events, "
+              f"{time.time() - started:.1f} s -> {out_dir}")
+        for name, digest in hashes.items():
+            print(f"sha256 {name} {digest}")
+        return
 
     itvs = []
     if args.collapse:

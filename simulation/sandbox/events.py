@@ -58,7 +58,7 @@ def normalise(ev: dict[str, Any]) -> dict[str, Any]:
 
 
 def _unit(cx: float, cy: float, radius_m: float, warning_h: float, duration_days: float,
-          day: float, magnitude_m: float) -> PillarFailure:
+          day: float, magnitude_m: float, ring: bool = True) -> PillarFailure:
     return PillarFailure(
         cx=cx,
         cy=cy,
@@ -67,6 +67,7 @@ def _unit(cx: float, cy: float, radius_m: float, warning_h: float, duration_days
         t_collapse_days=day + warning_h / 24.0,
         duration_days=duration_days,
         magnitude_m=magnitude_m,
+        ring=ring,
     )
 
 
@@ -119,7 +120,7 @@ def to_failures(ev: dict[str, Any]) -> list[PillarFailure]:
         cx = ev["x"] + r * math.sin(b)
         cy = ev["y"] + r * math.cos(b)
         depth = (ev["rate_mm_per_m"] / 1000.0) / _tilt_per_metre_of_depth(r)
-        return [_unit(cx, cy, r, TILT_WARNING_H, ev["over_days"], ev["day"], depth)]
+        return [_unit(cx, cy, r, TILT_WARNING_H, ev["over_days"], ev["day"], depth, ring=False)]
 
     if kind == "crack":
         x0, y0, x1, y1 = ev["x0"], ev["y0"], ev["x1"], ev["y1"]
