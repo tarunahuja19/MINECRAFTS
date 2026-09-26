@@ -155,7 +155,9 @@ export const App: React.FC = () => {
   });
   const [collapseRadiusM, setCollapseRadiusM] = useState<number>(75);
   // FORGE hides the beacon ring between a FIRE / RESET and the next preview.
-  const [beaconHidden, setBeaconHidden] = useState<boolean>(false);
+  // Embedded views start with no ring: SIM only shows it on a `trigger`
+  // command, FORGE only after a terrain click or a forge-preview.
+  const [beaconHidden, setBeaconHidden] = useState<boolean>(isEmbed);
 
   // Modals & Panels
   const [activeExplainerKey, setActiveExplainerKey] = useState<InfoKey | null>(null);
@@ -757,7 +759,11 @@ export const App: React.FC = () => {
       slopeDeg: slope,
       zoneName: zone,
     });
-    setBeaconHidden(false);
+    // SIM shows the beacon only on a `trigger` command from the parent, never
+    // on a terrain click; FORGE (and the standalone app) show it here.
+    if (embedParams.slot !== "sim") {
+      setBeaconHidden(false);
+    }
     if (engineReadOnly) {
       postEmbedEvent({ event: "terrain-target", x: clickX, y: clickY, elev, slopeDeg: slope, zoneName: zone });
     }
@@ -932,6 +938,7 @@ export const App: React.FC = () => {
             slopeDeg: slope,
             zoneName: classifyTerrainZone(elev, slope),
           });
+          setBeaconHidden(false);
           setCollapseRadiusM(d.rad);
           triggerEventRef.current(d.type, d.cx, d.cy, d.sev, d.rad, d.ppv, d.durS);
           break;
