@@ -281,6 +281,7 @@ async def get_config():
         "c_knothe": constants.C_KNOTHE,
         "z0_mesh": z0_sub,
         "base_bowl_mesh": bowl_sub,
+        "bowl_px": surface.bowl_px_wire(),
         "dem_source": "adriyala_regional_z12",
         "dem_lat": geo.ORIGIN_LAT,
         "dem_lon": geo.ORIGIN_LON,
@@ -529,6 +530,7 @@ async def websocket_endpoint(websocket: WebSocket):
             "speed_multiplier": session.speed_multiplier,
             "z0_mesh": z0_sub,
             "base_bowl_mesh": bowl_sub,
+            "bowl_px": surface.bowl_px_wire(),
             "dem_source": "adriyala_regional_z12",
             # Read from `sandbox.geo`, never re-typed. These literals used to be
             # written out here and in `_static_init()`, so the two payloads and

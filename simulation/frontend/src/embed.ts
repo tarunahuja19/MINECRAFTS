@@ -76,6 +76,8 @@ export type EmbedParentCommand =
         t_sim?: number;
         t_days: number;
         time_scalar?: number;
+        bowl_py?: number[];
+        face_y_m?: number;
         speed_multiplier?: number;
         perturbations?: Array<{ cx: number; cy: number; radius_m: number; amp: number; yield?: number }>;
         nodes?: Array<{ id: number; node_id?: number; node_state?: string; [key: string]: any }>;
@@ -122,6 +124,8 @@ export type EmbedChildEvent =
       running: boolean;
       tDays: number;
       nodes: number;
+      /** Longwall face position in panel-frame metres, when the server sends it. */
+      faceYM?: number;
     }
   | {
       source: typeof R4_SIM_VIEWPORT_SOURCE;
@@ -222,6 +226,8 @@ export type EmbedChildPayload =
       running: boolean;
       tDays: number;
       nodes: number;
+      /** Longwall face position in panel-frame metres, when the server sends it. */
+      faceYM?: number;
     }
   | {
       event: "forge-frame-applied";

@@ -529,6 +529,8 @@ class SimulationSession:
             "t_sim": int(self.t_sim_seconds),
             "t_days": round(float(t_sim_days), 4),
             "time_scalar": round(time_scalar, 5),
+            "bowl_py": surface.bowl_py_wire(t_sim_days),
+            "face_y_m": round(surface.face_y(t_sim_days), 1),
             "speed_multiplier": float(self.speed_multiplier),
             "vibration_active": current_vib > 0.0,
             "vibration_ppv": float(current_vib),

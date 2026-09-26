@@ -118,6 +118,14 @@ var simTab = (function () {
     updateCloseButtonState();
     updateGateState();
 
+    // ACTIVE FACE: the longwall face's position along strike (panel-frame y,
+    // north positive), streamed with the live tick.
+    window.addEventListener('sim-face', function (e) {
+      var el = document.getElementById('sim-hud-face');
+      var y = e && e.detail ? Number(e.detail.faceYM) : NaN;
+      if (el) el.textContent = isFinite(y) ? Math.round(y) + ' m N' : '-- m';
+    });
+
     // Embedded 3D subsidence viewport (cropped to selection). Loads lazily on
     // first SIM tab visit; falls back to the MapLibre canvas below it.
     if (typeof simEmbed !== 'undefined' && simEmbed.init) {

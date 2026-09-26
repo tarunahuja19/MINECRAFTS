@@ -71,6 +71,8 @@ export interface InitPayload {
   speed_multiplier: number;
   z0_mesh: number[][];
   base_bowl_mesh: number[][];
+  /** Static x factor of the moving bowl (metres, 121 points); drop = bowl_px[ix] * bowl_py[iy]. */
+  bowl_px?: number[];
   nodes: NodeDef[];
   zones: ZoneDef[];
   dem_source?: string;
@@ -147,6 +149,9 @@ export interface TickPayload {
   t_sim: number;
   t_days: number;
   time_scalar: number;
+  /** y factor of the moving bowl (121 points) and the longwall face position, metres. */
+  bowl_py?: number[];
+  face_y_m?: number;
   speed_multiplier: number;
   vibration_active?: boolean;
   vibration_ppv?: number;

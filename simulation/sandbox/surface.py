@@ -328,6 +328,19 @@ def bowl_profiles(t: float) -> tuple[np.ndarray, np.ndarray]:
     return _PX_K[::2].copy(), (_strip_weights(t) @ _MY_K)[::2]
 
 
+def bowl_px_wire() -> list[float]:
+    """Static x profile of the bowl for the 3D views, metres (A_SUBS * M_SEAM_M
+    folded in), so `bowl_px[ix] * bowl_py[iy]` is the subsidence at [iy, ix] of
+    the x2-downsampled grid."""
+    return np.round(_PX_K[::2] * _A_M, 5).tolist()
+
+
+def bowl_py_wire(t: float) -> list[float]:
+    """Moving y factor of the bowl at day `t`, rounded to 1e-4 (0.1 mm once
+    multiplied by the ~2 m bowl scale)."""
+    return np.round(bowl_profiles(t)[1], 4).tolist()
+
+
 class Channels(NamedTuple):
     """The subsidence field and its Aviershin-relation derivative channels,
     all evaluated at the same (X, Y, t). Units: `s` in metres; `tilt_*`

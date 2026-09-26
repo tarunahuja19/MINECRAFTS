@@ -97,6 +97,8 @@ interface TerrainMeshProps {
   elevMinM?: number;
   elevMaxM?: number;
   timeScalar: number;
+  /** y factor of the moving bowl. The profile is held by globalGeomechanics; this only re-runs the vertex pass when it changes. */
+  bowlPy?: number[] | null;
   perturbations: Perturbation[];
   latestPacket?: SimulationPacket | null;
   exaggeration: number;
@@ -131,6 +133,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   elevMinM,
   elevMaxM: _elevMaxM,
   timeScalar,
+  bowlPy,
   perturbations,
   latestPacket,
   exaggeration = 1.0,
@@ -606,6 +609,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     hasRealMesh,
     elevationShading,
     timeScalar,
+    bowlPy,
     perturbations,
     exaggeration,
     gridSize,

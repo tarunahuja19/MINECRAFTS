@@ -313,8 +313,14 @@ var simEmbed = (function () {
         connected: !!d.connected,
         running: !!d.running,
         tDays: d.tDays,
-        nodes: d.nodes
+        nodes: d.nodes,
+        faceYM: d.faceYM
       };
+      if (slot.name === 'sim' && typeof window !== 'undefined' && window.dispatchEvent) {
+        try {
+          window.dispatchEvent(new CustomEvent('sim-face', { detail: { faceYM: d.faceYM } }));
+        } catch (_) {}
+      }
     } else if (d.event === 'terrain-target') {
       if (slot.name === 'forge' && typeof simTab !== 'undefined' && simTab.setForgeTarget) {
         try { simTab.setForgeTarget(d); } catch (_) {}

@@ -39,6 +39,8 @@ interface MineViewportProps {
    *  — it was hardcoded to 600 here, which was correct only by coincidence. */
   windowSizeM?: number;
   timeScalar: number;
+  /** y factor of the moving bowl; a change redraws the terrain (the profile is in globalGeomechanics). */
+  bowlPy?: number[] | null;
   perturbations: Perturbation[];
   latestPacket?: SimulationPacket | null;
   nodes: NodeDef[];
@@ -159,6 +161,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   windowSizeM = 600,
   elevMaxM,
   timeScalar,
+  bowlPy,
   perturbations,
   latestPacket,
   nodes,
@@ -345,6 +348,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
             elevMinM={elevMinM}
             elevMaxM={elevMaxM}
             timeScalar={timeScalar}
+            bowlPy={bowlPy}
             perturbations={perturbations}
             latestPacket={latestPacket}
             exaggeration={exaggeration}

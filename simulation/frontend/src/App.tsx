@@ -91,6 +91,20 @@ export const App: React.FC = () => {
   const [tSimSeconds, setTSimSeconds] = useState<number>(0);
   const [tDays, setTDays] = useState<number>(0);
   const [timeScalar, setTimeScalar] = useState<number>(0);
+  // y factor of the moving Knothe bowl and the longwall face position. The
+  // profile itself lives in globalGeomechanics (so every ground sampler sees
+  // it); this state only makes the viewport redraw when it changes.
+  const [bowlPy, setBowlPy] = useState<number[] | null>(null);
+  const [faceYM, setFaceYM] = useState<number | null>(null);
+  // Written before the setState so the viewport's redraw already sees the new
+  // bowl. Without `bowl_py` (an older server) the ground is drawn without a
+  // baseline bowl, as before.
+  const applyBowl = (py: number[] | undefined, faceY: number | undefined) => {
+    const next = py && py.length > 1 ? py : null;
+    globalGeomechanics.setBowlPy(next);
+    setBowlPy(next);
+    setFaceYM(faceY !== undefined && Number.isFinite(faceY) ? faceY : null);
+  };
   // The sim CLOCK is fixed (see FIXED_SPEED_MULTIPLIER); what the operator
   // picks is how fast a triggered EVENT plays out — 1x is 60 real seconds,
   // 5x is 12 s, 10x is 6 s.
@@ -383,6 +397,9 @@ export const App: React.FC = () => {
             setGeoOrigin(init.dem_lat, init.dem_lon, init.panel_bearing_deg);
             setZ0Mesh(init.z0_mesh);
             setBaseBowlMesh(init.base_bowl_mesh);
+            if (init.bowl_px) {
+              globalGeomechanics.setBowlPx(init.bowl_px, init.window_size_m);
+            }
             setNodes(init.nodes);
             if (Number.isFinite(init.window_size_m)) setWindowSizeM(init.window_size_m);
             setElevMinM(init.elev_min_m);
@@ -396,6 +413,7 @@ export const App: React.FC = () => {
             setTSimSeconds(tick.t_sim);
             setTDays(tick.t_days);
             setTimeScalar(tick.time_scalar);
+            applyBowl(tick.bowl_py, tick.face_y_m);
             setPerturbations(tick.perturbations || []);
             setNodeTelemetry(tick.nodes || []);
             setTickCount((prev) => prev + 1);
@@ -532,6 +550,7 @@ export const App: React.FC = () => {
     setTSimSeconds(0);
     setTDays(0);
     setTimeScalar(0);
+    applyBowl(undefined, undefined);
     setPerturbations([]);
     setCrackLines([]);
     setLogs([]);
@@ -859,6 +878,7 @@ export const App: React.FC = () => {
           if (frame.t_sim !== undefined) setTSimSeconds(frame.t_sim);
           if (frame.t_days !== undefined) setTDays(frame.t_days);
           if (frame.time_scalar !== undefined) setTimeScalar(frame.time_scalar);
+          applyBowl(frame.bowl_py, frame.face_y_m);
           const perts = frame.perturbations || [];
           setPerturbations(perts);
           if (frame.nodes) setNodeTelemetry(frame.nodes as NodeTelemetry[]);
@@ -997,8 +1017,9 @@ export const App: React.FC = () => {
       running: isRunning,
       tDays,
       nodes: nodes.length > 0 ? nodes.length : FALLBACK_NODES.length,
+      ...(faceYM !== null ? { faceYM } : {}),
     });
-  }, [isEmbed, isConnected, isRunning, tDays, nodes.length]);
+  }, [isEmbed, isConnected, isRunning, tDays, nodes.length, faceYM]);
 
   // Camera Presets
   const handleResetCamera = () => {
@@ -1165,6 +1186,7 @@ export const App: React.FC = () => {
             windowSizeM={windowSizeM}
             elevMaxM={elevMaxM}
             timeScalar={timeScalar}
+            bowlPy={bowlPy}
             perturbations={perturbations}
             latestPacket={latestPacket}
             nodes={nodes}
@@ -1243,6 +1265,7 @@ export const App: React.FC = () => {
               windowSizeM={windowSizeM}
               elevMaxM={elevMaxM}
               timeScalar={timeScalar}
+              bowlPy={bowlPy}
               perturbations={perturbations}
               latestPacket={latestPacket}
               nodes={nodes}

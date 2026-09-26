@@ -454,6 +454,35 @@ export function rimProfileSecondDerivative(d: number, R: number): number {
 export class LiveGeomechanicsEngine {
   public interventions: ActiveCollapseIntervention[] = [];
 
+  /**
+   * Panel-wide Knothe bowl streamed by the server: drop(x, y) =
+   * bowlPx(x) * bowlPy(y), metres, both on the 121-point grid spanning the
+   * window. `px` is fixed for the session; `py` changes every frame because the
+   * longwall face travels north, so the bowl's shape changes and a single
+   * time scalar can no longer describe it. Null until the server sends both.
+   */
+  private bowlPx: number[] | null = null;
+  private bowlPy: number[] | null = null;
+  private bowlWindowM = 600.0;
+
+  public setBowlPx(px: number[] | null, windowM?: number) {
+    this.bowlPx = px && px.length > 1 ? px : null;
+    if (windowM !== undefined && Number.isFinite(windowM) && windowM > 0) this.bowlWindowM = windowM;
+  }
+
+  public setBowlPy(py: number[] | null) {
+    this.bowlPy = py && py.length > 1 ? py : null;
+  }
+
+  /** Linear sample of a 1-D profile spanning the window at panel-frame `c`. */
+  private sampleProfile(profile: number[], c: number): number {
+    const last = profile.length - 1;
+    const f = Math.min(Math.max((c / this.bowlWindowM + 0.5) * last, 0), last);
+    const i0 = Math.min(Math.floor(f), last - 1);
+    const t = f - i0;
+    return profile[i0] * (1 - t) + profile[i0 + 1] * t;
+  }
+
   /** P-wave velocity in the overburden, m/s. */
   public waveSpeedMps: number = 1800.0;
   /** Soil damping ratio (dimensionless). */
@@ -586,6 +615,10 @@ export class LiveGeomechanicsEngine {
     let curvature = 0.0;
     let totalVibrationM = 0.0;
     let totalRimM = 0.0;
+
+    if (this.bowlPx && this.bowlPy) {
+      totalDropM += this.sampleProfile(this.bowlPx, x) * this.sampleProfile(this.bowlPy, y);
+    }
 
     for (const inter of this.interventions) {
       const dt = Math.max(0.0, tCurrent - inter.t0);

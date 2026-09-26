@@ -225,6 +225,8 @@ async def forge_frame(req: ForgeFrameRequest):
         "t_sim": int(req.day * 86400.0),
         "t_days": round(float(req.day), 4),
         "time_scalar": round(time_scalar, 5),
+        "bowl_py": surface.bowl_py_wire(req.day),
+        "face_y_m": round(surface.face_y(req.day), 1),
         "speed_multiplier": 1.0,
         "perturbations": perturbations,
         "terrain": {

@@ -400,3 +400,23 @@ def test_vibration_window(client):
     # PPV must be positive.
     bad = dict(vib, ppv_mm_s=0)
     assert client.post("/forge/frame", json={"day": 10.0, "events": [bad]}).status_code == 422
+
+
+def test_frame_carries_moving_bowl(client):
+    """The frame streams the y factor of the bowl and the face position, and
+    the 3D views rebuild the drop as bowl_px[ix] * bowl_py[iy]."""
+    early = client.post("/forge/frame", json={"day": 40.0, "events": []}).json()
+    late = client.post("/forge/frame", json={"day": 200.0, "events": []}).json()
+    assert len(early["bowl_py"]) == len(late["bowl_py"]) == 121
+    assert early["face_y_m"] == round(surface.face_y(40.0), 1)
+    assert late["face_y_m"] > early["face_y_m"]
+    # The bowl grows north: the y factor's centre of mass moves toward +y.
+    axis = np.linspace(-1.0, 1.0, 121)
+    centroid = lambda py: float(np.dot(axis, py) / np.sum(py))
+    assert centroid(late["bowl_py"]) > centroid(early["bowl_py"])
+    # Reconstruction against the grids (the y axis is the row index).
+    full = client.post("/forge/frame", json={"day": 200.0, "events": [], "include_grids": True}).json()
+    px = np.array(surface.bowl_px_wire())
+    np.testing.assert_allclose(
+        np.outer(late["bowl_py"], px), np.array(full["channels"]["s"])[::2, ::2], atol=5e-4
+    )
