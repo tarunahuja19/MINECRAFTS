@@ -64,7 +64,7 @@ terminal output this table is built from.
 | `btn-sim-close-session` (✕ CLOSE) | FORGE middle toolbar | Closes the sandbox session, returns to MAP | Disabled with no session open in this pass (correct — button starts `disabled`); exercised indirectly via `verify_forge_close.js`/`verify_sandbox.js`, which pass | KEEP | |
 | `forge-recenter-btn` | FORGE middle toolbar | Re-fits camera to the selection bounds | Clicked (with an active sandbox session from `verify_sandbox.js`); FORGE slot received `recenter` | KEEP | |
 | `.sim-embed-retry-btn` (RETRY) | FORGE viewport fallback | Retries the FORGE 3D embed | Not clicked (embed loaded fine) | KEEP | |
-| `btn-sim-freeze` (FREEZE) | FORGE left column | Legacy freeze action | REMOVED in B0b (commit <sha>) | REMOVE | Removed in B0b: deleted button element, click handler, unused freezeCurrentDay function, and CSS rules. |
+| `btn-sim-freeze` (FREEZE) | FORGE left column | Legacy freeze action | REMOVED in B0b (commit 254c0f7) | REMOVE | Removed in B0b: deleted button element, click handler, unused freezeCurrentDay function, and CSS rules. |
 
 ## NODES tab
 
@@ -119,7 +119,7 @@ terminal output this table is built from.
 
 ## REMOVE candidates
 
-- **`btn-sim-freeze` (FREEZE button, FORGE left column)** — REMOVED in B0b (commit <sha>). Dead markup, click handler, unused `freezeCurrentDay` function and CSS rules removed.
+- **`btn-sim-freeze` (FREEZE button, FORGE left column)** — REMOVED in B0b (commit 254c0f7). Dead markup, click handler, unused `freezeCurrentDay` function and CSS rules removed.
 
 ## FIX candidates
 

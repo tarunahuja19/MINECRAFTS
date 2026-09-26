@@ -7,7 +7,7 @@ exact physics and layout helpers of the simulation sandbox session.
 
 import json
 import math
-from typing import Any
+from typing import Any, Literal, Optional
 import urllib.error
 import urllib.request
 
@@ -39,13 +39,39 @@ _noise_cfg = SensorNoiseConfig(enable_noise=False)
 _sensor_array = SensorArray(_noise_cfg)
 
 
+class CaveInEvent(BaseModel):
+    type: Literal["cave_in"]
+    x: float
+    y: float
+    radius_m: float = Field(..., gt=0)
+    depth_m: float = Field(..., gt=0)
+    day: float = Field(..., ge=0)
+    duration_h: float = Field(..., gt=0)
+    warning_hours: float = 8.0
+    source: Optional[str] = None
+
+
 class ForgeFrameRequest(BaseModel):
     day: float = 0.0
-    events: list[dict[str, Any]] = Field(default_factory=list)
+    events: list[CaveInEvent] = Field(default_factory=list)
+    include_grids: bool = False
 
 
 class ForgeRangeRequest(BaseModel):
-    events: list[dict[str, Any]] = Field(default_factory=list)
+    events: list[CaveInEvent] = Field(default_factory=list)
+
+
+def event_to_pillar_failure(ev: CaveInEvent) -> PillarFailure:
+    """Convert strict CaveInEvent to physics engine PillarFailure."""
+    return PillarFailure(
+        cx=ev.x,
+        cy=ev.y,
+        radius_m=ev.radius_m,
+        t_init_days=ev.day,
+        t_collapse_days=ev.day + (ev.warning_hours / 24.0),
+        duration_days=ev.duration_h / 24.0,
+        magnitude_m=ev.depth_m,
+    )
 
 
 @app.get("/health")
@@ -57,28 +83,7 @@ async def health():
 @app.post("/forge/frame")
 async def forge_frame(req: ForgeFrameRequest):
     """Compute ground truth deformation, perturbations, and node states for a given day and events."""
-    failures: list[PillarFailure] = []
-    for ev in req.events:
-        ev_type = ev.get("type")
-        if ev_type != "cave_in":
-            raise HTTPException(
-                status_code=422,
-                detail=f"Unknown event type '{ev_type}'; only 'cave_in' supported",
-            )
-        ev_day = float(ev.get("day", req.day))
-        warning_hours = float(ev.get("warning_hours", 8.0))
-        duration_hours = float(ev.get("duration_h", 4.8))
-        failures.append(
-            PillarFailure(
-                cx=float(ev["x"]),
-                cy=float(ev["y"]),
-                radius_m=float(ev.get("radius_m", 60.0)),
-                t_init_days=ev_day,
-                t_collapse_days=ev_day + (warning_hours / 24.0),
-                duration_days=duration_hours / 24.0,
-                magnitude_m=float(ev.get("depth_m", 0.75)),
-            )
-        )
+    failures: list[PillarFailure] = [event_to_pillar_failure(ev) for ev in req.events]
 
     # 1. Base Knothe ground truth
     base_ch = surface.channels(_X, _Y, req.day)
@@ -181,7 +186,7 @@ async def forge_frame(req: ForgeFrameRequest):
     s_peak = float(np.max(total_channels["s"]))
     time_scalar = float(1.0 - np.exp(-constants.C_KNOTHE * req.day)) if req.day > 0 else 0.0
 
-    return {
+    res = {
         "t_sim": int(req.day * 86400.0),
         "t_days": round(float(req.day), 4),
         "time_scalar": round(time_scalar, 5),
@@ -194,9 +199,12 @@ async def forge_frame(req: ForgeFrameRequest):
         },
         "nodes": nodes_data,
         "node_states": node_states,
-        "channels": {k: v.tolist() for k, v in total_channels.items()},
-        "deltas": {k: v.tolist() for k, v in deltas.items()},
     }
+    if req.include_grids:
+        res["channels"] = {k: v.tolist() for k, v in total_channels.items()}
+        res["deltas"] = {k: v.tolist() for k, v in deltas.items()}
+
+    return res
 
 
 @app.post("/forge/range")
@@ -207,17 +215,8 @@ async def forge_range(req: ForgeRangeRequest):
 
     latest_end = 0.0
     for ev in req.events:
-        ev_type = ev.get("type")
-        if ev_type != "cave_in":
-            raise HTTPException(
-                status_code=422,
-                detail=f"Unknown event type '{ev_type}'; only 'cave_in' supported",
-            )
-        ev_day = float(ev.get("day", 0.0))
-        warning_hours = float(ev.get("warning_hours", 8.0))
-        duration_hours = float(ev.get("duration_h", 4.8))
-        t_collapse_days = ev_day + (warning_hours / 24.0)
-        duration_days = duration_hours / 24.0
+        t_collapse_days = ev.day + (ev.warning_hours / 24.0)
+        duration_days = ev.duration_h / 24.0
         event_end = t_collapse_days + duration_days + 5.0
         if event_end > latest_end:
             latest_end = event_end
@@ -252,12 +251,15 @@ async def forge_seed():
     events = [
         {
             "type": "cave_in",
-            "x": pf["cx"],
-            "y": pf["cy"],
-            "radius_m": pf["radius_m"],
-            "depth_m": pf["magnitude_m"],
-            "day": pf["t_init_days"],
-            "duration_h": round(pf["duration_days"] * 24.0, 2),
+            "x": float(pf["cx"]),
+            "y": float(pf["cy"]),
+            "radius_m": float(pf["radius_m"]),
+            "depth_m": float(pf["magnitude_m"]),
+            "day": float(pf["t_init_days"]),
+            "duration_h": round(float(pf["duration_days"]) * 24.0, 4),
+            "warning_hours": round(
+                (float(pf["t_collapse_days"]) - float(pf["t_init_days"])) * 24.0, 4
+            ),
             "source": "live",
         }
         for pf in data.get("pillar_failures", [])

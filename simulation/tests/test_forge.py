@@ -25,7 +25,7 @@ def client():
 
 def test_frame_day_zero_subsidence_zero(client):
     """Frame at day 0: subsidence is zero everywhere."""
-    res = client.post("/forge/frame", json={"day": 0.0, "events": []})
+    res = client.post("/forge/frame", json={"day": 0.0, "events": [], "include_grids": True})
     assert res.status_code == 200
     data = res.json()
 
@@ -37,7 +37,7 @@ def test_frame_day_zero_subsidence_zero(client):
 
 def test_frame_day_30_no_events_matches_surface_channels(client):
     """Frame at day 30 with no events matches surface.channels(X, Y, 30) exactly."""
-    res = client.post("/forge/frame", json={"day": 30.0, "events": []})
+    res = client.post("/forge/frame", json={"day": 30.0, "events": [], "include_grids": True})
     assert res.status_code == 200
     data = res.json()
 
@@ -73,7 +73,7 @@ def test_cave_in_delta_evolution(client):
     cy_idx = _coord_to_grid_index(0.0)
 
     # 1. Day 19 (before initiation) -> centre delta is 0
-    res19 = client.post("/forge/frame", json={"day": 19.0, "events": event})
+    res19 = client.post("/forge/frame", json={"day": 19.0, "events": event, "include_grids": True})
     assert res19.status_code == 200
     deltas19 = res19.json()["deltas"]
     delta_s_19 = np.array(deltas19["delta_s"])
@@ -81,7 +81,7 @@ def test_cave_in_delta_evolution(client):
     assert len(res19.json()["perturbations"]) == 0
 
     # 2. Day 25 (settled after dynamic collapse) -> centre delta is ≈ 10 m subsidence (-10 m elev)
-    res25 = client.post("/forge/frame", json={"day": 25.0, "events": event})
+    res25 = client.post("/forge/frame", json={"day": 25.0, "events": event, "include_grids": True})
     assert res25.status_code == 200
     deltas25 = res25.json()["deltas"]
     delta_s_25 = np.array(deltas25["delta_s"])
@@ -242,6 +242,7 @@ def test_forge_seed_mocked_and_down(client):
         assert ev["depth_m"] == 3.2
         assert ev["day"] == 1.5
         assert ev["duration_h"] == 4.8
+        assert ev["warning_hours"] == 7.992
         assert ev["source"] == "live"
 
     # Case 2: :8000 is down (raises exception)
@@ -252,3 +253,118 @@ def test_forge_seed_mocked_and_down(client):
         res_down = client.get("/forge/seed")
         assert res_down.status_code == 503
         assert "unavailable" in res_down.json()["detail"].lower()
+
+
+def test_frame_grids_opt_in(client):
+    """Default frame has no channels/deltas keys; include_grids=True includes both."""
+    # 1. Default (include_grids omitted or False) -> no channels, no deltas
+    res_default = client.post("/forge/frame", json={"day": 5.0, "events": []})
+    assert res_default.status_code == 200
+    data_default = res_default.json()
+    assert "channels" not in data_default
+    assert "deltas" not in data_default
+    assert "t_sim" in data_default
+    assert "t_days" in data_default
+    assert "perturbations" in data_default
+    assert "nodes" in data_default
+    assert "node_states" in data_default
+    assert "terrain" in data_default
+
+    # 2. include_grids=True -> channels and deltas included
+    res_grids = client.post(
+        "/forge/frame", json={"day": 5.0, "events": [], "include_grids": True}
+    )
+    assert res_grids.status_code == 200
+    data_grids = res_grids.json()
+    assert "channels" in data_grids
+    assert "deltas" in data_grids
+    assert "s" in data_grids["channels"]
+    assert "delta_s" in data_grids["deltas"]
+
+
+@pytest.mark.parametrize("endpoint", ["/forge/frame", "/forge/range"])
+def test_strict_event_validation_422(client, endpoint):
+    """Missing radius_m, missing x, or type 'crack' returns 422 for frame and range."""
+    valid = {
+        "type": "cave_in",
+        "x": 10.0,
+        "y": 20.0,
+        "radius_m": 50.0,
+        "depth_m": 2.0,
+        "day": 5.0,
+        "duration_h": 4.8,
+    }
+
+    # 1. Missing radius_m
+    no_radius = dict(valid)
+    del no_radius["radius_m"]
+    res = client.post(endpoint, json={"day": 5.0, "events": [no_radius]})
+    assert res.status_code == 422
+
+    # 2. Missing x
+    no_x = dict(valid)
+    del no_x["x"]
+    res = client.post(endpoint, json={"day": 5.0, "events": [no_x]})
+    assert res.status_code == 422
+
+    # 3. Type "crack"
+    crack_ev = dict(valid, type="crack")
+    res = client.post(endpoint, json={"day": 5.0, "events": [crack_ev]})
+    assert res.status_code == 422
+
+
+def test_seed_round_trip(client):
+    """Mocked :8000 returns a failure with a 2 h warning; feed seed's events into /forge/frame
+
+    and assert the rebuilt PillarFailure fields equal the original (t_collapse_days included).
+    """
+    t_init = 10.0
+    warning_h = 2.0
+    t_collapse = t_init + (warning_h / 24.0)
+    duration_days = 0.2
+    original_failure = {
+        "cx": 45.0,
+        "cy": -60.0,
+        "radius_m": 75.0,
+        "magnitude_m": 6.0,
+        "t_init_days": t_init,
+        "t_collapse_days": t_collapse,
+        "duration_days": duration_days,
+    }
+    mock_live_payload = {
+        "t_sim_seconds": 864000.0,
+        "pillar_failures": [original_failure],
+    }
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = json.dumps(mock_live_payload).encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        res_seed = client.get("/forge/seed")
+        assert res_seed.status_code == 200
+        seed_data = res_seed.json()
+
+    seed_events = seed_data["events"]
+    assert len(seed_events) == 1
+    assert seed_events[0]["warning_hours"] == 2.0
+
+    # Feed seed events into /forge/frame and assert the rebuilt PillarFailure fields equal original
+    with patch("sandbox.collapse.collapse_deltas", wraps=collapse.collapse_deltas) as spy_collapse:
+        res_frame = client.post(
+            "/forge/frame", json={"day": t_init, "events": seed_events}
+        )
+        assert res_frame.status_code == 200
+        assert spy_collapse.called
+        rebuilt_failures = spy_collapse.call_args[0][3]
+        assert len(rebuilt_failures) == 1
+        rebuilt_pf = rebuilt_failures[0]
+
+        assert rebuilt_pf.cx == original_failure["cx"]
+        assert rebuilt_pf.cy == original_failure["cy"]
+        assert rebuilt_pf.radius_m == original_failure["radius_m"]
+        assert rebuilt_pf.magnitude_m == original_failure["magnitude_m"]
+        assert rebuilt_pf.t_init_days == original_failure["t_init_days"]
+        assert math.isclose(rebuilt_pf.t_collapse_days, original_failure["t_collapse_days"], rel_tol=1e-6)
+        assert math.isclose(rebuilt_pf.duration_days, original_failure["duration_days"], rel_tol=1e-6)
