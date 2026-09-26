@@ -240,7 +240,8 @@ export const App: React.FC = () => {
         // comes back with `is_running = False`, and this is a reconnect path
         // as well as a first connect — so the client re-states its intent
         // rather than assuming the two sides still agree.
-        if (isRunningRef.current && !engineReadOnly) {
+        // Embed never auto-starts or re-arms; standalone sim only.
+        if (isRunningRef.current && !engineReadOnly && !isEmbed) {
           ws.send(JSON.stringify({ action: "start" }));
         }
 
@@ -925,19 +926,15 @@ export const App: React.FC = () => {
     };
   }, [isEmbed]);
 
-  // In embed there is no START button of our own — the viewport arms itself
-  // once the socket is up so parent scenario triggers land on a live clock.
-  // Idempotent: repeated calls just re-state the run intent.
   // FORGE arms locally at once and needs no engine connection: its triggers
-  // only move its own mesh.
+  // only move its own mesh. Embed SIM never auto-starts the engine; the
+  // operator starts/stops it via the dashboard SIM controls.
   useEffect(() => {
     if (engineReadOnly) {
       setIsRunning(true);
       return;
     }
-    if (!isEmbed || !isConnected) return;
-    if (!isRunningRef.current) startRef.current();
-  }, [isEmbed, isConnected, engineReadOnly]);
+  }, [engineReadOnly]);
 
   // Lightweight status heartbeat so the parent can reflect link/run state.
   useEffect(() => {

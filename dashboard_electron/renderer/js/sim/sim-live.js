@@ -20,6 +20,13 @@ var simLive = (function () {
   }
 
   function getApiBase() {
+    if (typeof window !== 'undefined' && window.__TEST_BACKEND_URL__) {
+      return window.__TEST_BACKEND_URL__;
+    }
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      var match = window.location.search.match(/[?&]backend_port=(\d+)/);
+      if (match) return 'http://' + getHost() + ':' + match[1];
+    }
     return 'http://' + getHost() + ':8080';
   }
 
@@ -28,7 +35,12 @@ var simLive = (function () {
     if (ws && (ws.readyState === 1 || ws.readyState === 0)) {
       return;
     }
-    var wsUrl = 'ws://' + getHost() + ':8080/ws';
+    var port = '8080';
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      var match = window.location.search.match(/[?&]backend_port=(\d+)/);
+      if (match) port = match[1];
+    }
+    var wsUrl = 'ws://' + getHost() + ':' + port + '/ws';
     try {
       ws = new WebSocket(wsUrl);
     } catch (e) {
@@ -125,12 +137,32 @@ var simLive = (function () {
         applyStatus({ is_running: false, is_paused: false, state: 'STOPPED' });
       });
     }
+
+    // 5. Hook into tab bar clicks to update chip visibility
+    var tabBar = document.getElementById('tab-bar');
+    if (tabBar) {
+      tabBar.addEventListener('click', function () {
+        setTimeout(updateChipVisibility, 30);
+      });
+    }
+  }
+
+  function updateChipVisibility() {
+    var chip = document.getElementById('sim-paused-chip');
+    if (!chip) return;
+    var ungreyed = ['forge', 'history', 'system', 'info'];
+    var onUngreyed = ungreyed.some(function (id) {
+      var el = document.getElementById('tab-' + id);
+      return el && el.style.display !== 'none';
+    });
+    if (onUngreyed || !document.body || !document.body.classList.contains('sim-paused')) {
+      chip.style.display = 'none';
+    } else {
+      chip.style.display = 'block';
+    }
   }
 
   function pollStatus() {
-    if (!window.__SIM_PLAYING__) {
-      return;
-    }
     var url = getApiBase() + '/simulation/status';
     fetch(url)
       .then(function (res) {
@@ -140,7 +172,6 @@ var simLive = (function () {
         return res.json();
       })
       .then(function (data) {
-        if (!window.__SIM_PLAYING__) return;
         applyStatus(data);
       })
       .catch(function (err) {
@@ -155,10 +186,27 @@ var simLive = (function () {
     var isPaused = Boolean(data.is_paused);
     var rawState = (data.state || (isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED')).toUpperCase();
     var state = rawState;
-    if (!window.__SIM_PLAYING__) {
-      state = (rawState === 'PAUSED' || currentSimState === 'PAUSED') ? 'PAUSED' : 'STOPPED';
-    }
     currentSimState = state;
+    window.__SIM_PLAYING__ = (state === 'RUNNING');
+
+    // Update body.sim-paused class
+    var isPausedOrStopped = (state === 'PAUSED' || state === 'STOPPED');
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('sim-paused', isPausedOrStopped);
+    }
+
+    // Update paused chip
+    var chip = typeof document !== 'undefined' ? document.getElementById('sim-paused-chip') : null;
+    if (chip) {
+      if (state === 'PAUSED') {
+        var tSec = data.t_sim_seconds || 0;
+        var day = (tSec / 86400).toFixed(1);
+        chip.textContent = 'PAUSED · Day ' + day;
+      } else if (state === 'STOPPED') {
+        chip.textContent = 'STOPPED · press PLAY';
+      }
+    }
+    updateChipVisibility();
 
     updateHud(state);
     updateStatusBar(state);
@@ -221,6 +269,14 @@ var simLive = (function () {
 
   function handleBackendDown() {
     currentSimState = 'STOPPED';
+    window.__SIM_PLAYING__ = false;
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('sim-paused', true);
+    }
+    var chip = typeof document !== 'undefined' ? document.getElementById('sim-paused-chip') : null;
+    if (chip) {
+      chip.textContent = 'STOPPED · press PLAY';
+    }
     updateHud('STOPPED');
     updateStatusBar('STOPPED');
 

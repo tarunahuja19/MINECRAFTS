@@ -4,8 +4,8 @@
   "description": "Mine Subsidence Early-Warning Dashboard — R4 Electron Application",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
+    "start": "SIH_BOOT_RESET=1 electron .",
+    "dev": "SIH_BOOT_RESET=1 electron . --dev",
     "serve": "node serve.js",
     "test:forge-close": "node test/verify_forge_close.js",
     "pack": "electron-builder --dir",

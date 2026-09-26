@@ -91,7 +91,7 @@ ok(/const sendWsAction = \(payload: any\) => \{\s*if \(engineReadOnly\) return;/
   'sendWsAction returns early for FORGE (covers start/pause/apply_*/reset/stop)');
 ok(/if \(!engineReadOnly\) \{\s*ws\.send\(JSON\.stringify\(\{ action: "set_speed"/.test(app),
   'on-connect set_speed is skipped for FORGE');
-ok(/if \(isRunningRef\.current && !engineReadOnly\) \{\s*ws\.send\(JSON\.stringify\(\{ action: "start" \}\)\)/.test(app),
+ok(/if \(isRunningRef\.current && !engineReadOnly(?: && !isEmbed)?\) \{\s*ws\.send\(JSON\.stringify\(\{ action: "start" \}\)\)/.test(app),
   'on-connect start re-arm is skipped for FORGE');
 ok(/const handleCloseEverything = async \(\) => \{\s*if \(engineReadOnly\) return;/.test(app),
   'close-everything (engine stop + DB wipe) is a no-op for FORGE');

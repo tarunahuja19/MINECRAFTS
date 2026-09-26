@@ -230,6 +230,7 @@ async def health():
         "tick_index": session.tick_index,
         "speed_multiplier": session.speed_multiplier,
         "is_running": session.is_running,
+        "is_paused": session.is_paused,
     }
 
 

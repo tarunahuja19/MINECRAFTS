@@ -11,9 +11,16 @@ var liveProvider = (function () {
   var reconnectTimer = null;
   var knownNodes = {};
   var heartbeatTimers = {};
-  var HEARTBEAT_TIMEOUT_MS = 60000;
-  var WS_URL = 'ws://' + (window.location.hostname || 'localhost') + ':8080/ws';
-  var API_BASE = 'http://' + (window.location.hostname || 'localhost') + ':8080';
+  var getPort = function () {
+    if (typeof window !== 'undefined' && window.__TEST_BACKEND_PORT__) return window.__TEST_BACKEND_PORT__;
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      var match = window.location.search.match(/[?&]backend_port=(\d+)/);
+      if (match) return match[1];
+    }
+    return '8080';
+  };
+  var WS_URL = 'ws://' + (window.location.hostname || 'localhost') + ':' + getPort() + '/ws';
+  var API_BASE = 'http://' + (window.location.hostname || 'localhost') + ':' + getPort();
 
   var started = false;
 
@@ -172,11 +179,7 @@ var liveProvider = (function () {
     var isRunning = Boolean(data.is_running);
     var isPaused = Boolean(data.is_paused);
     var state = data.state || (isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED');
-    if (!window.__SIM_PLAYING__) {
-      state = (currentSimState === 'PAUSED') ? 'PAUSED' : 'STOPPED';
-      isRunning = false;
-      isPaused = (state === 'PAUSED');
-    }
+    window.__SIM_PLAYING__ = (state === 'RUNNING');
     if (state !== currentSimState) {
       console.log('[live-provider] Simulation state transition: ' + currentSimState + ' -> ' + state);
       currentSimState = state;
@@ -192,9 +195,8 @@ var liveProvider = (function () {
   function startSimHealthPoll() {
     if (simPollTimer) return;
     function poll() {
-      if (!active || !window.__SIM_PLAYING__) return;
-      var simUrl = 'http://127.0.0.1:8000/health';
-      fetch(simUrl, { cache: 'no-store' })
+      if (!active) return;
+      fetch(API_BASE + '/api/simulation/status', { cache: 'no-store' })
         .then(function (r) {
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.json();
@@ -203,14 +205,7 @@ var liveProvider = (function () {
           handleSimulationStatus(data);
         })
         .catch(function () {
-          fetch(API_BASE + '/api/simulation/status', { cache: 'no-store' })
-            .then(function (r2) { return r2.json(); })
-            .then(function (data2) {
-              handleSimulationStatus(data2);
-            })
-            .catch(function () {
-              handleSimulationStatus({ is_running: false, is_paused: false, state: 'STOPPED' });
-            });
+          handleSimulationStatus({ is_running: false, is_paused: false, state: 'STOPPED' });
         });
     }
 

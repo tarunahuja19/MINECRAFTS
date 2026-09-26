@@ -240,7 +240,75 @@ ipcMain.handle('app:close', async () => {
   return { success: true };
 });
 
-app.whenReady().then(ensureTileServer).then(createWindow);
+// Clean start on every real launch (SIH_BOOT_RESET=1).
+// Set only in launch scripts ('electron', 'start', 'dev'). Test runners spawn Electron
+// directly without this env var, so tests never reset the live stack or clear tables.
+function bootReset() {
+  if (process.env.SIH_BOOT_RESET !== '1') {
+    return Promise.resolve();
+  }
+  console.log('[main] SIH_BOOT_RESET=1: resetting engine and database for clean launch...');
+  return new Promise((resolve) => {
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn('[main] Boot reset timed out after 5s; proceeding with launch.');
+        resolve();
+      }
+    }, 5000);
+
+    function finish(msg) {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        console.log('[main] ' + msg);
+        resolve();
+      }
+    }
+
+    const http = require('http');
+
+    // 1. Try POST :8000/control {action:"reset"}
+    const engineReq = http.request('http://127.0.0.1:8000/control', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 2500
+    }, (res) => {
+      res.resume();
+      finish('Engine :8000 reset succeeded (engine resets session and calls backend to wipe DB tables)');
+    });
+
+    engineReq.on('error', () => {
+      // If :8000 is down, call POST :8080/api/system/reset directly
+      console.log('[main] Engine :8000 down for boot reset; calling backend :8080/api/system/reset directly...');
+      const backendReq = http.request('http://127.0.0.1:8080/api/system/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 2000
+      }, (bRes) => {
+        bRes.resume();
+        finish('Backend :8080 /api/system/reset succeeded');
+      });
+
+      backendReq.on('error', (bErr) => {
+        // If both are down, log and carry on
+        console.warn('[main] Both :8000 and :8080 are down for boot reset; carrying on:', bErr.message);
+        finish('Both :8000 and :8080 unreachable; carrying on');
+      });
+
+      backendReq.end();
+    });
+
+    engineReq.write(JSON.stringify({ action: 'reset' }));
+    engineReq.end();
+  });
+}
+
+app.whenReady()
+  .then(bootReset)
+  .then(ensureTileServer)
+  .then(createWindow);
 
 app.on('window-all-closed', () => {
   app.quit();

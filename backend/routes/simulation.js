@@ -138,9 +138,17 @@ router.post('/packets', async (req, res) => {
 
 // GET /simulation/status - Query simulation server health and return running/stopped state
 router.get('/status', async (req, res) => {
+  let responded = false;
+  function sendJson(payload) {
+    if (responded || res.headersSent) return;
+    responded = true;
+    res.json(payload);
+  }
+
   try {
     const http = require('http');
-    const simReq = http.get('http://127.0.0.1:8000/health', (simRes) => {
+    const healthUrl = (process.env.SIMULATION_URL || 'http://127.0.0.1:8000') + '/health';
+    const simReq = http.get(healthUrl, (simRes) => {
       let data = '';
       simRes.on('data', chunk => { data += chunk; });
       simRes.on('end', () => {
@@ -149,7 +157,7 @@ router.get('/status', async (req, res) => {
           const isRunning = Boolean(json.is_running);
           const isPaused = Boolean(json.is_paused);
           const state = isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED';
-          res.json({
+          sendJson({
             is_running: isRunning,
             is_paused: isPaused,
             state: state,
@@ -157,19 +165,44 @@ router.get('/status', async (req, res) => {
             tick_index: json.tick_index || 0
           });
         } catch (e) {
-          res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+          sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
         }
       });
     });
     simReq.on('error', () => {
-      res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+      sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
     });
     simReq.setTimeout(800, () => {
       simReq.destroy();
-      res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+      sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
     });
   } catch (err) {
-    res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
+    sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
+  }
+});
+
+// POST /simulation/control - Forward simulation control commands to engine
+router.post('/control', async (req, res) => {
+  try {
+    const simUrl = (process.env.SIMULATION_URL || 'http://127.0.0.1:8000') + '/control';
+    const response = await fetch(simUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {})
+    });
+    const data = await response.json().catch(() => ({}));
+    if (typeof broadcastFn === 'function' && data && data.state) {
+      broadcastFn({
+        type: 'simulation_status',
+        is_running: data.state === 'RUNNING',
+        is_paused: data.state === 'PAUSED',
+        state: data.state,
+        timestamp: new Date().toISOString()
+      });
+    }
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(502).json({ error: 'Failed to contact simulation engine', details: err.message });
   }
 });
 

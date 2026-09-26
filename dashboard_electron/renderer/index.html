@@ -205,6 +205,7 @@
 
     <!-- MAIN CONTENT AREA -->
     <div id="main-content">
+      <div id="sim-paused-chip" class="sim-paused-chip" style="display:none;">STOPPED · press PLAY</div>
 
       <!-- MAP TAB (default) -->
       <div id="tab-map" class="tab-view active" style="display:flex; flex:1; height:100%;">
@@ -669,8 +670,10 @@
                    the FORGE middle view. SIM is a selection-proof district viewer. -->
             </div>
 
-            <!-- Bottom Live Day Badge (read-only) -->
+            <!-- Bottom Live Day Badge & Engine Controls -->
             <div class="sim-live-bar">
+              <button id="sim-play-btn" class="sim-control-btn" title="Toggle simulation run/pause">▶ PLAY</button>
+              <button id="sim-reset-btn" class="sim-control-btn" title="Reset simulation to day 0">RESET</button>
               <span id="sim-live-day-badge" class="sim-live-badge">LIVE · —</span>
             </div>
           </div>
@@ -1880,6 +1883,7 @@
   <script src="js/report/export-report.js"></script>
 
   <!-- Simulation tab & live status modules -->
+  <script src="js/sim/sim-controls.js"></script>
   <script src="js/sim/sim-live.js"></script>
   <script src="js/sim/sim-embed.js"></script>
   <script src="js/sim/sim-tab.js"></script>

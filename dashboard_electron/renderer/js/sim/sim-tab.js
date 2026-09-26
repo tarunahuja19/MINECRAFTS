@@ -73,7 +73,12 @@ var simTab = (function () {
   function updateSimLiveBadge() {
     var badge = document.getElementById('sim-live-day-badge');
     if (!badge) return;
-    var apiBase = 'http://' + (window.location.hostname || 'localhost') + ':8080';
+    var port = '8080';
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      var match = window.location.search.match(/[?&]backend_port=(\d+)/);
+      if (match) port = match[1];
+    }
+    var apiBase = 'http://' + (window.location.hostname || 'localhost') + ':' + port;
     fetch(apiBase + '/api/simulation/status', { cache: 'no-store' })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);

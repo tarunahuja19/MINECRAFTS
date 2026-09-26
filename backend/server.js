@@ -137,7 +137,8 @@ app.post(['/api/system/reset', '/api/database/reset'], async (req, res) => {
 
     // Stop and reset the running simulation engine
     try {
-      await fetch('http://127.0.0.1:8000/control', {
+      const simControlUrl = (process.env.SIMULATION_URL || 'http://127.0.0.1:8000') + '/control';
+      await fetch(simControlUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reset', source: 'backend' })
