@@ -298,17 +298,29 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
         }}
         style={{ background: "radial-gradient(circle at center, #111728 0%, #04060c 100%)" }}
       >
-        {/* Natural Sun & Atmospheric Lighting */}
-        <ambientLight intensity={0.7} color="#ffffff" />
+        {/* Natural Sun & Atmospheric Multi-Directional Lighting (Prevents Black Slopes) */}
+        <ambientLight intensity={0.9} color="#ffffff" />
+        <hemisphereLight args={["#ffffff", "#556677", 1.4]} />
         <directionalLight
           position={[300, 520, 240]}
-          intensity={1.3}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
+          intensity={1.4}
+          color="#fffbf0"
         />
-        <pointLight position={[-200, 300, -200]} intensity={0.4} color="#a3a4a6" />
-        <pointLight position={[200, 200, 200]} intensity={0.3} color="#f7f7f7" />
+        <directionalLight
+          position={[-300, 300, -200]}
+          intensity={0.8}
+          color="#cbd5e1"
+        />
+        <directionalLight
+          position={[-300, 380, -240]}
+          intensity={0.9}
+          color="#94a3b8"
+        />
+        <directionalLight
+          position={[-200, 420, 280]}
+          intensity={0.7}
+          color="#cbd5e1"
+        />
 
         {/* Orbit Controls with Unrestricted View Angles for 600m domain */}
         <OrbitControls

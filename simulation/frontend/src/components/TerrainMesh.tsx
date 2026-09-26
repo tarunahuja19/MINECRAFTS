@@ -398,7 +398,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
           const trueLiveElevation = z0 - totalDrop;
           const t = equalAreaT(trueLiveElevation, elevationShading.sortedAsc);
           const [r, g, b] = heightColor(t);
-          const shade = 0.45 + 0.55 * elevationShading.shade[vIdx];
+          const shade = 0.75 + 0.25 * elevationShading.shade[vIdx];
           tempColor.setRGB(r * shade, g * shade, b * shade, THREE.SRGBColorSpace);
         } else {
           // Procedural fallback terrain: photorealistic game nature shading.
@@ -552,7 +552,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
           // bowl still reads as a 3-D depression rather than a flat decal
           // painted onto the terrain.
           if (elevationShading) {
-            const relief = 0.78 + 0.22 * elevationShading.shade[vIdx];
+            const relief = 0.88 + 0.12 * elevationShading.shade[vIdx];
             tempColor.multiplyScalar(relief);
           }
         }
