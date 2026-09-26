@@ -315,6 +315,13 @@ var simEmbed = (function () {
         tDays: d.tDays,
         nodes: d.nodes
       };
+    } else if (d.event === 'forge-frame-applied') {
+      slot.lastForgeFrameApplied = d;
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        try {
+          window.dispatchEvent(new CustomEvent('forge-frame-applied', { detail: d }));
+        } catch (_) {}
+      }
     }
   }
 
@@ -444,6 +451,13 @@ var simEmbed = (function () {
     isReady: function (slotName) {
       var slot = slots[slotName];
       return slot ? slot.readyReceived : false;
+    },
+    sendForgeFrame: function (frame) {
+      var slot = slots.forge;
+      if (slot) postToSlot(slot, { cmd: 'forge-frame', frame: frame });
+    },
+    getLastForgeFrameApplied: function () {
+      return slots.forge ? slots.forge.lastForgeFrameApplied || null : null;
     }
   };
 })();

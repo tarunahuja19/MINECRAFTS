@@ -243,6 +243,9 @@ var simTab = (function () {
       });
     }
 
+    // 6c. FORGE Timeline toolbar (slider, play/pause, speed, seed)
+    initForgeTimeline();
+
     // 7. 3D Toolbar Controls
     var btnTilt65 = document.getElementById('sim-cam-tilt65');
     var btnTilt0 = document.getElementById('sim-cam-tilt0');
@@ -835,6 +838,304 @@ var simTab = (function () {
       time: 'Day ' + Math.round(currentDay),
       message: 'All FORGE events cleared — ground is back to the live state.'
     });
+    requestForgeFrame(forgeState.day);
+  }
+
+  // =========================================================================
+  // FORGE Timeline Engine (:8020 frames)
+  // =========================================================================
+  var FORGE_API_BASE = (function () {
+    if (typeof window !== 'undefined') {
+      if (window.__FORGE_API_BASE__) return window.__FORGE_API_BASE__;
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var p = params.get('forge_port');
+        if (p) return 'http://127.0.0.1:' + p;
+        var b = params.get('forge_api');
+        if (b) return b;
+      } catch (_) {}
+    }
+    return 'http://127.0.0.1:8020';
+  })();
+
+  function callForgeApi(endpoint, options) {
+    var url = FORGE_API_BASE + endpoint;
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = null;
+    var opts = Object.assign({}, options || {});
+    if (controller) {
+      opts.signal = controller.signal;
+      timer = setTimeout(function () { controller.abort(); }, 2000);
+    }
+    return fetch(url, opts)
+      .then(function (res) {
+        if (timer) clearTimeout(timer);
+        return res;
+      })
+      .catch(function (err) {
+        if (timer) clearTimeout(timer);
+        throw err;
+      });
+  }
+
+  var forgeState = {
+    day: 0,
+    events: [],
+    endDay: 120,
+    playing: false,
+    speed: 1
+  };
+
+  var forgeInitialized = false;
+  var forgeFrameInFlight = false;
+  var forgePendingDay = null;
+  var forgeLastStepWallTime = 0;
+
+  function updateForgeUI() {
+    var badge = document.getElementById('forge-day-badge');
+    var slider = document.getElementById('forge-day-slider');
+    var btnPlay = document.getElementById('forge-play-btn');
+
+    if (slider) {
+      slider.max = String(forgeState.endDay || 120);
+      slider.value = String(forgeState.day);
+    }
+    if (badge) {
+      badge.textContent = 'FORGE · Day ' + forgeState.day.toFixed(1) + ' / ' + Math.round(forgeState.endDay);
+      badge.dataset.day = forgeState.day.toFixed(1);
+      badge.dataset.endDay = String(Math.round(forgeState.endDay));
+    }
+    if (btnPlay) {
+      btnPlay.textContent = forgeState.playing ? '⏸ PAUSE' : '▶ PLAY';
+    }
+  }
+
+  function requestForgeFrame(day) {
+    if (forgeFrameInFlight) {
+      forgePendingDay = day;
+      return;
+    }
+    forgeFrameInFlight = true;
+    forgePendingDay = null;
+
+    callForgeApi('/forge/frame', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        day: day,
+        events: forgeState.events,
+        include_grids: false
+      })
+    })
+    .then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function (frame) {
+      forgeFrameInFlight = false;
+      if (typeof simEmbed !== 'undefined' && simEmbed.sendForgeFrame) {
+        simEmbed.sendForgeFrame(frame);
+      }
+      updateForgeUI();
+
+      if (forgeState.playing) {
+        onPlayFrameDelivered();
+      } else if (forgePendingDay !== null) {
+        var next = forgePendingDay;
+        forgePendingDay = null;
+        requestForgeFrame(next);
+      }
+    })
+    .catch(function (err) {
+      forgeFrameInFlight = false;
+      console.warn('[FORGE] frame fetch failed:', err);
+      if (forgeState.playing) {
+        pauseForge();
+      }
+      if (forgePendingDay !== null) {
+        var next = forgePendingDay;
+        forgePendingDay = null;
+        requestForgeFrame(next);
+      }
+    });
+  }
+
+  function onPlayFrameDelivered() {
+    if (!forgeState.playing) return;
+    var now = performance.now();
+    var wallSec = (now - forgeLastStepWallTime) / 1000.0;
+    forgeLastStepWallTime = now;
+
+    var nextDay = forgeState.day + (forgeState.speed * wallSec);
+    if (nextDay >= forgeState.endDay) {
+      forgeState.day = forgeState.endDay;
+      forgeState.playing = false;
+      updateForgeUI();
+      requestForgeFrame(forgeState.endDay);
+      return;
+    }
+
+    forgeState.day = nextDay;
+    updateForgeUI();
+    requestForgeFrame(forgeState.day);
+  }
+
+  function playForge() {
+    if (forgeState.day >= forgeState.endDay) {
+      forgeState.day = 0;
+    }
+    forgeState.playing = true;
+    forgeLastStepWallTime = performance.now();
+    updateForgeUI();
+    if (!forgeFrameInFlight) {
+      requestForgeFrame(forgeState.day);
+    }
+  }
+
+  function pauseForge() {
+    forgeState.playing = false;
+    updateForgeUI();
+  }
+
+  function togglePlayForge() {
+    if (forgeState.playing) {
+      pauseForge();
+    } else {
+      playForge();
+    }
+  }
+
+  function seedForge() {
+    if (forgeState.playing) {
+      pauseForge();
+    }
+
+    var badge = document.getElementById('forge-day-badge');
+    var note = document.getElementById('forge-badge-note');
+    var btnPlay = document.getElementById('forge-play-btn');
+
+    function proceedWithRange() {
+      if (btnPlay) btnPlay.disabled = false;
+      callForgeApi('/forge/range', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: forgeState.events })
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (rangeData) {
+        forgeState.endDay = (rangeData && typeof rangeData.end_day === 'number') ? rangeData.end_day : 120;
+        forgeState.playing = false;
+        if (btnPlay) btnPlay.textContent = '▶ PLAY';
+        updateForgeUI();
+        requestForgeFrame(forgeState.day);
+      })
+      .catch(function (err) {
+        console.warn('[FORGE] /forge/range failed:', err);
+        forgeOffline();
+      });
+    }
+
+    callForgeApi('/forge/seed', { method: 'GET' })
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error(res.status === 503 ? 'engine 503' : 'HTTP ' + res.status);
+        }
+        return res.json();
+      })
+      .then(function (seedData) {
+        if (typeof seedData.day === 'number' && Number.isFinite(seedData.day)) {
+          forgeState.day = Math.round(seedData.day * 10) / 10;
+        } else {
+          forgeState.day = 0;
+        }
+        forgeState.events = Array.isArray(seedData.events) ? seedData.events : [];
+        if (note) {
+          note.style.display = 'none';
+          note.textContent = '';
+        }
+        proceedWithRange();
+      })
+      .catch(function (seedErr) {
+        var reason = seedErr && seedErr.message ? seedErr.message : 'offline';
+        var apiBase = 'http://' + (window.location.hostname || 'localhost') + ':8080';
+        fetch(apiBase + '/api/simulation/status', { cache: 'no-store' })
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function (statusData) {
+            var seconds = statusData ? statusData.t_sim_seconds : undefined;
+            if (typeof seconds !== 'number' || !Number.isFinite(seconds)) {
+              throw new Error('no valid t_sim_seconds');
+            }
+            var liveDay = Math.round((seconds / 86400) * 10) / 10;
+            forgeState.day = liveDay;
+            forgeState.events = [];
+            if (note) {
+              note.style.display = '';
+              note.textContent = 'live cave-ins not copied (' + reason + ')';
+              note.title = note.textContent;
+            }
+            proceedWithRange();
+          })
+          .catch(forgeOffline);
+      });
+
+    function forgeOffline() {
+      forgeState.playing = false;
+      if (btnPlay) {
+        btnPlay.disabled = true;
+        btnPlay.textContent = '▶ PLAY';
+      }
+      if (badge) badge.textContent = 'FORGE offline: start :8020';
+      if (note) {
+        note.style.display = 'none';
+        note.textContent = '';
+      }
+    }
+  }
+
+  function initForgeTimeline() {
+    var btnPlay = document.getElementById('forge-play-btn');
+    if (btnPlay) {
+      btnPlay.addEventListener('click', function () {
+        togglePlayForge();
+      });
+    }
+
+    var speedBtns = document.querySelectorAll('.forge-speed-btn');
+    speedBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        speedBtns.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var spd = parseFloat(btn.dataset.speed);
+        if (Number.isFinite(spd) && spd > 0) {
+          forgeState.speed = spd;
+        }
+      });
+    });
+
+    var slider = document.getElementById('forge-day-slider');
+    if (slider) {
+      slider.addEventListener('input', function () {
+        var val = parseFloat(slider.value);
+        if (Number.isFinite(val)) {
+          forgeState.day = val;
+          updateForgeUI();
+          requestForgeFrame(val);
+        }
+      });
+    }
+
+    var btnLiveDay = document.getElementById('forge-live-day-btn');
+    if (btnLiveDay) {
+      btnLiveDay.addEventListener('click', function () {
+        seedForge();
+      });
+    }
   }
 
   /**
@@ -2091,6 +2392,14 @@ var simTab = (function () {
     } else {
       stopSimLiveBadgePolling();
     }
+    if (tab === 'forge') {
+      if (!forgeInitialized) {
+        forgeInitialized = true;
+        seedForge();
+      }
+    } else {
+      pauseForge();
+    }
     // Lazy-load the shown tab's 3D slot on first visit (perf: a slot costs
     // no WebGL until its tab opens; the hidden slot's frame loop suspends
     // automatically under display:none).
@@ -2121,7 +2430,12 @@ var simTab = (function () {
     nodeStateColor: nodeStateColor,
     recenterToSessionBounds: recenterToSessionBounds,
     updateSimLiveBadge: updateSimLiveBadge,
-    getCurrentDay: function () { return currentDay; }
+    getCurrentDay: function () { return currentDay; },
+    getForgeState: function () { return Object.assign({}, forgeState); },
+    seedForge: seedForge,
+    requestForgeFrame: requestForgeFrame,
+    playForge: playForge,
+    pauseForge: pauseForge
   };
 })();
 

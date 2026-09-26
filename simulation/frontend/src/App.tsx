@@ -62,10 +62,6 @@ export const App: React.FC = () => {
   // Simulation tab as a cropped viewport, driven by the parent over
   // postMessage. Parsed once — later updates arrive as set-bounds commands.
   const embedParams = useMemo(() => parseEmbedParams(), []);
-  // Slot identity is fixed at load (parsed once above), but the WebSocket
-  // effect below must keep its minimal deps (same stale-closure rationale as
-  // isRunningRef) — so the packet handler reads it through a ref.
-  const embedSlotRef = useRef<string | null>(embedParams.slot);
   const isEmbed = embedParams.isEmbed;
   // FORGE slot: reads the live engine, never writes to it (see embed.ts).
   const engineReadOnly = isEngineReadOnly(embedParams);
@@ -249,17 +245,19 @@ export const App: React.FC = () => {
         }
 
         // Recover latest simulation packet if available (§Phase 13 reconnect)
-        fetch("/simulation/packets/latest")
-          .then((res) => (res.ok ? res.json() : null))
-          .then((pkt: SimulationPacket | null) => {
-            if (pkt) {
-              setLatestPacket(pkt);
-              if (pkt.terrain?.changes && pkt.terrain.changes.length > 0) {
-                setPerturbations(pkt.terrain.changes);
+        if (!engineReadOnly) {
+          fetch("/simulation/packets/latest")
+            .then((res) => (res.ok ? res.json() : null))
+            .then((pkt: SimulationPacket | null) => {
+              if (pkt) {
+                setLatestPacket(pkt);
+                if (pkt.terrain?.changes && pkt.terrain.changes.length > 0) {
+                  setPerturbations(pkt.terrain.changes);
+                }
               }
-            }
-          })
-          .catch(() => {});
+            })
+            .catch(() => {});
+        }
 
         showToast("✓ CONNECTED TO ADRIYALA MINING SIMULATOR BACKEND");
       };
@@ -293,75 +291,81 @@ export const App: React.FC = () => {
                 : null;
 
           if (packetNotif) {
-            console.log(`[WS] packet ${packetNotif.packet_id} available notification received`);
-            // Automatically pull packet without user click (§Phase 6)
-            fetch(`/simulation/packets/${packetNotif.packet_id}`)
-              .then((res) => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return res.json();
-              })
-              .then((pkt: SimulationPacket) => {
-                console.log(`[FRONTEND] packet ${pkt.packet_id} fetched successfully`);
-                setLatestPacket(pkt);
-                setPacketCount((prev) => prev + 1);
+            if (engineReadOnly) {
+              if (data.type === "packet_available") {
+                return;
+              }
+            } else {
+              console.log(`[WS] packet ${packetNotif.packet_id} available notification received`);
+              // Automatically pull packet without user click (§Phase 6)
+              fetch(`/simulation/packets/${packetNotif.packet_id}`)
+                .then((res) => {
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                  return res.json();
+                })
+                .then((pkt: SimulationPacket) => {
+                  console.log(`[FRONTEND] packet ${pkt.packet_id} fetched successfully`);
+                  setLatestPacket(pkt);
+                  setPacketCount((prev) => prev + 1);
 
-                // Update terrain if changed (§Phase 8)
-                if (pkt.terrain?.changes && pkt.terrain.changes.length > 0) {
-                  setPerturbations(pkt.terrain.changes);
-                }
+                  // Update terrain if changed (§Phase 8)
+                  if (pkt.terrain?.changes && pkt.terrain.changes.length > 0) {
+                    setPerturbations(pkt.terrain.changes);
+                  }
 
-                // Update node telemetry from packet aggregates if available (§Phase 9)
-                if (pkt.nodes && pkt.nodes.length > 0) {
-                  setNodeTelemetry((prev) => {
-                    const packetNodeMap = new Map(pkt.nodes.map((n) => [n.node_id, n]));
-                    const baseList = prev && prev.length > 0 ? prev : (nodes && nodes.length > 0 ? nodes : FALLBACK_NODES);
-                    return baseList.map((existing: any) => {
-                      const pNode = packetNodeMap.get(existing.id);
-                      if (!pNode) return existing;
-                      return {
-                        id: existing.id,
-                        seq: pNode.aggregates?.last_seq ?? existing.seq,
-                        tilt_x: pNode.aggregates?.max_tilt_x ?? existing.tilt_x,
-                        tilt_y: pNode.aggregates?.max_tilt_y ?? existing.tilt_y,
-                        strain: pNode.aggregates?.max_strain ?? existing.strain,
-                        vib_rms: pNode.aggregates?.max_vib_rms ?? existing.vib_rms,
-                        vib_peak: pNode.aggregates?.max_vib_peak ?? existing.vib_peak,
-                        vib_fdom: pNode.last_reading?.vib_fdom ?? existing.vib_fdom,
-                        rssi: pNode.last_reading?.rssi_dbm ?? existing.rssi,
-                        snr: pNode.last_reading?.snr_db ?? existing.snr,
-                        alive: pNode.aggregates?.last_alive ?? existing.alive ?? 1,
-                      };
-                    });
-                  });
-                }
-
-                // Ingest packet events into structured logs (§Phase 7)
-                if (pkt.events && pkt.events.length > 0) {
-                  for (const ev of pkt.events) {
-                    if (ev.kind === "zone_transition" && (ev.to === "CRITICAL" || ev.to === "FAILED")) {
-                      setLogs((prev) => {
-                        const newLog: LogEntry = {
-                          id: `${ev.zone_id}-${ev.to}-${Date.now()}`,
-                          timeStr: `pkt #${pkt.packet_id}`,
-                          zoneId: ev.zone_id,
-                          state: ev.to as SegmentState,
-                          eps: 0,
-                          kappa: 0,
-                          message: `[PACKET #${pkt.packet_id}] ${ev.msg || `${ev.from}->${ev.to}`}`,
-                          timestamp: new Date(),
+                  // Update node telemetry from packet aggregates if available (§Phase 9)
+                  if (pkt.nodes && pkt.nodes.length > 0) {
+                    setNodeTelemetry((prev) => {
+                      const packetNodeMap = new Map(pkt.nodes.map((n) => [n.node_id, n]));
+                      const baseList = prev && prev.length > 0 ? prev : (nodes && nodes.length > 0 ? nodes : FALLBACK_NODES);
+                      return baseList.map((existing: any) => {
+                        const pNode = packetNodeMap.get(existing.id);
+                        if (!pNode) return existing;
+                        return {
+                          id: existing.id,
+                          seq: pNode.aggregates?.last_seq ?? existing.seq,
+                          tilt_x: pNode.aggregates?.max_tilt_x ?? existing.tilt_x,
+                          tilt_y: pNode.aggregates?.max_tilt_y ?? existing.tilt_y,
+                          strain: pNode.aggregates?.max_strain ?? existing.strain,
+                          vib_rms: pNode.aggregates?.max_vib_rms ?? existing.vib_rms,
+                          vib_peak: pNode.aggregates?.max_vib_peak ?? existing.vib_peak,
+                          vib_fdom: pNode.last_reading?.vib_fdom ?? existing.vib_fdom,
+                          rssi: pNode.last_reading?.rssi_dbm ?? existing.rssi,
+                          snr: pNode.last_reading?.snr_db ?? existing.snr,
+                          alive: pNode.aggregates?.last_alive ?? existing.alive ?? 1,
                         };
-                        return [newLog, ...prev.slice(0, 99)];
                       });
+                    });
+                  }
+
+                  // Ingest packet events into structured logs (§Phase 7)
+                  if (pkt.events && pkt.events.length > 0) {
+                    for (const ev of pkt.events) {
+                      if (ev.kind === "zone_transition" && (ev.to === "CRITICAL" || ev.to === "FAILED")) {
+                        setLogs((prev) => {
+                          const newLog: LogEntry = {
+                            id: `${ev.zone_id}-${ev.to}-${Date.now()}`,
+                            timeStr: `pkt #${pkt.packet_id}`,
+                            zoneId: ev.zone_id,
+                            state: ev.to as SegmentState,
+                            eps: 0,
+                            kappa: 0,
+                            message: `[PACKET #${pkt.packet_id}] ${ev.msg || `${ev.from}->${ev.to}`}`,
+                            timestamp: new Date(),
+                          };
+                          return [newLog, ...prev.slice(0, 99)];
+                        });
+                      }
                     }
                   }
-                }
-              })
-              .catch((err) => {
-                console.warn(`[FRONTEND] Failed to fetch packet ${packetNotif.packet_id}:`, err);
-              });
+                })
+                .catch((err) => {
+                  console.warn(`[FRONTEND] Failed to fetch packet ${packetNotif.packet_id}:`, err);
+                });
 
-            if (data.type === "packet_available") {
-              return;
+              if (data.type === "packet_available") {
+                return;
+              }
             }
           }
 
@@ -382,6 +386,7 @@ export const App: React.FC = () => {
           }
 
           if (data.t_sim !== undefined) {
+            if (engineReadOnly) return;
             const tick = data as TickPayload;
             setTSimSeconds(tick.t_sim);
             setTDays(tick.t_days);
@@ -806,6 +811,32 @@ export const App: React.FC = () => {
           vibrationActiveRef.current = false;
           setVibrationPPV(0);
           break;
+        case "forge-frame": {
+          if (!engineReadOnly) break;
+          const frame = d.frame;
+          if (!frame) break;
+          if (frame.t_sim !== undefined) setTSimSeconds(frame.t_sim);
+          if (frame.t_days !== undefined) setTDays(frame.t_days);
+          if (frame.time_scalar !== undefined) setTimeScalar(frame.time_scalar);
+          const perts = frame.perturbations || [];
+          setPerturbations(perts);
+          if (frame.nodes) setNodeTelemetry(frame.nodes as NodeTelemetry[]);
+
+          let maxAmp = 0;
+          for (const p of perts) {
+            if (p && Number.isFinite(p.amp) && Math.abs(p.amp) > Math.abs(maxAmp)) {
+              maxAmp = p.amp;
+            }
+          }
+          postEmbedEvent({
+            event: "forge-frame-applied",
+            t_days: frame.t_days !== undefined ? frame.t_days : (frame.t_sim ? frame.t_sim / 86400 : 0),
+            perturbations: perts.length,
+            max_amp: maxAmp,
+            time_scalar: frame.time_scalar ?? 0,
+          });
+          break;
+        }
         case "trigger": {
           // Move the targeting beacon to the injected event so the parent's
           // RUN visibly lands where the ground is about to move.
@@ -1001,12 +1032,18 @@ export const App: React.FC = () => {
             </span>
           )}
           <span style={{ marginLeft: "auto" }}>
-            {embedDay !== null ? `DAY ${Math.round(embedDay)}` : `T+${tDays.toFixed(2)}D`}
+            {engineReadOnly
+              ? `DAY ${tDays.toFixed(1)}`
+              : embedDay !== null ? `DAY ${Math.round(embedDay)}` : `T+${tDays.toFixed(2)}D`}
           </span>
           <span>{visibleCount} NODES</span>
-          <span style={{ color: isRunning ? "#00E676" : "#FFA500" }}>
-            {isRunning ? "LIVE" : "HELD"}
-          </span>
+          {engineReadOnly ? (
+            <span style={{ color: "#00FF88" }}>FORGE</span>
+          ) : (
+            <span style={{ color: isRunning ? "#00E676" : "#FFA500" }}>
+              {isRunning ? "LIVE" : "HELD"}
+            </span>
+          )}
         </div>
         <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
           {toastMessage && (

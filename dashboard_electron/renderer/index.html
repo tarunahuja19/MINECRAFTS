@@ -888,6 +888,29 @@
                 </div>
               </div>
             </div>
+
+            <!-- FORGE Center Toolbar (Timeline Scrub & Playback) -->
+            <div id="forge-timeline-bar" class="forge-timeline-bar">
+              <button id="forge-play-btn" class="sim-timeline-btn">▶ PLAY</button>
+              <div class="sim-speed-group forge-speed-group">
+                <button class="sim-timeline-btn forge-speed-btn active" data-speed="1">1 d/s</button>
+                <button class="sim-timeline-btn forge-speed-btn" data-speed="5">5 d/s</button>
+                <button class="sim-timeline-btn forge-speed-btn" data-speed="20">20 d/s</button>
+              </div>
+
+              <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 4px;"></div>
+
+              <button id="forge-live-day-btn" class="sim-timeline-btn" title="Re-seed from live day">↺ LIVE DAY</button>
+
+              <div style="flex:1; display:flex; align-items:center; gap:8px; margin:0 8px; min-width:120px;">
+                <input type="range" id="forge-day-slider" class="forge-timeline-slider" min="0" max="120" step="0.1" value="0" style="flex:1;">
+              </div>
+
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:1px; min-width:0;">
+                <span id="forge-day-badge" class="forge-day-badge">FORGE · Day 0.0 / 120</span>
+                <span id="forge-badge-note" class="forge-badge-note" style="display:none;"></span>
+              </div>
+            </div>
           </div>
 
           <!-- Right Column: FORGE DASHBOARD (health board + clones + alarms + results, 360px). -->

@@ -1097,6 +1097,51 @@
   box-shadow: inset 0 0 16px rgba(0, 230, 118, 0.22);
 }
 
+/* FORGE Center Toolbar (Timeline Scrub & Playback) */
+.forge-timeline-bar {
+  height: 36px;
+  background: var(--bg-panel);
+  border-top: 2px solid var(--border-bevel-dark);
+  box-shadow: inset 0 1px 0 var(--border-bevel-light);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.forge-day-badge {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: bold;
+  color: #00FF88;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.forge-badge-note {
+  font-family: Tahoma, sans-serif;
+  font-size: 9px;
+  line-height: 1;
+  color: #FFB300;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.forge-timeline-slider {
+  accent-color: #00FF88;
+  cursor: pointer;
+  height: 6px;
+}
+
 /* Right: FORGE dashboard column (360px, stacked sections) */
 #forge-right {
   width: 360px;

@@ -66,10 +66,27 @@ const nonGetToward8080 = /fetch\s*\([^)]*(:8080|apiBase|\/api\/simulation\/statu
   || /fetch\s*\([^)]*method\s*:\s*['"](POST|PUT|DELETE|PATCH)['"][^)]*(:8080|apiBase|\/api\/simulation\/status)/i.test(simSrc);
 ok(!nonGetToward8080, 'sim-tab.js uses only GET toward :8080');
 
+// sim-embed.js must have no :8020 (forge math) address
+ok(!/:8020\b/.test(embedSrc), 'sim-embed.js has no :8020 address');
+
+// Check that any path attached to :8020 in sim-tab.js is only allowed paths
+const port8020Paths = (simSrc.match(/:8020\/[a-zA-Z0-9_\/-]+/g) || []).map(s => s.replace(':8020', ''));
+const invalid8020Paths = port8020Paths.filter(p => !['/forge/frame', '/forge/range', '/forge/seed', '/health'].includes(p));
+ok(invalid8020Paths.length === 0,
+  'sim-tab.js has no :8020 path other than /forge/frame, /forge/range, /forge/seed, /health');
+
+// Check that sim-tab.js references /forge/ only with allowed paths
+const simForgePaths = (simSrc.match(/\/forge\/[a-zA-Z0-9_\/-]+/g) || []);
+const invalidSimForgePaths = simForgePaths.filter(p => !['/forge/frame', '/forge/range', '/forge/seed', '/health'].includes(p));
+ok(simForgePaths.length > 0 && invalidSimForgePaths.length === 0,
+  'sim-tab.js forge endpoints are strictly /forge/frame, /forge/range, /forge/seed, /health');
+
 console.log('\n=== 2. App.tsx guards every engine write on engineReadOnly ===');
 const app = fs.readFileSync(APP_TSX, 'utf8');
 ok(/const engineReadOnly = isEngineReadOnly\(embedParams\);/.test(app),
   'engineReadOnly derives from isEngineReadOnly(embedParams)');
+ok(/if\s*\(data\.t_sim\s*!==\s*undefined\)\s*\{\s*if\s*\(engineReadOnly\)\s*return;/.test(app),
+  'App.tsx FORGE slot ignores live ticks');
 ok(/const sendWsAction = \(payload: any\) => \{\s*if \(engineReadOnly\) return;/.test(app),
   'sendWsAction returns early for FORGE (covers start/pause/apply_*/reset/stop)');
 ok(/if \(!engineReadOnly\) \{\s*ws\.send\(JSON\.stringify\(\{ action: "set_speed"/.test(app),

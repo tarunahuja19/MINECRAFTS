@@ -68,6 +68,20 @@ export type EmbedParentCommand =
       cmd: "set-cracks";
       /** Crack segments in app mine-frame metres; empty list clears. */
       segments: Array<{ x0: number; y0: number; x1: number; y1: number; width_mm: number; isNew: boolean }>;
+    }
+  | {
+      source: typeof R4_SIM_EMBED_SOURCE;
+      cmd: "forge-frame";
+      frame: {
+        t_sim?: number;
+        t_days: number;
+        time_scalar?: number;
+        speed_multiplier?: number;
+        perturbations?: Array<{ cx: number; cy: number; radius_m: number; amp: number; yield?: number }>;
+        nodes?: Array<{ id: number; node_id?: number; node_state?: string; [key: string]: any }>;
+        node_states?: Record<string, string>;
+        [key: string]: any;
+      };
     };
 
 export type EmbedChildEvent =
@@ -75,11 +89,28 @@ export type EmbedChildEvent =
   | { source: typeof R4_SIM_VIEWPORT_SOURCE; event: "node-select"; id: number | null }
   | {
       source: typeof R4_SIM_VIEWPORT_SOURCE;
+      event: "terrain-target";
+      x: number;
+      y: number;
+      elev: number;
+      slopeDeg: number;
+      zoneName: string;
+    }
+  | {
+      source: typeof R4_SIM_VIEWPORT_SOURCE;
       event: "status";
       connected: boolean;
       running: boolean;
       tDays: number;
       nodes: number;
+    }
+  | {
+      source: typeof R4_SIM_VIEWPORT_SOURCE;
+      event: "forge-frame-applied";
+      t_days: number;
+      perturbations: number;
+      max_amp: number;
+      time_scalar: number;
     };
 
 function num(v: string | null): number | null {
@@ -159,11 +190,26 @@ export type EmbedChildPayload =
   | { event: "ready" }
   | { event: "node-select"; id: number | null }
   | {
+      event: "terrain-target";
+      x: number;
+      y: number;
+      elev: number;
+      slopeDeg: number;
+      zoneName: string;
+    }
+  | {
       event: "status";
       connected: boolean;
       running: boolean;
       tDays: number;
       nodes: number;
+    }
+  | {
+      event: "forge-frame-applied";
+      t_days: number;
+      perturbations: number;
+      max_amp: number;
+      time_scalar: number;
     };
 
 /** Post an event to the embedding parent. No-op outside an iframe. */
