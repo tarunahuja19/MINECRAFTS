@@ -206,13 +206,15 @@ def confine_to_zone(result, zone: Zone, snap, zcfg: Optional[ZoneConfig] = None)
     w = zone_weight(zone, snap.grid, boundary_fade_m(snap.cfg, zcfg))
     ds = (np.asarray(result.ds_mm, dtype=np.float64) * w).astype(np.float32)
 
-    peak = float(np.max(ds)) if ds.size else 0.0
-    if peak < snap.lab.min_effect_mm:
-        return dataclasses.replace(
-            result, possible=False, ds_mm=None, zone_id=zone.id,
-            reason=(f"nothing happens inside {zone.label.lower()}: the most this event moves the "
-                    f"ground there is {peak:.1f} mm, below the {snap.lab.min_effect_mm:.0f} mm we "
-                    f"can call a change"))
+    peak_orig = float(np.max(result.ds_mm)) if result.ds_mm.size else 0.0
+    if peak_orig >= snap.lab.min_effect_mm:
+        peak = float(np.max(ds)) if ds.size else 0.0
+        if peak < snap.lab.min_effect_mm:
+            return dataclasses.replace(
+                result, possible=False, ds_mm=None, zone_id=zone.id,
+                reason=(f"nothing happens inside {zone.label.lower()}: the most this event moves the "
+                        f"ground there is {peak:.1f} mm, below the {snap.lab.min_effect_mm:.0f} mm we "
+                        f"can call a change"))
     return dataclasses.replace(result, ds_mm=ds, zone_id=zone.id)
 
 

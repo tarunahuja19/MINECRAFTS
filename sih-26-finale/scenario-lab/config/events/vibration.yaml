@@ -1,0 +1,8 @@
+# Scenario event: dynamic caving vibration layer (WP9 §5).
+# Thin event that introduces no ground movement; the server attaches caving PPV and DGMS limits.
+schema_version: 1
+name: vibration
+title: "Roof caving vibration"
+plain: "Evaluate dynamic caving vibration and compliance against DGMS limits across the zone."
+
+inputs: {}

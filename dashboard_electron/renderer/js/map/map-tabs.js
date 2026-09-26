@@ -82,6 +82,46 @@ var mapTabs = (function () {
           assignTabToSlot(2, null, sectorData);
         }
       });
+      bus.on('sim-sandbox-closed', function (data) {
+        var sel = data && data.selection;
+        var toClose = [];
+        tabOrder.forEach(function (tabId) {
+          if (tabId === '2d') return;
+          var tabInfo = tabs[tabId];
+          if (!tabInfo) return;
+          if (!sel) {
+            toClose.push(tabId);
+            return;
+          }
+          var s = tabInfo.sectorData;
+          if (!s) {
+            toClose.push(tabId);
+            return;
+          }
+          var sId = s.id || s.sectorId;
+          var selId = sel.id || sel.sectorId;
+          var match = false;
+          if (sId && selId && sId !== 'CUSTOM' && sId === selId) match = true;
+          else if (sId && selId && sId === 'CUSTOM' && s.bounds && sel.bounds &&
+                   JSON.stringify(s.bounds) === JSON.stringify(sel.bounds)) match = true;
+          else if (s.nodes && sel.nodes && Array.isArray(s.nodes) && Array.isArray(sel.nodes)) {
+            match = s.nodes.some(function (n) {
+              var nid = typeof n === 'string' ? n : (n.node_id || n.id);
+              return sel.nodes.some(function (sn) {
+                var snid = typeof sn === 'string' ? sn : (sn.node_id || sn.id);
+                return nid === snid;
+              });
+            });
+          }
+          else if (!selId && !sId) match = true;
+          if (match) {
+            toClose.push(tabId);
+          }
+        });
+        toClose.forEach(function (tabId) {
+          close3DTab(tabId, null, { fromSimClose: true });
+        });
+      });
     }
 
     console.log('[MAP_TABS] Initialized Windows Snap Layouts & Interactive Snap Assist');
@@ -572,6 +612,7 @@ var mapTabs = (function () {
     }
 
     console.log('[MAP_TABS] Opened 3D Tab:', tabId, title);
+    return tabId;
   }
 
   function selectTab(tabId) {
@@ -610,11 +651,43 @@ var mapTabs = (function () {
     resizeBothEngines();
   }
 
-  function close3DTab(tabId, e) {
+  function close3DTab(tabId, e, opts) {
     if (e) e.stopPropagation();
 
     var tabInfo = tabs[tabId];
     if (!tabInfo) return;
+
+    // Map-side 3D tab close calls simTab.closeSandboxSession()
+    if (!opts || !opts.fromSimClose) {
+      if (typeof simTab !== 'undefined' && typeof simTab.closeSandboxSession === 'function') {
+        var activeSession = (typeof simTab.getSandboxSession === 'function') ? simTab.getSandboxSession() : null;
+        if (activeSession) {
+          var s = tabInfo.sectorData;
+          var sel = activeSession.selection;
+          var sId = (s && s.id && s.id !== 'CUSTOM') ? s.id : (s ? (s.sectorId || s.id) : null);
+          var selId = (sel && sel.id && sel.id !== 'CUSTOM') ? sel.id : (sel ? (sel.sectorId || sel.id) : null);
+          var match = false;
+          if (sId && selId && sId === selId) {
+            match = true;
+          } else if (!sId && !selId) {
+            match = true;
+          } else if (s && sel && s.nodes && sel.nodes && Array.isArray(s.nodes) && Array.isArray(sel.nodes)) {
+            match = s.nodes.some(function (n) {
+              var nid = typeof n === 'string' ? n : (n.node_id || n.id);
+              return sel.nodes.some(function (sn) {
+                var snid = typeof sn === 'string' ? sn : (sn.node_id || sn.id);
+                return nid === snid;
+              });
+            });
+          } else {
+            match = true;
+          }
+          if (match) {
+            simTab.closeSandboxSession();
+          }
+        }
+      }
+    }
 
     if (tabInfo.el && tabInfo.el.parentNode) {
       tabInfo.el.parentNode.removeChild(tabInfo.el);

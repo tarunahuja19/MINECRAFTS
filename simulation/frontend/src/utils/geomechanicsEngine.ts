@@ -112,6 +112,8 @@ export interface GroundStateAtPoint {
   elevation: number;
   initialElevation: number;
   dropDistanceM: number;
+  /** Heave-ring uplift included in `elevation`, m. Subsidence-only otherwise. */
+  rimUpliftM: number;
   tiltDeg: number;
   tiltMmPerM: number;
   tensileStrainMmPerM: number;
@@ -194,7 +196,50 @@ export const R_CAVE_M = R_INFL_M * CAVE_INFL_FRAC;
  * exp(+rho*d/sigma^2) would otherwise hit at large rho*d, using the
  * identity exp(-(rho^2+d^2)/2s^2) * I0(z) = exp(-(rho-d)^2/2s^2) * Ie0(z).
  */
+/**
+ * Memo table for the three Bessel quadratures below.
+ *
+ * Each quadrature is a pure function of (d, R): the render grid is fixed, so
+ * across animation frames the SAME (d, R) pairs recur bitwise identically
+ * (hypot is deterministic for identical inputs). Without this table every
+ * mesh recompute re-runs the 65-node Simpson sum per vertex per intervention
+ * (~5M Bessel evals per pass), which is what pinned mesh refresh to the 60 s
+ * engine tick. With it the first pass after a trigger pays the full cost once
+ * and every later frame is Map lookups, so the bowl can ease open at 10 Hz
+ * while the event is in flight.
+ *
+ * Keys are the EXACT doubles (String round-trips a double losslessly), never
+ * quantised: a quantised bucket returns the value computed at whichever `d`
+ * first touched it, which corrupts finite-difference probes of the profile
+ * (verify_bowl_physics.mjs's derivative gates failed at 20-100% error on a
+ * 5 cm bucket). Entries are never invalidated (a pure function cannot go
+ * stale); the size cap only bounds a pathological session that triggers
+ * thousands of distinct radii.
+ */
+const profileCache = new Map<string, number>();
+const PROFILE_CACHE_MAX = 2000000;
+
+function cachedProfile(
+  kind: string,
+  d: number,
+  R: number,
+  compute: () => number
+): number {
+  const key = kind + "|" + String(R) + "|" + String(d);
+  const hit = profileCache.get(key);
+  if (hit !== undefined) return hit;
+  const value = compute();
+  if (profileCache.size >= PROFILE_CACHE_MAX) profileCache.clear();
+  profileCache.set(key, value);
+  return value;
+}
+
 export function bowlProfile(d: number, R: number, r: number = R_CAVE_M): number {
+  if (r !== R_CAVE_M) return bowlProfileUncached(d, R, r);
+  return cachedProfile("S", d, R, () => bowlProfileUncached(d, R, r));
+}
+
+function bowlProfileUncached(d: number, R: number, r: number): number {
   const sigma = r / Math.sqrt(2.0 * Math.PI);
   const s2 = sigma * sigma;
   const ad = Math.abs(d);
@@ -265,6 +310,11 @@ export function besselI0e(z: number): number {
  * indistinguishable from the small real strain signal being looked for.
  */
 export function bowlProfileDerivative(d: number, R: number, r: number = R_CAVE_M): number {
+  if (r !== R_CAVE_M) return bowlProfileDerivativeUncached(d, R, r);
+  return cachedProfile("dS", d, R, () => bowlProfileDerivativeUncached(d, R, r));
+}
+
+function bowlProfileDerivativeUncached(d: number, R: number, r: number): number {
   const sigma = r / Math.sqrt(2.0 * Math.PI);
   const s2 = sigma * sigma;
   const ad = Math.abs(d);
@@ -299,6 +349,11 @@ export function bowlProfileSecondDerivative(
   R: number,
   r: number = R_CAVE_M
 ): number {
+  if (r !== R_CAVE_M) return bowlProfileSecondDerivativeUncached(d, R, r);
+  return cachedProfile("ddS", d, R, () => bowlProfileSecondDerivativeUncached(d, R, r));
+}
+
+function bowlProfileSecondDerivativeUncached(d: number, R: number, r: number): number {
   const sigma = r / Math.sqrt(2.0 * Math.PI);
   const s2 = sigma * sigma;
   const ad = Math.abs(d);
@@ -351,6 +406,49 @@ export function besselI1e(z: number): number {
     ans = a / Math.sqrt(ax);
   }
   return z < 0.0 ? -ans : ans;
+}
+
+/**
+ * Heave ring around a fresh cave-in: fractional height, peak position and
+ * width, all relative to the bowl radius R.
+ *
+ * This is failed rock BULKING, not decoration. Caved strata occupy 1.3-1.5x
+ * their intact volume, so the annulus of ground just outside the void is
+ * jacked upward as the broken rock dilates beneath it. Quarry-blast craters
+ * and every subsidence-trough survey show the same raised lip, peaking just
+ * outside the extraction edge and dying within a fraction of R.
+ *
+ * Form: a Gaussian ring g(d) = H * exp(-((d - d0)/w)^2), d0 = 1.12R,
+ * w = 0.22R. H = 0.08 keeps the lip legible (40 cm on a full 5 m event)
+ * without rivalling the bowl. Like the bowl it enters the drop field with
+ * analytic first and second derivatives, so the tilt and strain channels stay
+ * consistent with the drawn surface. It is deliberately OUTSIDE the bowl's
+ * mass-conservation identity: bulking genuinely creates volume.
+ */
+export const RIM_PEAK_RATIO = 1.12;
+export const RIM_WIDTH_RATIO = 0.22;
+export const RIM_HEIGHT_FRAC = 0.08;
+
+export function rimProfile(d: number, R: number): number {
+  const w = RIM_WIDTH_RATIO * R;
+  const q = (Math.abs(d) - RIM_PEAK_RATIO * R) / w;
+  return RIM_HEIGHT_FRAC * Math.exp(-q * q);
+}
+
+export function rimProfileDerivative(d: number, R: number): number {
+  const ad = Math.abs(d);
+  if (ad < 1e-9) return 0.0;
+  const w = RIM_WIDTH_RATIO * R;
+  const q = (ad - RIM_PEAK_RATIO * R) / w;
+  const deriv = rimProfile(ad, R) * (-2.0 * q / w);
+  return d < 0 ? -deriv : deriv;
+}
+
+export function rimProfileSecondDerivative(d: number, R: number): number {
+  const ad = Math.abs(d);
+  const w = RIM_WIDTH_RATIO * R;
+  const q = (ad - RIM_PEAK_RATIO * R) / w;
+  return rimProfile(ad, R) * ((4.0 * q * q) / (w * w) - 2.0 / (w * w));
 }
 
 export class LiveGeomechanicsEngine {
@@ -487,6 +585,7 @@ export class LiveGeomechanicsEngine {
     let slopeY = 0.0;
     let curvature = 0.0;
     let totalVibrationM = 0.0;
+    let totalRimM = 0.0;
 
     for (const inter of this.interventions) {
       const dt = Math.max(0.0, tCurrent - inter.t0);
@@ -510,6 +609,22 @@ export class LiveGeomechanicsEngine {
       }
 
       curvature += amp * bowlProfileSecondDerivative(d, inter.radiusM);
+
+      // Heave ring: bulked rock jacks the annulus just outside the void
+      // UPWARD, so it subtracts from the drop field (and can take a vertex
+      // slightly negative — genuine heave, which the elevation below honours).
+      // Same Knothe time factor as the bowl: the lip rises as the bowl sinks.
+      // The rim's derivatives enter with a minus sign because they
+      // differentiate the drop field, which the uplift reduces.
+      const rim = amp * rimProfile(d, inter.radiusM);
+      totalDropM -= rim;
+      totalRimM += rim;
+      const dRimdd = -amp * rimProfileDerivative(d, inter.radiusM);
+      if (d > 1e-6) {
+        slopeX += dRimdd * (dx / d);
+        slopeY += dRimdd * (dy / d);
+      }
+      curvature -= amp * rimProfileSecondDerivative(d, inter.radiusM);
 
       // Transient seismic response to the caving event itself.
       const simDays = (dt * inter.timeScale) / SECONDS_PER_DAY;
@@ -556,6 +671,7 @@ export class LiveGeomechanicsEngine {
       elevation: baseElevation - totalDropM + totalVibrationM,
       initialElevation: baseElevation,
       dropDistanceM: totalDropM,
+      rimUpliftM: totalRimM,
       tiltDeg: (Math.atan(slopeMag) * 180.0) / Math.PI,
       // Tilt in engineering units: mm of fall per m of run.
       tiltMmPerM: slopeMag * 1000.0,

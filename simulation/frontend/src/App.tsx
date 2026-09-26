@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { GroundPhysicsModal, type InfoKey } from "./components/GroundPhysicsModal";
 import { LiveMathModal } from "./components/LiveMathModal";
 import { MineViewport, type MineViewportHandle } from "./components/MineViewport";
+import type { ImpactBurst } from "./components/CollapseDust";
 import { FALLBACK_NODES } from "./components/NodeMarkers";
 import { MenuBar } from "./components/MenuBar";
 import { RightInspectorPanel } from "./components/RightInspectorPanel";
@@ -39,6 +40,7 @@ import type {
   TargetLocation,
   TickPayload,
   ZoneTelemetry,
+  CrackLine,
 } from "./types";
 
 export const App: React.FC = () => {
@@ -59,6 +61,10 @@ export const App: React.FC = () => {
   // Simulation tab as a cropped viewport, driven by the parent over
   // postMessage. Parsed once — later updates arrive as set-bounds commands.
   const embedParams = useMemo(() => parseEmbedParams(), []);
+  // Slot identity is fixed at load (parsed once above), but the WebSocket
+  // effect below must keep its minimal deps (same stale-closure rationale as
+  // isRunningRef) — so the packet handler reads it through a ref.
+  const embedSlotRef = useRef<string | null>(embedParams.slot);
   const isEmbed = embedParams.isEmbed;
   const [embedClip, setEmbedClip] = useState<EmbedClipBounds | null>(embedParams.clip);
   const [embedNodes, setEmbedNodes] = useState<number[] | null>(embedParams.nodeIds);
@@ -102,11 +108,35 @@ export const App: React.FC = () => {
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const eventInFlight = eventEndsAt !== null && nowMs < eventEndsAt;
   const [perturbations, setPerturbations] = useState<Perturbation[]>([]);
+  // Lab crack segments overlay (dashboard `set-cracks` command; embed only).
+  const [crackLines, setCrackLines] = useState<CrackLine[]>([]);
   const [nodeTelemetry, setNodeTelemetry] = useState<NodeTelemetry[]>([]);
   const [zoneTelemetry, setZoneTelemetry] = useState<ZoneTelemetry[]>([]);
   const [tickCount, setTickCount] = useState<number>(0);
   const [vibrationActive, setVibrationActive] = useState<boolean>(false);
   const [vibrationPPV, setVibrationPPV] = useState<number>(0);
+  // Blast pulse counter: each trigger increments it so the shockwave ring
+  // replays even when vibration is already flagged active. 0 = never fired.
+  const [vibrationPulse, setVibrationPulse] = useState<number>(0);
+  const vibrationActiveRef = useRef(false);
+  // Live impact dust bursts (collapse / tilt), removed ~3 s after spawning.
+  const [bursts, setBursts] = useState<ImpactBurst[]>([]);
+  const burstIdRef = useRef(0);
+  // World-shake impulses: {wall-clock start, initial amplitude (m), decay (s)}.
+  // Amplitude at render time is the decayed sum; nowMs re-renders at 10 Hz
+  // while an event is in flight, which is the only time any impulse is live.
+  const [impacts, setImpacts] = useState<{ t0: number; amp0: number; tau: number }[]>([]);
+  // Current world-shake amplitude: decayed sum of live impulses, capped.
+  // Recomputed on the 10 Hz nowMs tick while an event is in flight; impulses
+  // only ever exist inside that window, so no separate timer is needed.
+  const shakeAmp = useMemo(() => {
+    let a = 0;
+    for (const im of impacts) {
+      const dt = (nowMs - im.t0) / 1000.0;
+      if (dt >= 0) a += im.amp0 * Math.exp(-dt / im.tau);
+    }
+    return Math.min(2.5, a);
+  }, [impacts, nowMs]);
 
   // 60-Second Standardized Simulation Packet State (§Phase 7)
   const [latestPacket, setLatestPacket] = useState<SimulationPacket | null>(null);
@@ -268,7 +298,13 @@ export const App: React.FC = () => {
                 console.log(`[FRONTEND] packet ${pkt.packet_id} fetched successfully`);
                 setLatestPacket(pkt);
                 setPacketCount((prev) => prev + 1);
-                showToast(`📦 60s PACKET #${pkt.packet_id} SYNCHRONIZED`);
+                // Packet-sync toasts are a SIMULATION-tab readout. The FORGE
+                // slot is a sandbox view on the same engine — announcing every
+                // 60 s packet there is noise, so it stays silent (telemetry
+                // below still ingests; only the toast is suppressed).
+                if (embedSlotRef.current !== "forge") {
+                  showToast(`📦 60s PACKET #${pkt.packet_id} SYNCHRONIZED`);
+                }
 
                 // Update terrain if changed (§Phase 8)
                 if (pkt.terrain?.changes && pkt.terrain.changes.length > 0) {
@@ -356,6 +392,12 @@ export const App: React.FC = () => {
             setTickCount((prev) => prev + 1);
 
             const isVib = Boolean(tick.vibration_active);
+            // Rising edge only: a sustained blast replays the ring once, and a
+            // repeat blast later replays it again.
+            if (isVib && !vibrationActiveRef.current) {
+              setVibrationPulse((p) => p + 1);
+            }
+            vibrationActiveRef.current = isVib;
             setVibrationActive(isVib);
             setVibrationPPV(tick.vibration_ppv || 0);
 
@@ -419,6 +461,13 @@ export const App: React.FC = () => {
     return () => window.clearInterval(id);
   }, [eventEndsAt]);
 
+  // Prune shake impulses once the event settles. nowMs stops ticking then, so
+  // without this the amplitude would freeze at its last decayed value and the
+  // world would tremble at centimetres forever.
+  useEffect(() => {
+    if (!eventInFlight && impacts.length > 0) setImpacts([]);
+  }, [eventInFlight, impacts.length]);
+
   const sendWsAction = (payload: any) => {
     let sentViaWs = false;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -474,13 +523,17 @@ export const App: React.FC = () => {
     setTDays(0);
     setTimeScalar(0);
     setPerturbations([]);
+    setCrackLines([]);
     setLogs([]);
     setSelectedNodeId(null);
     setNodeTelemetry([]);
     setZoneTelemetry([]);
     setTickCount(0);
     setVibrationActive(false);
+    vibrationActiveRef.current = false;
     setVibrationPPV(0);
+    setBursts([]);
+    setImpacts([]);
     setLatestPacket(null);
     setPacketCount(0);
 
@@ -503,7 +556,21 @@ export const App: React.FC = () => {
   };
 
   // Trigger Ground Interventions
-  const handleTriggerEvent = (type: PhysicalEventType, cx: number, cy: number, sev: number, rad: number) => {
+  //
+  // Embed rule: an embedded frame is ONE of several views on the shared
+  // engine (dashboard SIM + FORGE). Its triggers run the local mesh preview
+  // ONLY and never send engine commands — otherwise a FORGE experiment would
+  // deform every other view through the engine broadcast. Experiment truth
+  // for embeds lives in the dashboard + :8010 lab, not the engine.
+  const handleTriggerEvent = (
+    type: PhysicalEventType,
+    cx: number,
+    cy: number,
+    sev: number,
+    rad: number,
+    ppvMms?: number,
+    vibDurS?: number,
+  ) => {
     // Nothing is armed until the operator presses START. Before that the
     // panel was fully live: a cave-in fired into a stopped clock, so the
     // browser preview deformed the mesh while the server's two-phase failure
@@ -544,31 +611,63 @@ export const App: React.FC = () => {
       setEventEndsAt(Date.now() + pace.realSecondsToWatch * 1000);
     }
 
+    // Impact staging: dust, ring and shake fire at the trigger instant, while
+    // the bowl's Knothe clock starts IMPACT_LEAD_S later — the eye reads the
+    // blast first and the ground giving way second, which is the actual
+    // sequence of a roof fall.
+    const IMPACT_LEAD_S = 0.35;
+    const bowlT0 = performance.now() / 1000 + IMPACT_LEAD_S;
+    const spawnBurst = (bx: number, by: number) => {
+      const id = ++burstIdRef.current;
+      setBursts((prev) => [...prev.slice(-3), { id, x: bx, y: by, radiusM: rad, magM: sev }]);
+      window.setTimeout(() => {
+        setBursts((prev) => prev.filter((b) => b.id !== id));
+      }, 3000);
+    };
+    const addImpact = (amp0: number, tau: number) => {
+      const t0 = Date.now();
+      setImpacts((prev) => [...prev.slice(-5), { t0, amp0, tau }]);
+    };
+
     if (type === "collapse") {
       globalGeomechanics.triggerCollapse(
-        cx, cy, sev, rad, performance.now() / 1000, speedMultiplier, cPerDay,
+        cx, cy, sev, rad, bowlT0, speedMultiplier, cPerDay,
       );
-      sendWsAction({
-        action: "apply_collapse",
-        cx,
-        cy,
-        radius_m: rad,
-        magnitude_m: sev,
-        duration_hours: pace.durationHours,
-        warning_hours: pace.warningHours,
-      });
+      spawnBurst(cx, cy);
+      addImpact(0.7, 0.9);
+      if (!isEmbed) {
+        sendWsAction({
+          action: "apply_collapse",
+          cx,
+          cy,
+          radius_m: rad,
+          magnitude_m: sev,
+          duration_hours: pace.durationHours,
+          warning_hours: pace.warningHours,
+        });
+      }
       showToast(`💥 VOID ROOF CAVE-IN: ΔZ=${sev.toFixed(2)}m at (${cx.toFixed(0)}m, ${cy.toFixed(0)}m)${paceNote}`);
     } else if (type === "vibration") {
+      const ppv = Number.isFinite(ppvMms as number) ? (ppvMms as number) : 35.0;
+      const durS = Number.isFinite(vibDurS as number) ? (vibDurS as number) : 60.0;
       setVibrationActive(true);
-      setVibrationPPV(35.0);
-      globalGeomechanics.triggerBlastVibration(35.0, 15.0);
-      sendWsAction({
-        action: "apply_vibration",
-        magnitude_ppv: 35.0,
-        duration_s: 60.0,
-        note: "Heavy production blast shockwave",
-      });
-      showToast(`⚡ BLAST SHOCKWAVE: PPV=35.0 mm/s (0 mm static subsidence)`);
+      vibrationActiveRef.current = true;
+      setVibrationPPV(ppv);
+      setVibrationPulse((p) => p + 1);
+      // Shake scales with the blast's own PPV (capped): a 60 mm/s production
+      // blast visibly rocks harder than a 12 mm/s pop. durS is the lab/physics
+      // duration, not the visual — the world settles over ~2 s either way.
+      addImpact(Math.min(2.0, 0.5 + ppv / 30.0), 2.0);
+      globalGeomechanics.triggerBlastVibration(ppv, 15.0);
+      if (!isEmbed) {
+        sendWsAction({
+          action: "apply_vibration",
+          magnitude_ppv: ppv,
+          duration_s: durS,
+          note: "Heavy production blast shockwave",
+        });
+      }
+      showToast(`⚡ BLAST SHOCKWAVE: PPV=${ppv.toFixed(1)} mm/s (0 mm static subsidence)`);
     } else if (type === "tilt") {
       // Tilt is dS/dx, so it is largest on the FLANK of a bowl rather than at
       // its centre. Offsetting the collapse by its own radius puts the target
@@ -577,17 +676,22 @@ export const App: React.FC = () => {
       // so with a 75 m radius the target still sat near the flat bottom.
       const offset = rad;
       globalGeomechanics.triggerCollapse(
-        cx + offset, cy, sev, rad, performance.now() / 1000, speedMultiplier, cPerDay,
+        cx + offset, cy, sev, rad, bowlT0, speedMultiplier, cPerDay,
       );
-      sendWsAction({
-        action: "apply_collapse",
-        cx: cx + offset,
-        cy,
-        radius_m: rad,
-        magnitude_m: sev,
-        duration_hours: pace.durationHours,
-        warning_hours: pace.warningHours,
-      });
+      // Dust where the ground actually moves — the offset bowl, not the target.
+      spawnBurst(cx + offset, cy);
+      addImpact(0.5, 0.9);
+      if (!isEmbed) {
+        sendWsAction({
+          action: "apply_collapse",
+          cx: cx + offset,
+          cy,
+          radius_m: rad,
+          magnitude_m: sev,
+          duration_hours: pace.durationHours,
+          warning_hours: pace.warningHours,
+        });
+      }
       showToast(
         `📐 SURFACE TILT: bowl centred ${offset.toFixed(0)} m off-target so the ` +
         `target sits on its flank (ΔZ=${sev.toFixed(2)} m, r=${rad.toFixed(0)} m)` + paceNote,
@@ -658,15 +762,19 @@ export const App: React.FC = () => {
       if (!d || (d as { source?: unknown }).source !== R4_SIM_EMBED_SOURCE) return;
       switch (d.cmd) {
         case "set-bounds":
+          embedClipRef.current = d.bounds ?? null;
           setEmbedClip(d.bounds ?? null);
           setEmbedNodes(d.nodes ?? null);
           if (d.label !== undefined) setEmbedLabel(d.label);
+          if (!d.bounds) {
+            viewportRef.current?.resetCamera();
+          }
           break;
         case "set-view":
           viewportRef.current?.setView(d.pitchDeg, d.bearingDeg);
           break;
         case "recenter": {
-          const b = d.bounds ?? embedClipRef.current;
+          const b = d.bounds !== undefined ? d.bounds : embedClipRef.current;
           if (b) viewportRef.current?.focusOnBounds(b);
           else viewportRef.current?.resetCamera();
           break;
@@ -688,7 +796,7 @@ export const App: React.FC = () => {
           break;
         case "trigger": {
           // Move the targeting beacon to the injected event so the parent's
-          // RUN SCENARIO visibly lands where the ground is about to move.
+          // RUN visibly lands where the ground is about to move.
           const elev = sampleBaseGroundY(d.cx, d.cy);
           const slope = sampleSlopeDegrees(d.cx, d.cy);
           setTargetLocation({
@@ -700,7 +808,31 @@ export const App: React.FC = () => {
             zoneName: classifyTerrainZone(elev, slope),
           });
           setCollapseRadiusM(d.rad);
-          triggerEventRef.current(d.type, d.cx, d.cy, d.sev, d.rad);
+          triggerEventRef.current(d.type, d.cx, d.cy, d.sev, d.rad, d.ppv, d.durS);
+          break;
+        }
+        case "set-cracks": {
+          // Lab crack segments in app mine-frame metres; empty list clears.
+          const segs = Array.isArray(d.segments) ? d.segments : [];
+          setCrackLines(
+            segs
+              .filter(
+                (s) =>
+                  s &&
+                  Number.isFinite(s.x0) &&
+                  Number.isFinite(s.y0) &&
+                  Number.isFinite(s.x1) &&
+                  Number.isFinite(s.y1),
+              )
+              .map((s) => ({
+                x0: s.x0,
+                y0: s.y0,
+                x1: s.x1,
+                y1: s.y1,
+                width_mm: Number.isFinite(s.width_mm) ? s.width_mm : 0,
+                isNew: s.isNew === true,
+              })),
+          );
           break;
         }
         default:
@@ -902,12 +1034,17 @@ export const App: React.FC = () => {
             targetLocation={targetLocation}
             collapseRadiusM={collapseRadiusM}
             showMeshTopology={showMeshTopology}
-            vibrationActive={vibrationActive}
+            vibrationPulse={vibrationPulse}
+            animMs={nowMs}
+            flightActive={eventInFlight}
+            shakeAmp={shakeAmp}
+            bursts={bursts}
             onSelectNode={handleSelectNode}
             onTerrainClick={handleTerrainClick}
             wireframe={wireframe}
             clipBounds={embedClip}
             nodeFilter={embedNodes}
+            crackLines={crackLines}
           />
         </div>
       </div>
@@ -975,7 +1112,11 @@ export const App: React.FC = () => {
               targetLocation={targetLocation}
               collapseRadiusM={collapseRadiusM}
               showMeshTopology={showMeshTopology}
-              vibrationActive={vibrationActive}
+              vibrationPulse={vibrationPulse}
+              animMs={nowMs}
+              flightActive={eventInFlight}
+              shakeAmp={shakeAmp}
+              bursts={bursts}
               onSelectNode={handleSelectNode}
               onTerrainClick={handleTerrainClick}
               wireframe={wireframe}

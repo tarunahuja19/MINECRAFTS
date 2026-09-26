@@ -40,25 +40,29 @@ async function runTest() {
   console.log('=====================================================\n');
 
   // STEP 1: STATIC GREP CONSTRAINT CHECK
-  console.log('[STEP 1] Checking static constraints on sim-tab.js...');
+  console.log('[STEP 1] Checking static constraints on sim-tab.js + sim-embed.js...');
   const simTabPath = path.join(__dirname, '../renderer/js/sim/sim-tab.js');
   const simTabCode = fs.readFileSync(simTabPath, 'utf8');
+  const simEmbedPath = path.join(__dirname, '../renderer/js/sim/sim-embed.js');
+  const simEmbedCode = fs.existsSync(simEmbedPath) ? fs.readFileSync(simEmbedPath, 'utf8') : '';
 
   const forbiddenPattern = /mapView\.|troughOverlay\.|nodeMarkers\.getAllNodes/g;
-  const matches = simTabCode.match(forbiddenPattern) || [];
+  const matches = (simTabCode.match(forbiddenPattern) || [])
+    .concat(simEmbedCode.match(forbiddenPattern) || []);
   if (matches.length > 0) {
-    throw new Error('Forbidden pattern match found in sim-tab.js: ' + matches.join(', '));
+    throw new Error('Forbidden pattern match found in sim-tab.js/sim-embed.js: ' + matches.join(', '));
   }
   console.log('✓ PASS: Grep check clean — 0 occurrences of mapView., troughOverlay., nodeMarkers.getAllNodes');
 
-  const allNodeMarkerCalls = simTabCode.match(/nodeMarkers\.[a-zA-Z0-9_]+/g) || [];
-  console.log('[STEP 1] nodeMarkers calls in sim-tab.js:', allNodeMarkerCalls);
+  const allNodeMarkerCalls = (simTabCode.match(/nodeMarkers\.[a-zA-Z0-9_]+/g) || [])
+    .concat(simEmbedCode.match(/nodeMarkers\.[a-zA-Z0-9_]+/g) || []);
+  console.log('[STEP 1] nodeMarkers calls in sim-tab.js + sim-embed.js:', allNodeMarkerCalls);
   for (const call of allNodeMarkerCalls) {
     if (call !== 'nodeMarkers.getNodeData') {
       throw new Error('Only getNodeData (single-node inspect) may remain; found: ' + call);
     }
   }
-  console.log('✓ PASS: Only getNodeData (single-node inspect) remains in sim-tab.js; all bulk reads use sandbox clone.\n');
+  console.log('✓ PASS: Only getNodeData (single-node inspect) remains; all bulk reads use fixture pool or sandbox clone.\n');
 
   // STEP 2: HEADLESS CHROME LAUNCH & CONNECTION
   console.log('[STEP 2] Launching headless Chrome...');
@@ -226,27 +230,41 @@ async function runTest() {
     }
 
 
-    // Verify sandbox loaded state
+    // Verify sandbox loaded state (protocol-level: slot clip + allowlist)
     const sandboxLoadState = await evaluate(`
       (function() {
         var session = simTab.getSandboxSession();
-        var markers = document.querySelectorAll('.sim-cloned-marker').length;
         var banner = document.getElementById('sim-sandbox-banner');
-        var mapLibre = simTab.getMap();
-        var center = mapLibre ? mapLibre.getCenter() : null;
+        var forge = simEmbed.getSlotInfo('forge');
+        var sim = simEmbed.getSlotInfo('sim');
         return {
           sessionExists: !!session,
           sessionId: session ? session.id : null,
           nodeCount: session && session.nodes ? session.nodes.length : 0,
-          clonedMarkersCount: markers,
           bannerVisible: banner ? banner.style.display !== 'none' : false,
-          simCameraCenter: center ? { lng: center.lng, lat: center.lat } : null
+          forgeLoaded: forge ? forge.loaded : false,
+          forgeNodes: forge ? forge.nodes : null,
+          forgeClip: forge ? forge.clip : null,
+          simClip: sim ? sim.clip : null,
+          simCmds: simEmbed.getCommands('sim')
         };
       })()
     `);
     console.log('[STEP 3] Sandbox Loaded State:', sandboxLoadState);
-    if (!sandboxLoadState.sessionExists || sandboxLoadState.clonedMarkersCount !== 4) {
+    if (!sandboxLoadState.sessionExists || sandboxLoadState.nodeCount !== 4) {
       throw new Error('Sandbox failed to load with cloned nodes');
+    }
+    if (!sandboxLoadState.forgeLoaded || JSON.stringify(sandboxLoadState.forgeNodes) !== JSON.stringify([23, 24, 25, 31])) {
+      throw new Error('FORGE slot did not receive the N23/N24/N25/N31 allowlist! Got ' + JSON.stringify(sandboxLoadState.forgeNodes));
+    }
+    if (!sandboxLoadState.forgeClip) {
+      throw new Error('FORGE slot did not receive the selection clip!');
+    }
+    if (sandboxLoadState.simClip !== null) {
+      throw new Error('SIM slot got clipped by the selection! Selection-proof rule violated.');
+    }
+    if (sandboxLoadState.simCmds.indexOf('set-bounds') !== -1) {
+      throw new Error('SIM slot received set-bounds! Selection-proof rule violated.');
     }
 
     // Assert before/after check
@@ -283,138 +301,144 @@ async function runTest() {
     }
     console.log('✓ PASS: Dashboard map center+zoom and troughOverlay state unchanged after sandbox load.\n');
 
-    // STEP 4: PAN SIM FREELY & RECENTER BUTTON
-    console.log('[STEP 4] Testing Sim free camera pan and #sim-recenter-btn...');
-    const initialSimCam = await evaluate(`
-      (function() {
-        var m = simTab.getMap();
-        var c = m.getCenter();
-        return { lng: c.lng, lat: c.lat, zoom: m.getZoom() };
-      })()
-    `);
-    console.log('[STEP 4] Initial Sim Camera:', initialSimCam);
-
-    // Pan sim camera away freely
-    console.log('[STEP 4] Freely panning sim camera to [79.6200, 18.6800]...');
-    await evaluate(`
-      (function() {
-        var m = simTab.getMap();
-        m.jumpTo({ center: [79.6200, 18.6800], zoom: 12, pitch: 45 });
-      })()
-    `);
-    await sleep(300);
-
-    const pannedSimCam = await evaluate(`
-      (function() {
-        var m = simTab.getMap();
-        var c = m.getCenter();
-        return { lng: c.lng, lat: c.lat, zoom: m.getZoom() };
-      })()
-    `);
-    console.log('[STEP 4] Panned Sim Camera:', pannedSimCam);
-    if (Math.abs(pannedSimCam.lng - initialSimCam.lng) < 0.01) {
-      throw new Error('Sim camera did not move during free pan');
-    }
-
-    // Verify dashboard map NEVER moved during sim free pan
-    const dashCamDuringPan = await evaluate(`
-      (function() {
-        var map = mapView.getMap();
-        var c = map.getCenter();
-        return { lat: c.lat, lng: c.lng, zoom: map.getZoom() };
-      })()
-    `);
-    if (Math.abs(dashCamDuringPan.lat - preDashboardState.center.lat) > 1e-4 ||
-        Math.abs(dashCamDuringPan.lng - preDashboardState.center.lng) > 1e-4 ||
-        dashCamDuringPan.zoom !== preDashboardState.zoom) {
-      throw new Error('Dashboard map moved during sim free pan!');
-    }
-    console.log('✓ PASS: Dashboard map never moved during sim free pan');
-
-    // Click #sim-recenter-btn to re-fit sim camera to session bounds
-    console.log('[STEP 4] Clicking #sim-recenter-btn...');
-    await evaluate(`document.getElementById('sim-recenter-btn').click()`);
-    await sleep(1200);
-
-    const recenteredSimCam = await evaluate(`
-      (function() {
-        var m = simTab.getMap();
-        var c = m.getCenter();
-        return { lng: c.lng, lat: c.lat, zoom: m.getZoom() };
-      })()
-    `);
-    console.log('[STEP 4] Recentered Sim Camera:', recenteredSimCam);
-    if (Math.abs(recenteredSimCam.lng - initialSimCam.lng) > 0.008 ||
-        Math.abs(recenteredSimCam.lat - initialSimCam.lat) > 0.008) {
-      throw new Error('Sim camera did not re-fit to session bounds after clicking #sim-recenter-btn!');
-    }
-    console.log('✓ PASS: #sim-recenter-btn re-fitted sim camera to session bounds successfully.\n');
-
-    // STEP 5: RUN SCENARIO & VERIFY CLONE PERSISTENCE
-    console.log('[STEP 5] Running scenario in sandbox...');
-    await evaluate(`
-      (function() {
-        var crackBtn = document.querySelector('.sim-scenario-btn[data-type="crack"]') || document.querySelectorAll('.sim-scenario-btn')[0];
-        if (crackBtn) crackBtn.click();
-        var runBtn = document.getElementById('btn-sim-run-scenario');
-        if (runBtn) runBtn.click();
-      })()
-    `);
-
-    let scenarioDone = false;
+    // STEP 4: RECENTER BUTTONS (protocol-level; cameras live in iframes)
+    console.log('[STEP 4] Testing #sim-recenter-btn and #forge-recenter-btn...');
+    // Slots load lazily: open SIM first and wait for its ready handshake.
+    await evaluate(`document.querySelector('#tab-bar .tab-btn[data-tab="sim"]').click()`);
+    let simReady = false;
     for (let i = 0; i < 40; i++) {
       await sleep(500);
-      const pollState = await evaluate(`
+      simReady = await evaluate(`simEmbed.isReady('sim')`);
+      if (simReady) break;
+    }
+    if (!simReady) throw new Error('SIM slot did not become ready!');
+    console.log('[STEP 4] SIM slot ready.');
+    console.log('[STEP 4] Clicking #sim-recenter-btn...');
+    await evaluate(`document.getElementById('sim-recenter-btn').click()`);
+    await sleep(600);
+
+    const simRecenter = await evaluate(`
+      (function() {
+        return {
+          cmds: simEmbed.getCommands('sim'),
+          clip: (simEmbed.getSlotInfo('sim') || {}).clip || null
+        };
+      })()
+    `);
+    console.log('[STEP 4] SIM slot after recenter:', simRecenter);
+    if (simRecenter.cmds.indexOf('recenter') === -1) {
+      throw new Error('SIM slot did not receive the recenter command!');
+    }
+    if (simRecenter.clip !== null) {
+      throw new Error('SIM slot clip is not full-district after recenter!');
+    }
+    console.log('✓ PASS: #sim-recenter-btn recentered the SIM slot (full district).');
+
+    console.log('[STEP 4] Clicking #forge-recenter-btn...');
+    await evaluate(`document.getElementById('forge-recenter-btn').click()`);
+    await sleep(600);
+    const forgeRecenter = await evaluate(`
+      (function() {
+        return {
+          cmds: simEmbed.getCommands('forge'),
+          clip: (simEmbed.getSlotInfo('forge') || {}).clip || null
+        };
+      })()
+    `);
+    console.log('[STEP 4] FORGE slot after recenter:', forgeRecenter);
+    if (forgeRecenter.cmds.indexOf('recenter') === -1) {
+      throw new Error('FORGE slot did not receive the recenter command!');
+    }
+    if (!forgeRecenter.clip) {
+      throw new Error('FORGE slot lost its selection clip after recenter!');
+    }
+    console.log('✓ PASS: #forge-recenter-btn reframed the FORGE slot on the selection.\n');
+
+    // STEP 5: RUN EXPERIMENTS & VERIFY FORGE-ONLY 3D EFFECTS (protocol)
+    // FORGE tab must be visible for RUN (open it back after STEP 4's SIM visit).
+    await evaluate(`document.querySelector('#tab-bar .tab-btn[data-tab="forge"]').click()`);
+    let forgeReady = false;
+    for (let i = 0; i < 40; i++) {
+      await sleep(500);
+      forgeReady = await evaluate(`simEmbed.isReady('forge')`);
+      if (forgeReady) break;
+    }
+    if (!forgeReady) throw new Error('FORGE slot did not become ready!');
+    console.log('[STEP 5] FORGE slot ready. Running CRACK...');
+
+    async function runExperiment(dataType) {
+      await evaluate(`
         (function() {
-          var btn = document.getElementById('btn-sim-run-scenario');
-          var resBody = document.getElementById('sim-scenario-result-body');
-          return {
-            text: btn ? btn.textContent : null,
-            disabled: btn ? btn.disabled : null,
-            resLen: resBody ? resBody.innerHTML.trim().length : 0,
-            resSnippet: resBody ? resBody.innerHTML.slice(0, 60) : null
-          };
+          var btn = document.querySelector('.sim-scenario-btn[data-type="${dataType}"]');
+          if (btn) btn.click();
+          var runBtn = document.getElementById('btn-sim-run-scenario');
+          if (runBtn) runBtn.click();
         })()
       `);
-      if (pollState.text === 'RUN SCENARIO' && !pollState.disabled && pollState.resLen > 30) {
-        scenarioDone = true;
-        break;
+      for (let i = 0; i < 40; i++) {
+        await sleep(500);
+        const pollState = await evaluate(`
+          (function() {
+            var btn = document.getElementById('btn-sim-run-scenario');
+            var resBody = document.getElementById('sim-scenario-result-body');
+            return {
+              text: btn ? btn.textContent : null,
+              disabled: btn ? btn.disabled : null,
+              resLen: resBody ? resBody.innerHTML.trim().length : 0
+            };
+          })()
+        `);
+        if (pollState.text === 'RUN EXPERIMENT' && !pollState.disabled && pollState.resLen > 30) {
+          return;
+        }
       }
-      if (i % 5 === 0) {
-        console.log('[STEP 5 poll]', i, pollState);
-      }
+      throw new Error('Experiment ' + dataType + ' did not finish in time!');
     }
-    if (!scenarioDone) throw new Error('Scenario run did not finish in time!');
 
-    const postScenarioState = await evaluate(`
+    await runExperiment('crack');
+    let cmds = await evaluate(`
+      (function() {
+        return { forge: simEmbed.getCommands('forge'), sim: simEmbed.getCommands('sim') };
+      })()
+    `);
+    console.log('[STEP 5] Commands after CRACK:', cmds);
+    if (cmds.forge.indexOf('set-cracks') === -1) {
+      throw new Error('CRACK did not post set-cracks to the FORGE slot!');
+    }
+
+    console.log('[STEP 5] Running CAVE-IN...');
+    await runExperiment('sudden_sinking');
+    cmds = await evaluate(`
       (function() {
         var session = simTab.getSandboxSession();
-        var cracksSource = simTab.getMap().getSource('sim-cracks-overlay');
-        var cracksFeatures = cracksSource && cracksSource._data && cracksSource._data.features ? cracksSource._data.features.length : 0;
-        var markers = document.querySelectorAll('.sim-cloned-marker').length;
         var dashMap = mapView.getMap();
         var c = dashMap.getCenter();
         return {
+          forge: simEmbed.getCommands('forge'),
+          sim: simEmbed.getCommands('sim'),
           sessionExists: !!session,
-          sessionId: session ? session.id : null,
           nodeCount: session && session.nodes ? session.nodes.length : 0,
-          cracksFeatures: cracksFeatures,
-          markers: markers,
           dashCenter: { lat: c.lat, lng: c.lng },
           dashZoom: dashMap.getZoom()
         };
       })()
     `);
-    console.log('[STEP 5] Post-Scenario State:', postScenarioState);
-    if (!postScenarioState.sessionExists || postScenarioState.nodeCount !== 4 || postScenarioState.markers !== 4) {
+    console.log('[STEP 5] Post-Scenario State:', cmds);
+    if (!cmds.sessionExists || cmds.nodeCount !== 4) {
       throw new Error('Sandbox session or cloned nodes lost after running scenario!');
     }
-    if (Math.abs(postScenarioState.dashCenter.lat - preDashboardState.center.lat) > 1e-4 ||
-        Math.abs(postScenarioState.dashCenter.lng - preDashboardState.center.lng) > 1e-4 ||
-        postScenarioState.dashZoom !== preDashboardState.zoom) {
+    if (cmds.forge.indexOf('trigger') === -1) {
+      throw new Error('CAVE-IN did not post a trigger to the FORGE slot!');
+    }
+    if (cmds.sim.indexOf('trigger') !== -1 || cmds.sim.indexOf('set-cracks') !== -1) {
+      throw new Error('Experiment visuals leaked to the SIM slot! FORGE-only rule violated.');
+    }
+    if (Math.abs(cmds.dashCenter.lat - preDashboardState.center.lat) > 1e-4 ||
+        Math.abs(cmds.dashCenter.lng - preDashboardState.center.lng) > 1e-4 ||
+        cmds.dashZoom !== preDashboardState.zoom) {
       throw new Error('Dashboard map moved after running scenario!');
     }
-    console.log('✓ PASS: Scenario ran; sandbox session persists with its clone; dashboard map never moved.\n');
+    console.log('✓ PASS: Experiments ran FORGE-only; session persists; dashboard map never moved.\n');
 
     // STEP 6: RESET LIVE SYSTEM & VERIFY ISOLATION
     console.log('[STEP 6] Testing live system reset...');
@@ -423,14 +447,12 @@ async function runTest() {
         var preId = simTab.getSandboxSession().id;
         bus.emit('system-reset', {});
         var postSession = simTab.getSandboxSession();
-        var markers = document.querySelectorAll('.sim-cloned-marker').length;
         var banner = document.getElementById('sim-sandbox-banner');
         var dashMap = mapView.getMap();
         var c = dashMap.getCenter();
         return {
           sessionSurvived: postSession && postSession.id === preId,
           nodeCount: postSession && postSession.nodes ? postSession.nodes.length : 0,
-          markers: markers,
           bannerVisible: banner ? banner.style.display !== 'none' : false,
           dashCenter: { lat: c.lat, lng: c.lng },
           dashZoom: dashMap.getZoom()

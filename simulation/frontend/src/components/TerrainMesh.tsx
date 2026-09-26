@@ -102,7 +102,20 @@ interface TerrainMeshProps {
   exaggeration: number;
   windowSizeM?: number;
   wireframe?: boolean;
-  vibrationActive?: boolean;
+  /**
+   * Wall-clock driver (ms) that ticks at 10 Hz while an event is in flight.
+   * The Knothe time law evolves between engine ticks, so without a local
+   * driver the mesh holds its last tick's shape for up to 60 s and the bowl
+   * appears all at once. With the profile cache in geomechanicsEngine the
+   * per-frame cost is Map lookups, not Bessel quadratures.
+   */
+  animMs?: number;
+  /** True while an event is settling; its falling edge forces one last pass. */
+  flightActive?: boolean;
+  /** Blast pulse counter forwarded to the shockwave overlay. */
+  vibrationPulse?: number;
+  /** Panel-frame origin the shockwave ring expands from. */
+  waveOrigin?: { x: number; y: number } | null;
   onTerrainClick?: (x: number, y: number, elev: number) => void;
   /**
    * Embed-mode sub-window (panel-frame metres). When set, only this region
@@ -123,7 +136,10 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   exaggeration = 1.0,
   windowSizeM = 600,
   wireframe = false,
-  vibrationActive = false,
+  animMs = 0,
+  flightActive = false,
+  vibrationPulse = 0,
+  waveOrigin = null,
   onTerrainClick,
   clipBounds = null,
 }) => {
@@ -273,6 +289,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     const colGrassLow = new THREE.Color("#525a44");   // Shaded valley floor
     const colCliffRock = new THREE.Color("#8a8378");  // Steep rock / cliff face
     const colCragDark = new THREE.Color("#6b655c");   // Exposed basalt / shale
+    const colScorch = new THREE.Color("#2b2118");     // Fresh ejecta / dust stain
 
     // COLOUR SPACE, and why every previous palette edit appeared to do
     // nothing. The ramps in hypsometry.ts are sRGB hex, but three.js r152+
@@ -540,6 +557,27 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
           }
         }
 
+        // Ejecta scorch: thrown rock and settled dust stain the ground in and
+        // around each crater, strongest at the centre and dying over ~0.9R.
+        // Applied AFTER the depth overlay so it darkens the ramp too — fresh
+        // ejecta covers whatever colour was there. Persistent: it keys off the
+        // live intervention list, which only clears on reset, so the stain
+        // marks where the ground broke even after the bowl has settled.
+        const liveInters = globalGeomechanics.interventions;
+        if (liveInters.length > 0) {
+          let scorch = 0.0;
+          for (let ki = 0; ki < liveInters.length; ki++) {
+            const inter = liveInters[ki];
+            const idx = xCoord - inter.cx;
+            const idy = yCoord - inter.cy;
+            const q = Math.sqrt(idx * idx + idy * idy) / (0.9 * inter.radiusM);
+            if (q < 3.0) scorch += Math.exp(-q * q);
+          }
+          if (scorch > 0.01) {
+            tempColor.lerp(colScorch, Math.min(1.0, scorch) * 0.5);
+          }
+        }
+
         colors[vIdx * 3] = tempColor.r;
         colors[vIdx * 3 + 1] = tempColor.g;
         colors[vIdx * 3 + 2] = tempColor.b;
@@ -572,6 +610,8 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     exaggeration,
     gridSize,
     viewWindow,
+    animMs,
+    flightActive,
   ]);
 
   // Handle terrain click to pick exact (x, y) target coordinates
@@ -609,7 +649,11 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
       </mesh>
 
       {/* 2. Seismic Shockwave Ring Overlay */}
-      <SeismicWaveOverlay active={vibrationActive} />
+      <SeismicWaveOverlay
+        pulse={vibrationPulse}
+        originX={waveOrigin ? waveOrigin.x : 0}
+        originY={waveOrigin ? waveOrigin.y : 0}
+      />
     </group>
   );
 };

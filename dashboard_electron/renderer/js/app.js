@@ -15,8 +15,8 @@ document.getElementById('tab-bar').addEventListener('click', function (e) {
   if (tab === 'map' && mapView.getMap()) {
     mapView.getMap().invalidateSize();
   }
-  if (tab === 'sim' && typeof simTab !== 'undefined' && simTab.onTabShown) {
-    simTab.onTabShown();
+  if ((tab === 'sim' || tab === 'forge') && typeof simTab !== 'undefined' && simTab.onTabShown) {
+    simTab.onTabShown(tab);
   }
 });
 

@@ -1,32 +1,35 @@
 'use strict';
 
 /**
- * sim-embed.js — Simulation Tab 3D Viewport Embed Controller
+ * sim-embed.js — Dual-slot 3D viewport embed manager (SIM + FORGE).
  *
  * Embeds the website simulation (simulation/frontend, the Three.js subsidence
- * viewport) INSIDE the Simulation tab's center column via an iframe, cropped
- * to the operator's current selection — instead of opening it in a separate
- * browser tab/window.
+ * viewport) inside BOTH dashboard tabs via iframes. Each tab owns one slot:
+ *   - sim:   full district, day label, node clicks -> data inspector. Never
+ *            receives triggers or crack overlays.
+ *   - forge: selection clip + label, triggers, crack lines. Experiments here
+ *            run the iframe's LOCAL mesh preview only (never engine commands),
+ *            so the SIM slot's ground cannot move.
  *
- * Source priority:
- *   1. Vite dev server  http://127.0.0.1:5173/?embed=1... (live code)
- *   2. Production build http://<host>:8085/sim/?embed=1... (served by serve.js
- *      from simulation/frontend/dist, works without the dev server)
- *   3. MapLibre 3D map fallback (the pre-existing sim viewport) when neither
- *      embed source answers the ready handshake.
+ * Perf: a slot loads lazily on its tab's first show; the hidden tab's iframe
+ * sits under display:none, which suspends its rendering loop automatically
+ * (no pause commands — pause would halt the SHARED engine clock for both).
+ * Works in Electron (file:// parent, http://127.0.0.1 iframes, postMessage
+ * with '*' both ways — see simulation/frontend/src/embed.ts).
  *
- * Bridge protocol (see simulation/frontend/src/embed.ts):
- *   parent -> iframe: { source:'r4-sim-embed', cmd, ... }
- *   iframe -> parent: { source:'r4-sim-viewport', event, ... }
+ * Source priority per slot:
+ *   1. Vite dev server  http://127.0.0.1:5173/?embed=1...
+ *   2. Production build http://<host>:8085/sim/?embed=1...
+ *   3. Retry strip when neither answers the ready handshake.
  *
  * Coordinates: the iframe speaks panel-frame metres (x=east, y=north about
- * the Adriyala origin). This module converts the dashboard's lat/lon bounds
- * with the same flat-earth projection as geo.py / map-view.js, clamped to
- * the 600 m simulation window.
+ * the Adriyala origin). Same flat-earth projection as geo.py / map-view.js,
+ * clamped to the 600 m simulation window.
  */
 var simEmbed = (function () {
   var DEV_BASE = 'http://127.0.0.1:5173/';
   var READY_TIMEOUT_MS = 7000;
+  var MAX_QUEUED = 30;
 
   // Adriyala origin + projection constants (mirror of geo.py / map-view.js).
   var ORIGIN_LAT = 18.6435;
@@ -35,21 +38,33 @@ var simEmbed = (function () {
   var M_PER_DEG_LON = M_PER_DEG_LAT * Math.cos(ORIGIN_LAT * Math.PI / 180);
   var WINDOW_HALF_M = 300;
 
-  var frame = null;
-  var fallbackEl = null;
-  var mapEl = null;
-  var btnEmbed = null;
-  var btnMap = null;
+  function makeSlot(name, frameId, fallbackId) {
+    return {
+      name: name,
+      frameId: frameId,
+      fallbackId: fallbackId,
+      frame: null,
+      fallbackEl: null,
+      loadedOnce: false,
+      useDevServer: true,
+      triedProd: false,
+      readyReceived: false,
+      readyTimer: null,
+      queue: [],
+      lastBoundsInfo: null,
+      lastNorm: null,
+      lastDay: 0,
+      lastStatus: null,
+      // Ring of posted commands (test observability + debugging).
+      cmdLog: []
+    };
+  }
 
-  // 'embed' | 'map'. Embed is default; map is user override or auto-fallback.
-  var viewMode = 'embed';
-  var autoFellBack = false;
-  var useDevServer = true;
-  var readyReceived = false;
-  var readyTimer = null;
-  var triedFallbackBuild = false;
-  var lastBoundsInfo = null;
-  var lastDay = 0;
+  var slots = {
+    sim: makeSlot('sim', 'sim-embed-frame', 'sim-embed-fallback'),
+    forge: makeSlot('forge', 'forge-embed-frame', 'forge-embed-fallback')
+  };
+
   var isInitialized = false;
 
   function getBuildBase() {
@@ -134,9 +149,14 @@ var simEmbed = (function () {
     return 3;
   }
 
-  function buildEmbedUrl(base, boundsInfo, day) {
+  function buildEmbedUrl(base, boundsInfo, day, slotName) {
     var norm = normalizeBounds(boundsInfo);
     var qs = '?embed=1';
+    // Slot identity: the iframe is the same app in both tabs, but FORGE is a
+    // sandbox view — it must not show engine packet-sync toasts (SIM only).
+    if (slotName === 'sim' || slotName === 'forge') {
+      qs += '&slot=' + slotName;
+    }
     if (norm.clip) {
       qs += '&xmin=' + encodeURIComponent(norm.clip.xMin) +
             '&xmax=' + encodeURIComponent(norm.clip.xMax) +
@@ -156,296 +176,271 @@ var simEmbed = (function () {
     return base + qs;
   }
 
-  function post(cmd) {
-    if (!frame || !frame.contentWindow || !readyReceived) return false;
+  function showFallbackNotice(slot, html) {
+    if (!slot.fallbackEl) return;
+    slot.fallbackEl.style.display = 'flex';
+    var body = slot.fallbackEl.querySelector('.sim-embed-fallback-body');
+    if (body && html) body.innerHTML = html;
+  }
+
+  function hideFallbackNotice(slot) {
+    if (!slot.fallbackEl) return;
+    slot.fallbackEl.style.display = 'none';
+  }
+
+  function postToSlot(slot, cmd) {
+    if (!slot.frame || !slot.frame.contentWindow || !slot.readyReceived) {
+      if (slot.queue && slot.queue.length < MAX_QUEUED) slot.queue.push(cmd);
+      return false;
+    }
     try {
       var msg = Object.assign({ source: 'r4-sim-embed' }, cmd);
-      frame.contentWindow.postMessage(msg, '*');
+      slot.frame.contentWindow.postMessage(msg, '*');
+      slot.cmdLog.push({ t: Date.now(), cmd: cmd.cmd || '?' });
+      if (slot.cmdLog.length > 40) slot.cmdLog.shift();
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  function showFallbackNotice(html) {
-    if (!fallbackEl) return;
-    fallbackEl.style.display = 'flex';
-    var body = fallbackEl.querySelector('.sim-embed-fallback-body');
-    if (body && html) body.innerHTML = html;
+  function flushQueue(slot) {
+    if (!slot.readyReceived || slot.queue.length === 0) return;
+    var pending = slot.queue;
+    slot.queue = [];
+    pending.forEach(function (cmd) { postToSlot(slot, cmd); });
   }
 
-  function hideFallbackNotice() {
-    if (!fallbackEl) return;
-    fallbackEl.style.display = 'none';
-  }
-
-  function applyViewMode() {
-    if (btnEmbed) btnEmbed.classList.toggle('active', viewMode === 'embed');
-    if (btnMap) btnMap.classList.toggle('active', viewMode === 'map');
-    if (frame) frame.style.display = viewMode === 'embed' ? 'block' : 'none';
-    if (mapEl) mapEl.style.visibility = viewMode === 'embed' ? 'hidden' : 'visible';
-    if (viewMode === 'map') {
-      hideFallbackNotice();
-      if (typeof simTab !== 'undefined' && simTab.getMap && simTab.getMap()) {
-        try { simTab.getMap().resize(); } catch (_) {}
+  function armReadyTimer(slot) {
+    if (slot.readyTimer) {
+      clearTimeout(slot.readyTimer);
+      slot.readyTimer = null;
+    }
+    slot.readyTimer = setTimeout(function () {
+      slot.readyTimer = null;
+      if (slot.readyReceived) return;
+      if (slot.useDevServer && !slot.triedProd) {
+        // Dev server silent: try the production bundle once.
+        slot.useDevServer = false;
+        slot.triedProd = true;
+        loadSlot(slot);
+      } else {
+        showFallbackNotice(slot,
+          '3D viewport unreachable (tried :5173 and :8085/sim). ' +
+          'Start the sim UI or bundle and press RETRY.');
       }
-    } else {
-      if (readyReceived) hideFallbackNotice();
-    }
+    }, READY_TIMEOUT_MS);
   }
 
-  function setViewMode(mode) {
-    viewMode = (mode === 'map') ? 'map' : 'embed';
-    if (viewMode === 'embed') {
-      autoFellBack = false;
-      ensureLoaded(lastBoundsInfo, lastDay);
-    }
-    applyViewMode();
-    console.log('[SIM_EMBED] View mode: ' + viewMode);
+  function loadSlot(slot) {
+    if (!slot.frame) return;
+    slot.readyReceived = false;
+    slot.queue = [];
+    slot.lastNorm = normalizeBounds(slot.lastBoundsInfo);
+    hideFallbackNotice(slot);
+    var base = slot.useDevServer ? DEV_BASE : getBuildBase();
+    slot.frame.src = buildEmbedUrl(base, slot.lastBoundsInfo, slot.lastDay, slot.name);
+    slot.loadedOnce = true;
+    armReadyTimer(slot);
   }
 
-  function armReadyTimer() {
-    disarmReadyTimer();
-    readyTimer = setTimeout(onReadyTimeout, READY_TIMEOUT_MS);
+  function retrySlot(slot) {
+    slot.useDevServer = true;
+    slot.triedProd = false;
+    loadSlot(slot);
   }
 
-  function disarmReadyTimer() {
-    if (readyTimer) {
-      clearTimeout(readyTimer);
-      readyTimer = null;
-    }
-  }
-
-  function onReadyTimeout() {
-    if (readyReceived) return;
-    if (useDevServer && !triedFallbackBuild) {
-      // Dev server silent — try the production build on :8085/sim/ (same
-      // tile server that already feeds this dashboard, CORS-safe to probe).
-      triedFallbackBuild = true;
-      var probeUrl = getBuildBase() + 'index.html';
-      fetch(probeUrl, { method: 'GET' })
-        .then(function (res) {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          useDevServer = false;
-          readyReceived = false;
-          if (frame) {
-            frame.src = buildEmbedUrl(getBuildBase(), lastBoundsInfo, lastDay);
-            armReadyTimer();
-          }
-          console.log('[SIM_EMBED] Dev server silent, loading production build from ' + getBuildBase());
-        })
-        .catch(function () {
-          fallBackToMap('Neither the 3D sandbox dev server (:5173) nor the production build (:8085/sim/) answered.');
-        });
+  function ensureLoaded(slotName, boundsInfo, day) {
+    var slot = slots[slotName];
+    if (!slot || !slot.frame) return;
+    if (boundsInfo !== undefined) slot.lastBoundsInfo = boundsInfo;
+    if (day !== undefined && day !== null && isFinite(day)) slot.lastDay = day;
+    if (!slot.loadedOnce || !slot.frame.src) {
+      loadSlot(slot);
       return;
     }
-    fallBackToMap(useDevServer
-      ? 'The 3D sandbox dev server (:5173) did not answer.'
-      : 'The production 3D build (:8085/sim/) did not answer.');
-  }
-
-  function fallBackToMap(reason) {
-    disarmReadyTimer();
-    autoFellBack = true;
-    viewMode = 'map';
-    applyViewMode();
-    // The map is the working surface now; surface the reason as a dismissible
-    // strip rather than blocking the viewport.
-    showFallbackNotice(
-      '<b>MAP FALLBACK</b> — ' + reason +
-      ' Showing the MapLibre 3D view instead.' +
-      ' Start the sandbox with <code>npm run sim:ui</code> (port 5173) or rebuild it' +
-      ' (<code>npm run build</code> in <code>simulation/frontend</code>), then press' +
-      ' <b>3D SIM</b> to retry.' +
-      ' <button id="sim-embed-retry" class="sim-timeline-btn" style="margin-left:8px;">RETRY 3D SIM</button>'
-    );
-    if (fallbackEl) fallbackEl.classList.add('sim-embed-fallback-strip');
-    var retry = document.getElementById('sim-embed-retry');
-    if (retry) {
-      retry.addEventListener('click', function () {
-        triedFallbackBuild = false;
-        useDevServer = true;
-        readyReceived = false;
-        if (fallbackEl) fallbackEl.classList.remove('sim-embed-fallback-strip');
-        setViewMode('embed');
-      });
+    if (boundsInfo !== undefined) {
+      var norm = normalizeBounds(boundsInfo);
+      slot.lastNorm = norm;
+      postToSlot(slot, { cmd: 'set-bounds', bounds: norm.clip, nodes: norm.nodes, label: norm.label });
     }
-    console.warn('[SIM_EMBED] ' + reason + ' Fell back to MapLibre view.');
+    if (day !== undefined && day !== null && isFinite(day)) {
+      postToSlot(slot, { cmd: 'set-day', day: Math.round(day) });
+    }
   }
 
-  function onChildMessage(event) {
-    var d = event && event.data;
+  function slotFromEvent(e) {
+    var names = Object.keys(slots);
+    for (var i = 0; i < names.length; i++) {
+      var slot = slots[names[i]];
+      if (slot.frame && slot.frame.contentWindow && e.source === slot.frame.contentWindow) {
+        return slot;
+      }
+    }
+    return null;
+  }
+
+  function numericToNodeId(num) {
+    var n = parseInt(num, 10);
+    if (!isFinite(n) || n <= 0) return null;
+    return 'N' + String(n).padStart(2, '0');
+  }
+
+  function onMessage(e) {
+    var d = e && e.data;
     if (!d || d.source !== 'r4-sim-viewport') return;
+    var slot = slotFromEvent(e);
+    if (!slot) return;
+
     if (d.event === 'ready') {
-      if (readyReceived) return;
-      readyReceived = true;
-      disarmReadyTimer();
-      hideFallbackNotice();
-      applyViewMode();
-      // Re-state current selection/day: the iframe may have loaded before the
-      // parent knew the final bounds (or reloaded on its own).
-      pushBounds(lastBoundsInfo);
-      lastPostedDay = Math.round(lastDay);
-      post({ cmd: 'set-day', day: lastPostedDay });
-      post({ cmd: 'set-exag', value: activeExaggeration() });
-      console.log('[SIM_EMBED] Viewport ready (' + (useDevServer ? 'dev :5173' : 'build :8085/sim') + ')');
-      return;
-    }
-    if (d.event === 'node-select') {
-      var id = (d.id === null || d.id === undefined) ? null : d.id;
-      if (id !== null && typeof simTab !== 'undefined' && simTab.selectNode) {
-        try { simTab.selectNode('N' + id); } catch (_) {}
+      slot.readyReceived = true;
+      if (slot.readyTimer) {
+        clearTimeout(slot.readyTimer);
+        slot.readyTimer = null;
       }
-      if (typeof bus !== 'undefined' && bus.emit) {
-        bus.emit('sim-embed-node-select', { id: id });
+      hideFallbackNotice(slot);
+      flushQueue(slot);
+      console.log('[SIM_EMBED:' + slot.name + '] ready (' +
+        (slot.useDevServer ? 'dev :5173' : 'prod :8085/sim') + ')');
+    } else if (d.event === 'node-select') {
+      // Route node clicks to the owning tab's inspector (numeric id -> Nxx).
+      var nid = (d.id === null || d.id === undefined) ? null : numericToNodeId(d.id);
+      if (nid && typeof simTab !== 'undefined' && simTab.selectNode) {
+        try { simTab.selectNode(nid, slot.name === 'forge' ? 'forge' : 'sim'); } catch (_) {}
       }
-      return;
+    } else if (d.event === 'status') {
+      slot.lastStatus = {
+        connected: !!d.connected,
+        running: !!d.running,
+        tDays: d.tDays,
+        nodes: d.nodes
+      };
     }
-    if (d.event === 'status') {
-      var hud = document.getElementById('sim-hud-text');
-      void hud;
-      return;
-    }
   }
 
-  function pushBounds(boundsInfo) {
-    if (!boundsInfo) return;
-    var norm = normalizeBounds(boundsInfo);
-    post({ cmd: 'set-bounds', bounds: norm.clip, nodes: norm.nodes || null, label: norm.label });
-    updateCoordsLabel(norm.clip);
-  }
-
-  function updateCoordsLabel(clip) {
-    var coordsEl = document.getElementById('sim-coords');
-    if (!coordsEl || !clip) return;
-    var cx = (clip.xMin + clip.xMax) / 2;
-    var cy = (clip.yMin + clip.yMax) / 2;
-    var lat = ORIGIN_LAT + cy / M_PER_DEG_LAT;
-    var lon = ORIGIN_LON + cx / M_PER_DEG_LON;
-    coordsEl.textContent = 'Lat: ' + lat.toFixed(4) + ' | Lng: ' + lon.toFixed(4);
-  }
-
-  /**
-   * Ensure the iframe is loaded (first call) or push new bounds (later
-   * calls). boundsInfo: { south, north, west, east, nodes?, label? }.
-   */
-  function ensureLoaded(boundsInfo, day) {
-    if (boundsInfo) lastBoundsInfo = boundsInfo;
-    if (day !== null && day !== undefined && isFinite(day)) lastDay = day;
-    if (viewMode !== 'embed' || !frame) return;
-    if (!frame.src || frame.src === '' || frame.getAttribute('src') === '') {
-      var base = useDevServer ? DEV_BASE : getBuildBase();
-      readyReceived = false;
-      frame.src = buildEmbedUrl(base, lastBoundsInfo, lastDay);
-      armReadyTimer();
-    } else if (readyReceived) {
-      pushBounds(lastBoundsInfo);
-      setDay(lastDay);
+  function bindRetry(slot) {
+    if (!slot.fallbackEl) return;
+    var btn = slot.fallbackEl.querySelector('.sim-embed-retry-btn');
+    if (btn) {
+      btn.addEventListener('click', function () { retrySlot(slot); });
     }
   }
 
   function init() {
     if (isInitialized) return;
     isInitialized = true;
-    frame = document.getElementById('sim-embed-frame');
-    fallbackEl = document.getElementById('sim-embed-fallback');
-    mapEl = document.getElementById('sim-maplibre-map');
-    btnEmbed = document.getElementById('sim-view-embed');
-    btnMap = document.getElementById('sim-view-map');
+    Object.keys(slots).forEach(function (name) {
+      var slot = slots[name];
+      slot.frame = document.getElementById(slot.frameId);
+      slot.fallbackEl = document.getElementById(slot.fallbackId);
+      bindRetry(slot);
+    });
+    window.addEventListener('message', onMessage);
+    // Lazy: slots load on first show of their tab (onSlotShown), so cold
+    // dashboard start pays no WebGL cost for views never opened.
+    console.log('[SIM_EMBED] Initialized (dual slot sim+forge, lazy load)');
+  }
 
-    if (btnEmbed) {
-      btnEmbed.addEventListener('click', function () { setViewMode('embed'); });
+  // Called when a tab becomes visible: lazy-load once, then no-op. The
+  // hidden slot needs no pause: display:none suspends its frame loop, and
+  // pause commands would halt the SHARED engine clock for both slots.
+  function onSlotShown(slotName) {
+    var slot = slots[slotName];
+    if (!slot || !slot.frame) return;
+    if (!slot.loadedOnce || !slot.frame.src) {
+      ensureLoaded(slotName, slot.lastBoundsInfo, slot.lastDay);
     }
-    if (btnMap) {
-      btnMap.addEventListener('click', function () { setViewMode('map'); });
-    }
-    window.addEventListener('message', onChildMessage);
-
-    applyViewMode();
-    // Load lazily on first SIM tab visit so cold dashboard start pays nothing
-    // when the operator never opens the tab.
-    console.log('[SIM_EMBED] Initialized (lazy load on first SIM tab visit)');
   }
 
-  // --- Parent control surface (called by sim-tab.js) ---
-
-  function setView(pitchDeg, bearingDeg) {
-    post({ cmd: 'set-view', pitchDeg: pitchDeg, bearingDeg: bearingDeg });
-  }
-
-  function setExag(value) {
-    post({ cmd: 'set-exag', value: value });
-  }
-
-  function recenter() {
-    var norm = normalizeBounds(lastBoundsInfo);
-    post({ cmd: 'recenter', bounds: norm.clip });
-  }
-
-  var lastPostedDay = null;
-
-  function setDay(day) {
-    if (day === null || day === undefined || !isFinite(day)) return;
-    lastDay = day;
-    // The parent timeline ticks sub-day steps while playing; only post when
-    // the displayed whole day actually changes.
-    var rounded = Math.round(day);
-    if (rounded === lastPostedDay) return;
-    lastPostedDay = rounded;
-    post({ cmd: 'set-day', day: rounded });
-  }
-
-  /**
-   * Map a dashboard scenario type onto a visible ground event at the
-   * selection centre. The :8010 consequence forecast still runs as before;
-   * this makes the 3D ground move with it.
-   */
-  function triggerScenario(scenarioType, daysAhead) {
-    var norm = normalizeBounds(lastBoundsInfo);
-    var cx = 0;
-    var cy = 0;
-    if (norm.clip) {
-      cx = (norm.clip.xMin + norm.clip.xMax) / 2;
-      cy = (norm.clip.yMin + norm.clip.yMax) / 2;
-    }
-    var span = norm.clip ? Math.max(norm.clip.xMax - norm.clip.xMin, norm.clip.yMax - norm.clip.yMin) : 200;
-    var rad = Math.min(140, Math.max(40, span * 0.35));
-    var t = String(scenarioType || 'crack').toLowerCase();
-    var type = 'tilt';
-    var sev = 0.5;
-    if (t === 'sudden_sinking' || t === 'sink') {
-      type = 'collapse';
-      sev = 0.75;
-    } else if (t === 'edge_collapse' || t === 'collapse') {
-      type = 'collapse';
-      sev = 1.5;
-      rad = Math.min(160, Math.max(60, span * 0.45));
-    }
-    void daysAhead;
-    post({ cmd: 'trigger', type: type, cx: Math.round(cx * 10) / 10, cy: Math.round(cy * 10) / 10, sev: sev, rad: Math.round(rad) });
-  }
-
-  function clearSelection() {
-    lastBoundsInfo = null;
-    post({ cmd: 'set-bounds', bounds: null, nodes: null, label: null });
-    var coordsEl = document.getElementById('sim-coords');
-    if (coordsEl) coordsEl.textContent = 'Lat: 18.6435 | Lng: 79.5725';
+  function onSlotHidden(_slotName) {
+    // Intentional no-op (see onSlotShown).
   }
 
   return {
     init: init,
     ensureLoaded: ensureLoaded,
-    setViewMode: setViewMode,
-    getViewMode: function () { return viewMode; },
-    isEmbedReady: function () { return readyReceived && viewMode === 'embed'; },
-    setView: setView,
-    setExag: setExag,
-    recenter: recenter,
-    setDay: setDay,
-    triggerScenario: triggerScenario,
-    clearSelection: clearSelection,
+    onSlotShown: onSlotShown,
+    onSlotHidden: onSlotHidden,
     normalizeBounds: normalizeBounds,
-    latLonToXy: latLonToXy
+    latLonToXy: latLonToXy,
+    setView: function (slotName, pitchDeg, bearingDeg) {
+      var slot = slots[slotName];
+      if (slot) postToSlot(slot, { cmd: 'set-view', pitchDeg: pitchDeg, bearingDeg: bearingDeg });
+    },
+    setExag: function (slotName, value) {
+      var slot = slots[slotName];
+      if (slot) postToSlot(slot, { cmd: 'set-exag', value: value });
+    },
+    recenter: function (slotName, boundsInfo) {
+      var slot = slots[slotName];
+      if (!slot) return;
+      if (boundsInfo !== undefined) {
+        var norm = normalizeBounds(boundsInfo);
+        postToSlot(slot, { cmd: 'recenter', bounds: norm.clip });
+      } else {
+        postToSlot(slot, { cmd: 'recenter' });
+      }
+    },
+    setDay: function (day) {
+      Object.keys(slots).forEach(function (name) {
+        var slot = slots[name];
+        if (day !== null && day !== undefined && isFinite(day)) slot.lastDay = day;
+        postToSlot(slot, { cmd: 'set-day', day: Math.round(day) });
+      });
+    },
+    selectNode: function (slotName, id) {
+      var slot = slots[slotName];
+      if (slot) postToSlot(slot, { cmd: 'select-node', id: id });
+    },
+    triggerScenario: function (slotName, type, cx, cy, sev, rad, ppv, durS) {
+      var slot = slots[slotName];
+      if (!slot) return;
+      var cmd = { cmd: 'trigger', type: type, cx: cx, cy: cy, sev: sev, rad: rad };
+      if (ppv !== undefined && ppv !== null && isFinite(ppv)) cmd.ppv = ppv;
+      if (durS !== undefined && durS !== null && isFinite(durS)) cmd.durS = durS;
+      postToSlot(slot, cmd);
+    },
+    setCracks: function (slotName, segments) {
+      var slot = slots[slotName];
+      if (slot) postToSlot(slot, { cmd: 'set-cracks', segments: segments || [] });
+    },
+    clearSelection: function (slotName) {
+      var slot = slots[slotName];
+      if (!slot) return;
+      slot.lastBoundsInfo = null;
+      slot.lastNorm = null;
+      postToSlot(slot, { cmd: 'set-bounds', bounds: null, nodes: null, label: null });
+      postToSlot(slot, { cmd: 'set-cracks', segments: [] });
+      postToSlot(slot, { cmd: 'recenter', bounds: null });
+    },
+    getStatus: function (slotName) {
+      var slot = slots[slotName];
+      return slot ? slot.lastStatus : null;
+    },
+    getSlotInfo: function (slotName) {
+      var slot = slots[slotName];
+      if (!slot) return null;
+      return {
+        loaded: slot.loadedOnce,
+        ready: slot.readyReceived,
+        day: slot.lastDay,
+        clip: slot.lastNorm ? slot.lastNorm.clip : null,
+        nodes: slot.lastNorm ? slot.lastNorm.nodes : null,
+        label: slot.lastNorm ? slot.lastNorm.label : null,
+        src: slot.frame ? String(slot.frame.src || '') : ''
+      };
+    },
+    getCommands: function (slotName) {
+      var slot = slots[slotName];
+      if (!slot) return [];
+      var queued = (slot.queue || []).map(function (c) { return c.cmd; });
+      var logged = (slot.cmdLog || []).map(function (e) { return e.cmd; });
+      return queued.concat(logged);
+    },
+    isReady: function (slotName) {
+      var slot = slots[slotName];
+      return slot ? slot.readyReceived : false;
+    }
   };
 })();
 

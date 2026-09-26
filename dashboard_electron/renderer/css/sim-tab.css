@@ -838,7 +838,8 @@
 /* Embedded 3D subsidence viewport (simulation/frontend ?embed=1).
    Covers the MapLibre canvas; HUD, banners and the loading overlay (z-index
    >= 20) stay above it. */
-#sim-embed-frame {
+#sim-embed-frame,
+#forge-embed-frame {
   position: absolute;
   top: 0;
   left: 0;
@@ -849,8 +850,7 @@
   z-index: 5;
 }
 
-/* Embed fallback notice. Full-cover while probing, collapses to a dismissible
-   top strip once the MapLibre view takes over. */
+/* Embed fallback notice (per slot). Full-cover card + RETRY while probing. */
 .sim-embed-fallback {
   position: absolute;
   top: 0;
@@ -858,8 +858,10 @@
   right: 0;
   bottom: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   background: rgba(5, 9, 13, 0.92);
   z-index: 15;
   padding: 24px;
@@ -901,4 +903,276 @@
   pointer-events: auto;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
 }
+
+/* S3 Gating Banner */
+.sim-gate-banner {
+  position: absolute;
+  top: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 120;
+  background: rgba(30, 18, 8, 0.95);
+  border: 1px solid #FF9800;
+  border-left: 4px solid #FFA500;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.7);
+  padding: 8px 16px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #FFE082;
+  font-size: 11.5px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+}
+.sim-gate-icon {
+  font-size: 14px;
+}
+
+/* S3 Lab Offline Banner */
+.sim-lab-down-banner {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 115;
+  background: rgba(40, 12, 12, 0.95);
+  border: 1px solid #FF5252;
+  border-left: 4px solid #FF1744;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.7);
+  padding: 8px 16px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #FF8A80;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+}
+
+/* S3 Mini Dashboard: Sandbox Nodes List */
+.sim-node-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 7px;
+  background: rgba(18, 28, 34, 0.6);
+  border: 1px solid var(--border-bevel-dark);
+  border-radius: 2px;
+  margin-bottom: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sim-node-item:hover {
+  background: rgba(0, 230, 118, 0.08);
+  border-color: #00E676;
+}
+.sim-node-item.selected {
+  background: rgba(0, 230, 118, 0.14);
+  border-color: #00E676;
+}
+.sim-node-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px currentColor;
+}
+.sim-node-readings {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 9.5px;
+  color: #A4B8C4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sim-node-metric-val {
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+/* S3 In-Tab Sandbox Notifications Panel */
+#sim-notifications-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 140px;
+  min-height: 80px;
+}
+#sim-notifications-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sim-notif-item {
+  background: rgba(26, 22, 16, 0.7);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-left: 3px solid #FFA500;
+  border-radius: 2px;
+  padding: 4px 6px;
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+.sim-notif-item.danger {
+  border-left-color: #FF5252;
+  border-color: rgba(255, 82, 82, 0.3);
+  background: rgba(36, 16, 16, 0.7);
+}
+.sim-notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 8.5px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+.sim-notif-badge {
+  font-weight: bold;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: rgba(255, 165, 0, 0.2);
+  color: #FFA500;
+  font-family: monospace;
+}
+.sim-notif-badge.danger {
+  background: rgba(255, 82, 82, 0.2);
+  color: #FF5252;
+}
+.sim-notif-tag {
+  color: #00E676;
+  font-family: monospace;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   FORGE TAB (Scenario Forge — creation lab), 3 columns:
+   Left #sim-left controls (shared styles above) | Middle #forge-middle
+   3D region view | Right #forge-right dashboard (health + clones +
+   feed + results). SIMULATION tab keeps #sim-viewport + #sim-right.
+   ============================================================ */
+#tab-forge {
+  display: none;
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-panel);
+  font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  color: var(--text-primary);
+}
+
+.forge-container {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Middle: FORGE 3D region view */
+#forge-middle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg-map);
+  overflow: hidden;
+  border-right: 2px solid var(--border-bevel-dark);
+}
+
+#forge-maplibre-map {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#forge-middle.forge-live-lit {
+  box-shadow: inset 0 0 16px rgba(0, 230, 118, 0.22);
+}
+
+/* Right: FORGE dashboard column (360px, stacked sections) */
+#forge-right {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  box-shadow: inset 1px 0 0 var(--border-bevel-light);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 5;
+}
+
+#forge-health-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  max-height: 220px;
+  border-bottom: 2px solid var(--border-bevel-dark);
+  overflow: hidden;
+}
+
+#forge-health-body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-content: flex-start;
+}
+
+.forge-health-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: Consolas, monospace;
+  font-size: 9.5px;
+  font-weight: bold;
+  color: var(--text-primary);
+  background: var(--bg-chrome);
+  border: 1px solid var(--border-bevel-dark);
+  border-radius: 2px;
+  padding: 2px 5px 2px 3px;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.forge-health-dot i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+#tab-forge #sim-inspector-panel {
+  flex-shrink: 0;
+  max-height: 300px;
+  min-height: 120px;
+}
+
+#tab-forge #sim-scenario-result-panel {
+  flex: 1;
+  min-height: 220px;
+}
+
+/* SIM data inspector (selection-proof district readings) */
+#sim-data-inspector-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 

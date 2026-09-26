@@ -95,6 +95,21 @@ export interface Perturbation {
 }
 
 /**
+ * One crack line segment in app mine-frame metres (x east / y north from the
+ * panel centre — the lab's panel x0 minus half the panel length, panel y0 as
+ * is). Rendered as a ground-break overlay, driven by the dashboard embed
+ * bridge (`set-cracks`); cleared by sending an empty list.
+ */
+export interface CrackLine {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  width_mm: number;
+  isNew: boolean;
+}
+
+/**
  * One node's per-tick reading.
  *
  * Every channel is `number | null`, and null is LOAD-BEARING: it means this

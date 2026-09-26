@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify:physics": "vite-node scripts/verify_bowl_physics.mjs"
+    "verify:physics": "vite-node scripts/verify_bowl_physics.mjs",
+    "verify:embed": "vite-node scripts/verify_embed_slot.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

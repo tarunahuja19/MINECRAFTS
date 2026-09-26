@@ -1,13 +1,13 @@
 'use strict';
 
 /**
- * send-to-sim.js — Bridge 2D/3D Selection to Simulation Sandbox
+ * send-to-sim.js — Bridge SIM-Channel Selection to the FORGE Sandbox
  *
- * Controls #btn-send-to-sim:
- * - Enabled only when selectionStore.has() is true
- * - Badge shows node count in the current selection
- * - On click: deep-clones the selection (JSON clone of bounds + resolved node records),
- *   switches to #tab-sim, and emits bus 'sim-sandbox-create' with the clone payload.
+ * Controls #btn-send-to-sim (manual re-send; SIM-marquee completion auto-sends):
+ * - Enabled only when selectionStore.has('sim') is true (3D-channel ignored)
+ * - Badge shows node count in the current SIM selection
+ * - On send: deep-clones the selection (JSON clone of bounds + resolved node records),
+ *   switches to #tab-forge, and emits bus 'sim-sandbox-create' with the clone payload.
  * - Touches NOTHING on the live dashboard map (no troughOverlay, no mapView camera calls).
  */
 var sendToSim = (function () {
@@ -141,11 +141,14 @@ var sendToSim = (function () {
       return;
     }
 
+    // SIM channel only: a 3D-channel event arg must not enable this bridge.
+    if (selection && selection.channel === '3d') selection = null;
     var hasSelection = (typeof selectionStore !== 'undefined' && typeof selectionStore.has === 'function')
-      ? selectionStore.has()
+      ? selectionStore.has('sim')
       : Boolean(selection);
 
-    var sel = selection || ((hasSelection && typeof selectionStore !== 'undefined' && typeof selectionStore.get === 'function') ? selectionStore.get() : null);
+    var sel = (selection && selection.channel !== '3d' ? selection : null) ||
+      ((hasSelection && typeof selectionStore !== 'undefined' && typeof selectionStore.get === 'function') ? selectionStore.get('sim') : null);
 
     var count = 0;
     if (hasSelection && sel) {
@@ -156,22 +159,27 @@ var sendToSim = (function () {
       }
     }
 
-    btn.disabled = !hasSelection;
-    btn.classList.toggle('disabled', !hasSelection);
-    btn.classList.toggle('has-selection', hasSelection);
+    // Zero nodes = nothing to send: the button stays disabled and shows no
+    // number, exactly like the no-selection state.
+    var canSend = hasSelection && count > 0;
+    btn.disabled = !canSend;
+    btn.classList.toggle('disabled', !canSend);
+    btn.classList.toggle('has-selection', canSend);
 
     if (badge) {
       badge.textContent = String(count);
-      badge.style.display = hasSelection ? 'inline-block' : 'none';
-      if (hasSelection) {
+      badge.style.display = canSend ? 'inline-block' : 'none';
+      if (canSend) {
         badge.title = count + ' node' + (count === 1 ? '' : 's') + ' in selection';
+      } else {
+        badge.title = '';
       }
     }
 
-    if (hasSelection) {
-      btn.title = 'Send selection (' + count + ' node' + (count === 1 ? '' : 's') + ') to Simulation Sandbox';
+    if (canSend) {
+      btn.title = 'Send selection (' + count + ' node' + (count === 1 ? '' : 's') + ') to the FORGE Sandbox';
     } else {
-      btn.title = 'Send Selection to Simulation Sandbox (Select an area on the 2D map first)';
+      btn.title = 'Send Selection to FORGE Sandbox (Draw a SIM box on the 2D map first)';
     }
   }
 
@@ -234,13 +242,13 @@ var sendToSim = (function () {
 
   function send() {
     var hasSelection = (typeof selectionStore !== 'undefined' && typeof selectionStore.has === 'function')
-      ? selectionStore.has()
+      ? selectionStore.has('sim')
       : false;
 
     if (!hasSelection) return null;
 
     var sel = (typeof selectionStore !== 'undefined' && typeof selectionStore.get === 'function')
-      ? selectionStore.get()
+      ? selectionStore.get('sim')
       : null;
 
     if (!sel) return null;
@@ -286,17 +294,17 @@ var sendToSim = (function () {
 
     var clonedPayload = JSON.parse(JSON.stringify(cloneSource));
 
-    // Switch to #tab-sim (touching NOTHING on the dashboard map)
-    var simTabBtn = document.querySelector('#tab-bar .tab-btn[data-tab="sim"]');
-    if (simTabBtn) {
-      simTabBtn.click();
+    // Switch to #tab-forge (touching NOTHING on the dashboard map)
+    var forgeTabBtn = document.querySelector('#tab-bar .tab-btn[data-tab="forge"]');
+    if (forgeTabBtn) {
+      forgeTabBtn.click();
     } else {
       document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
       document.querySelectorAll('.tab-view').forEach(function (v) { v.style.display = 'none'; });
-      var tabSim = document.getElementById('tab-sim');
-      if (tabSim) tabSim.style.display = 'flex';
+      var tabForge = document.getElementById('tab-forge');
+      if (tabForge) tabForge.style.display = 'flex';
       if (typeof simTab !== 'undefined' && typeof simTab.onTabShown === 'function') {
-        simTab.onTabShown();
+        simTab.onTabShown('forge');
       }
     }
 

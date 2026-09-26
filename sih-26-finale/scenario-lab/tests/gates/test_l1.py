@@ -63,6 +63,8 @@ def test_l1_real_run_dir_byte_identical_after_all_scenarios(tmp_path):
         {"day": 172, "segment": "3", "type": "crack", "params": {"days_ahead": 60}},
         {"day": 300, "segment": "5", "type": "sudden_sinking", "params": {"collapse_radius_m": 40}},
         {"day": 300, "segment": "5", "type": "edge_collapse", "params": {"extra_width_m": 25}},
+        {"day": 172, "segment": "3", "type": "tilt", "params": {"tilt_mm_per_m": 5.0, "direction_deg": 0.0, "radius_m": 100.0}},
+        {"day": 172, "segment": "3", "type": "vibration", "params": {}},
         # Also include a refusal case
         {"day": 10, "segment": "1", "type": "crack", "params": {"days_ahead": 10}},
     ]

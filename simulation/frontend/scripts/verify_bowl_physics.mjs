@@ -33,6 +33,8 @@
  */
 
 import { bowlProfile, bowlProfileDerivative, bowlProfileSecondDerivative,
+         rimProfile, rimProfileDerivative, rimProfileSecondDerivative,
+         RIM_PEAK_RATIO, RIM_HEIGHT_FRAC,
          S_MAX_FULL_M, CUMULATIVE_DEPTH_MAX_M,
          LiveGeomechanicsEngine } from '../src/utils/geomechanicsEngine.ts';
 import { depthColor, heightColor, DEPTH_STOPS, HEIGHT_STOPS } from '../src/utils/hypsometry.ts';
@@ -233,6 +235,32 @@ const eDelta  = deltaE(eBefore, eAfter);
 console.log(`   height ramp across a FULL ${S_MAX_FULL_M} m bowl: deltaE=${eDelta.toFixed(2)} (below the 2.3 JND)`);
 console.log(`   composite, same bowl at hT=0.5:       deltaE=${deltaE(compositeColor(0.5, 0), compositeColor(0.5, S_MAX_FULL_M)).toFixed(1)}`);
 ok(eDelta < 2.3, 'confirms absolute height alone cannot show the bowl (deltaE below JND)');
+
+console.log('\n=== HEAVE RING: peaks just outside the void, analytic derivatives match ===');
+for (const R of [40,85,150]) {
+  ok(Math.abs(rimProfile(RIM_PEAK_RATIO*R,R)-RIM_HEIGHT_FRAC)<1e-12,
+     `R=${R} lip peaks at ${RIM_PEAK_RATIO}R with height ${RIM_HEIGHT_FRAC}`);
+  ok(rimProfile(0,R)<1e-4 && rimProfile(3*R,R)<1e-6, `R=${R} lip is ~0 at centre and far field`);
+  for (const d of [0.5*R,1.12*R,1.6*R]) {
+    const h=0.01;
+    const fd1=(rimProfile(d+h,R)-rimProfile(d-h,R))/(2*h);
+    const fd2=(rimProfile(d+h,R)-2*rimProfile(d,R)+rimProfile(d-h,R))/(h*h);
+    const e1=Math.abs(rimProfileDerivative(d,R)-fd1)/(Math.abs(fd1)+1e-12);
+    const e2=Math.abs(rimProfileSecondDerivative(d,R)-fd2)/(Math.abs(fd2)+1e-12);
+    ok(e1<1e-4&&e2<1e-3, `R=${R} d=${d.toFixed(0)} d1err=${(e1*100).toFixed(3)}% d2err=${(e2*100).toFixed(3)}%`);
+  }
+}
+{
+  // The lip lifts the annulus without touching the bowl floor, and the cache
+  // returns bitwise-identical repeats (exact-double keys, never quantised).
+  const eRim=new LiveGeomechanicsEngine();
+  eRim.triggerCollapse(0,0,S_MAX_FULL_M,75,0,10,1e9);
+  const sRim=eRim.evaluatePoint(1.12*75,0,200,1e6), sC=eRim.evaluatePoint(0,0,200,1e6);
+  ok(sRim.elevation>sC.elevation && sRim.rimUpliftM>0.3 && sC.rimUpliftM<0.01,
+     `lip lifts annulus (+${sRim.rimUpliftM.toFixed(2)}m) while floor stays down (${sC.dropDistanceM.toFixed(2)}m)`);
+  const r1=eRim.evaluatePoint(37.5,-12.5,200,1e6), r2=eRim.evaluatePoint(37.5,-12.5,200,1e6);
+  ok(r1.elevation===r2.elevation && r1.tiltMmPerM===r2.tiltMmPerM, 'repeat evaluation bitwise identical (cache exact)');
+}
 
 console.log(fail===0?'\nALL CHECKS PASSED\n':`\n${fail} CHECK(S) FAILED\n`);
 process.exit(fail?1:0);

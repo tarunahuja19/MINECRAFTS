@@ -42,7 +42,7 @@ console.log('  R4 MINE SUBSIDENCE MONITORING SYSTEM - LAUNCHER');
 console.log(`  Root: ${ROOT_DIR}`);
 console.log('=================================================================');
 
-const STACK_PORTS = [1883, 8080, 8085, 8000, 5173];
+const STACK_PORTS = [1883, 8080, 8085, 8000, 5173, 8010];
 const children = [];
 
 function clearPortOccupants(ports = STACK_PORTS) {
@@ -264,6 +264,33 @@ async function main() {
   await waitForHttp('http://127.0.0.1:8000/health', 25000, simProc);
   ok('simulation server healthy - http://127.0.0.1:8000/health');
 
+  // 6. Start Scenario Lab Server (port 8010)
+  say('[5] Scenario Lab server (port 8010)');
+  const labScript = path.join(ROOT_DIR, 'sih-26-finale', 'scenario-lab', 'lab', 'server.py');
+  const labRunDir = path.join(ROOT_DIR, 'sih-26-finale', 'mine-sim', 'out', 'v2-690d');
+  const labProc = spawn(pythonCmd, [
+    labScript,
+    '--port', '8010',
+    '--run', labRunDir
+  ], {
+    cwd: path.join(ROOT_DIR, 'sih-26-finale', 'scenario-lab'),
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      PYTHONPATH: [
+        path.join(ROOT_DIR, 'sih-26-finale', 'mine-sim', 'src'),
+        path.join(ROOT_DIR, 'sih-26-finale', 'scenario-lab'),
+        process.env.PYTHONPATH || ''
+      ].filter(Boolean).join(path.delimiter),
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUTF8: '1',
+      PYTHONUNBUFFERED: '1'
+    }
+  });
+  children.push(labProc);
+  await waitForHttp('http://127.0.0.1:8010/health', 25000, labProc);
+  ok('scenario lab server healthy - http://127.0.0.1:8010/health');
+
   // 6. Start Vite 3D Sandbox Frontend
   say('[5] Sandbox 3D frontend (Vite dev server, port 5173)');
   const localVite = path.join(ROOT_DIR, 'simulation', 'frontend', 'node_modules', '.bin', process.platform === 'win32' ? 'vite.cmd' : 'vite');
@@ -320,6 +347,7 @@ async function main() {
   console.log('-----------------------------------------------------------------');
   say('Stack is up and running! Press Ctrl+C to stop all services.');
   console.log('  Simulation (3D Sandbox):  http://127.0.0.1:5173/');
+  console.log('  Scenario Lab (What-If):   http://127.0.0.1:8010/');
   console.log('  Operator Dashboard:       Electron Window  &  http://127.0.0.1:8085/');
   console.log('  Backend REST & WebSocket: http://localhost:8080');
   console.log('  Physics Sim Engine:       http://127.0.0.1:8000');

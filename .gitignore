@@ -45,3 +45,9 @@ ml_dataset_generator/.venv-train/
 
 # ---- Session transcript dump, not project source ----
 checkout.md
+
+# ---- Map tile cache ----
+dashboard_electron/tiles/
+
+# ---- Root screenshots ----
+Screenshot*.png

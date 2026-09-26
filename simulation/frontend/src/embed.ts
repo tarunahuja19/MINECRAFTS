@@ -9,6 +9,9 @@
  *   day                    — parent mining-day label (display only).
  *   exag                   — initial vertical exaggeration.
  *   label                  — parent selection label (display only).
+ *   slot                   — owning dashboard tab: "sim" or "forge". The FORGE
+ *                            slot is a sandbox view, so engine packet-sync
+ *                            toasts are suppressed there (SIM only).
  *
  * After load, the parent drives the viewport via postMessage commands
  * (`EmbedParentCommand`, source `R4_SIM_EMBED_SOURCE`) so the iframe never
@@ -30,6 +33,7 @@ export interface EmbedParams {
   day: number | null;
   exag: number | null;
   label: string | null;
+  slot: string | null;
 }
 
 export const R4_SIM_EMBED_SOURCE = "r4-sim-embed";
@@ -52,6 +56,16 @@ export type EmbedParentCommand =
       cy: number;
       sev: number;
       rad: number;
+      /** Optional vibration peak (mm/s); engine default when absent. */
+      ppv?: number;
+      /** Optional vibration duration (s); engine default when absent. */
+      durS?: number;
+    }
+  | {
+      source: typeof R4_SIM_EMBED_SOURCE;
+      cmd: "set-cracks";
+      /** Crack segments in app mine-frame metres; empty list clears. */
+      segments: Array<{ x0: number; y0: number; x1: number; y1: number; width_mm: number; isNew: boolean }>;
     };
 
 export type EmbedChildEvent =
@@ -80,6 +94,7 @@ export function parseEmbedParams(search?: string): EmbedParams {
     day: null,
     exag: null,
     label: null,
+    slot: null,
   };
   let params: URLSearchParams;
   try {
@@ -120,6 +135,7 @@ export function parseEmbedParams(search?: string): EmbedParams {
     day: num(params.get("day")),
     exag: num(params.get("exag")),
     label: params.get("label"),
+    slot: params.get("slot"),
   };
 }
 

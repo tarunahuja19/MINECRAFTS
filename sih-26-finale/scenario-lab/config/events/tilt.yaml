@@ -1,0 +1,27 @@
+# Scenario event: directional ground tilt imposed across a zone (WP9 §5).
+# Every value under `inputs` is a SCENARIO INPUT — a user hypothesis, not a measurement at this mine
+# (Invariant 7).
+schema_version: 1
+name: tilt
+title: "Ground tilt"
+plain: "Impose a directional surface tilt over an area to test pole leaning and slope thresholds."
+
+inputs:
+  tilt_mm_per_m:
+    default: 5.0
+    min: 0.1
+    max: 50.0
+    unit: mm/m
+    source: "scenario input — hypothetical surface tilt rate imposed across the zone"
+  direction_deg:
+    default: 0.0
+    min: 0.0
+    max: 360.0
+    unit: deg
+    source: "scenario input — direction azimuth in degrees of maximum downward slope"
+  radius_m:
+    default: 100.0
+    min: 10.0
+    max: 500.0
+    unit: m
+    source: "scenario input — extent around the chosen spot over which the tilt is applied"

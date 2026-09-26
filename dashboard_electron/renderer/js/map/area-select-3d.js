@@ -411,7 +411,7 @@ var areaSelect3D = (function () {
     window.__selectedGridSector = selectionData;
 
     if (typeof selectionStore !== 'undefined' && typeof selectionStore.set === 'function') {
-      selectionStore.set(selectionData);
+      selectionStore.set(selectionData, '3d');
     }
 
     // Launch in 3D tab

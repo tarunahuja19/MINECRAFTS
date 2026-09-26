@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1920">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://127.0.0.1:8085 http://localhost:8085 https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://*.google.com https://s3.amazonaws.com https://*.amazonaws.com; frame-src 'self' https://*.google.com https://*.google.co.in; connect-src 'self' ws://localhost:* http://localhost:* http://127.0.0.1:* https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://s3.amazonaws.com https://*.amazonaws.com blob:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://127.0.0.1:8085 http://localhost:8085 https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://*.google.com https://s3.amazonaws.com https://*.amazonaws.com; frame-src 'self' http://127.0.0.1:* http://localhost:* https://*.google.com https://*.google.co.in; connect-src 'self' ws://localhost:* http://localhost:* http://127.0.0.1:* https://*.arcgisonline.com https://*.basemaps.cartocdn.com https://s3.amazonaws.com https://*.amazonaws.com blob:;">
   <title>R4 Mine Subsidence Dashboard</title>
   <script>
     window.addEventListener('error', function (e) {
@@ -15,6 +15,167 @@
   <link rel="stylesheet" href="css/hmi.css">
   <link rel="stylesheet" href="css/terrain-3d.css">
   <link rel="stylesheet" href="css/sim-tab.css">
+  <style>
+    .sim-canvas-wrap,
+    #sim-maplibre-map {
+      background: #05090D !important;
+    }
+    #btn-sim-close-session:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      border-color: #555 !important;
+      color: #777 !important;
+    }
+    #btn-sim-close-session:hover:not(:disabled) {
+      background: #5A1010;
+      color: #FFF;
+    }
+
+    /* Consequence forecast styles */
+    .sim-consequence-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .sim-consequence-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-bottom: 1px solid var(--border-bevel-dark);
+      padding-bottom: 5px;
+    }
+    .sim-header-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    .sim-consequence-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: #FFFFFF;
+      font-family: Consolas, 'Courier New', monospace;
+      letter-spacing: 0.04em;
+    }
+    .sim-scenario-id {
+      font-size: 11px;
+      font-family: Consolas, 'Courier New', monospace;
+      color: #FFFFFF;
+    }
+    .sim-isolation-tag {
+      font-size: 9.5px;
+      color: #00FF88;
+      font-family: Consolas, 'Courier New', monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+    .sim-sinking-strip {
+      display: grid;
+      gap: 6px;
+      margin: 4px 0;
+    }
+    .sim-strip-3col {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    .sim-strip-2col {
+      grid-template-columns: 1fr 1fr;
+    }
+    .sim-strip-box {
+      background: var(--bg-chrome);
+      border: 1px solid var(--border-bevel-dark);
+      border-radius: 2px;
+      padding: 5px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .sim-strip-label {
+      font-size: 8.5px;
+      font-weight: bold;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .sim-strip-val {
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 11.5px;
+      font-weight: bold;
+      color: #FFFFFF;
+    }
+    .sim-strip-val.negative {
+      color: #FF7777;
+    }
+    .sim-cracks-box {
+      background: var(--bg-chrome);
+      border: 1px solid var(--border-bevel-dark);
+      border-left: 3px solid #00E676;
+      border-radius: 2px;
+      padding: 5px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sim-cracks-label {
+      font-size: 9.5px;
+      font-weight: bold;
+      color: var(--text-secondary);
+    }
+    .sim-cracks-val {
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 12.5px;
+      font-weight: bold;
+      color: #00E676;
+    }
+    .sim-consequence-reason {
+      font-size: 10px;
+      color: var(--text-secondary);
+      font-style: italic;
+      line-height: 1.35;
+      padding: 2px 0;
+    }
+    .sim-section-subtitle {
+      font-size: 10px;
+      font-weight: bold;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .sim-worst-hit-block {
+      margin-top: 4px;
+    }
+    .sim-worst-hit-row {
+      background: rgba(255, 50, 50, 0.12);
+      border: 1px solid #FF4444;
+      border-left: 3px solid #FF3333;
+      color: #FFAAAA;
+      padding: 4px 8px;
+      font-size: 10.5px;
+      font-weight: bold;
+      border-radius: 2px;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sim-worst-hit-label {
+      color: #FFFFFF;
+      font-family: Tahoma, sans-serif;
+    }
+    .sim-worst-hit-tag {
+      color: #FF6666;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+    .sim-worst-hit-empty {
+      font-size: 10px;
+      color: var(--text-secondary);
+      font-style: italic;
+      padding: 3px 0;
+    }
+  </style>
 </head>
 <body>
   <div id="app">
@@ -26,6 +187,7 @@
     <div id="tab-bar">
       <button class="tab-btn active" data-tab="map">MAP</button>
       <button class="tab-btn" data-tab="sim">SIMULATION</button>
+      <button class="tab-btn" data-tab="forge" title="Scenario Forge — build hypothetical crack / sink / collapse events in the isolated sandbox">FORGE</button>
       <button class="tab-btn" data-tab="nodes">NODES</button>
       <button class="tab-btn" data-tab="alarms">ALARMS<span class="tab-badge" id="alarm-badge">0</span></button>
       <button class="tab-btn" data-tab="history">HISTORY</button>
@@ -171,15 +333,9 @@
                         </div>
                         <div class="map-btn-group">
                           <button class="hud-btn tool-btn" id="btn-cursor-mode" title="3D Area Selection Tool (ON: Click & drag to select 3D area, OFF: Navigate 2D map)">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:block;">
-                              <path d="M5 2 L5 18 L9.2 14 L13.5 22 L16.2 20.6 L11.8 12.6 Z"/>
-                            </svg>
                             <span class="hud-btn-label">3D</span>
                           </button>
                           <button class="hud-btn tool-btn" id="btn-sim-select" title="SIM Area Selection Tool (ON: drag to select, auto-sends to Simulation Sandbox)">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:block;">
-                              <path d="M5 2 L5 18 L9.2 14 L13.5 22 L16.2 20.6 L11.8 12.6 Z"/>
-                            </svg>
                             <span class="hud-btn-label">SIM</span>
                             <span class="hud-badge" id="sim-select-badge" style="display:none">0</span>
                           </button>
@@ -458,75 +614,7 @@
       <!-- SIMULATION TAB -->
       <div id="tab-sim" class="tab-view" style="display:none; flex:1; height:100%;">
         <div class="sim-container">
-          <!-- Left Column: SIM CONTROL (320px) -->
-          <div id="sim-left">
-            <div class="panel-header">
-              <span>SIMULATION CONTROL</span>
-              <span class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">LAB 8010</span>
-            </div>
-            <div class="sim-control-body">
-              <!-- Day Slider Section -->
-              <div class="sim-section-box">
-                <div class="sim-section-title">TEMPORAL DRIFT CONTROL</div>
-                <div class="sim-row">
-                  <span class="sim-label">MINING DAY:</span>
-                  <span class="sim-val-display" id="sim-day-display">Day 0</span>
-                </div>
-                <input type="range" id="sim-day-slider" class="sim-slider" min="0" max="690" step="1" value="0">
-                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-secondary); font-family:monospace;">
-                  <span>0d (INIT)</span>
-                  <span>172d (BENCH)</span>
-                  <span>690d (FINAL)</span>
-                </div>
-              </div>
-
-              <!-- Spatial Domain Section -->
-              <div class="sim-section-box">
-                <div class="sim-section-title">SPATIAL SECTOR / ZONE</div>
-                <div class="sim-row" style="margin-bottom:4px;">
-                  <span class="sim-label">MONITORING SECTOR:</span>
-                </div>
-                <select id="sim-segment-select" class="sim-select">
-                  <option value="full">Full district</option>
-                  <option value="face">Face position</option>
-                  <option value="3" selected>Zone 3 (Active Face)</option>
-                </select>
-                <label class="sim-checkbox-label" style="margin-top:4px;">
-                  <input type="checkbox" id="sim-isolate-checkbox">
-                  <span>Isolate view to sector</span>
-                </label>
-              </div>
-
-              <!-- Freeze Action -->
-              <button id="btn-sim-freeze" class="sim-btn-freeze">FREEZE</button>
-
-              <!-- Hypothetical Event Selection -->
-              <div class="sim-section-box">
-                <div class="sim-section-title">HYPOTHETICAL EVENT INJECTION</div>
-                <div class="sim-scenario-grid">
-                  <button class="sim-scenario-btn active" data-type="crack">CRACK</button>
-                  <button class="sim-scenario-btn" data-type="sudden_sinking">SINK</button>
-                  <button class="sim-scenario-btn" data-type="edge_collapse">COLLAPSE</button>
-                  <button class="sim-scenario-btn" data-type="blast" disabled title="W5/W6">BLAST</button>
-                  <button class="sim-scenario-btn" data-type="sinkhole" disabled title="W5/W6" style="grid-column: span 2;">SINKHOLE</button>
-                </div>
-              </div>
-
-              <!-- Days Ahead Projection -->
-              <div class="sim-section-box">
-                <div class="sim-section-title">FORWARD PROJECTION HORIZON</div>
-                <div class="sim-row">
-                  <span class="sim-label">DAYS AHEAD:</span>
-                  <input type="number" id="sim-days-ahead" class="sim-input-number" min="1" max="365" value="60">
-                </div>
-              </div>
-
-              <!-- Run Scenario Button -->
-              <button id="btn-sim-run-scenario" class="sim-btn-run">RUN SCENARIO</button>
-            </div>
-          </div>
-
-          <!-- Center Column: SIM VIEWPORT -->
+          <!-- Center Column: SIM VIEWPORT (creation controls live in the FORGE tab) -->
           <div id="sim-viewport">
             <!-- 3D Toolbar -->
             <div class="sim-toolbar">
@@ -544,10 +632,7 @@
 
               <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 4px;"></div>
 
-              <button id="sim-recenter-btn" class="sim-timeline-btn" title="Re-fit sim camera to session bounds">⤢ RECENTER</button>
-
-              <!-- Sandbox Session Chip -->
-              <div id="sim-session-chip-container" style="display:inline-flex; align-items:center; margin-left:8px;"></div>
+              <button id="sim-recenter-btn" class="sim-timeline-btn" title="Re-fit camera to the full district">⤢ RECENTER</button>
 
               <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
                 <span id="sim-coords" style="font-family:monospace; font-size:10px; color:var(--text-mono);">Lat: 18.6435 | Lng: 79.5725</span>
@@ -555,8 +640,16 @@
             </div>
 
             <!-- Viewport Canvas Wrap -->
-            <div class="sim-canvas-wrap">
-              <div id="sim-maplibre-map"></div>
+            <div class="sim-canvas-wrap" style="background:#05090D;">
+              <!-- 3D subsidence viewport (simulation/frontend ?embed=1), full
+                   district. The HUD below stays on top. -->
+              <iframe id="sim-embed-frame" title="3D subsidence simulation viewport"></iframe>
+
+              <!-- Embed fallback notice (hidden unless no 3D source answers) -->
+              <div id="sim-embed-fallback" class="sim-embed-fallback" style="display:none;">
+                <div class="sim-embed-fallback-body"></div>
+                <button class="sim-timeline-btn sim-embed-retry-btn">RETRY</button>
+              </div>
 
               <!-- HUD Overlay (SECTOR, FACE, DEEPEST, NODES MOVING) -->
               <div class="sim-hud-stats">
@@ -578,54 +671,8 @@
                 </div>
               </div>
 
-              <!-- Floating Scenario Banner -->
-              <div id="sim-scenario-banner" class="sim-scenario-banner" style="display:none;">
-                HYPOTHETICAL SCENARIO LAB &bull; FROZEN AT DAY <span id="sim-banner-day">0</span> (WHAT-IF MODE)
-              </div>
-
-              <!-- Floating Sandbox Banner -->
-              <div id="sim-sandbox-banner" class="sim-sandbox-banner" style="display:none;">
-                <span class="sim-sandbox-pulse-dot"></span>
-                <span>SANDBOX ACTIVE &bull; SESSION <b id="sim-sandbox-session-id">--</b> &bull; DAY <span id="sim-sandbox-day">0</span> &bull; <span id="sim-sandbox-nodes-count">0</span> CLONED NODES</span>
-              </div>
-
-              <!-- Loading Overlay with Stages (Cloning -> Camera -> Trough -> Nodes -> Links) -->
-              <div id="sim-loading-overlay" class="sim-loading-overlay" style="display:none;">
-                <div class="sim-loading-card">
-                  <div class="sim-loading-header">
-                    <div class="sim-loading-spinner"></div>
-                    <div class="sim-loading-title">INITIALIZING SIMULATION SANDBOX</div>
-                  </div>
-                  <div class="sim-loading-subtitle" id="sim-loading-status-text">Preparing isolated clone environment...</div>
-                  <div class="sim-loading-stages" id="sim-loading-stages">
-                    <div class="sim-stage-item" data-stage="cloning">
-                      <span class="sim-stage-icon">○</span>
-                      <span class="sim-stage-label">Cloning</span>
-                      <span class="sim-stage-detail">Deep-copying selected node records</span>
-                    </div>
-                    <div class="sim-stage-item" data-stage="camera">
-                      <span class="sim-stage-icon">○</span>
-                      <span class="sim-stage-label">Camera</span>
-                      <span class="sim-stage-detail">Framing MapLibre 3D camera to selection bounds</span>
-                    </div>
-                    <div class="sim-stage-item" data-stage="trough">
-                      <span class="sim-stage-icon">○</span>
-                      <span class="sim-stage-label">Trough</span>
-                      <span class="sim-stage-detail">Pulling :8010 subsidence &amp; crack models</span>
-                    </div>
-                    <div class="sim-stage-item" data-stage="nodes">
-                      <span class="sim-stage-icon">○</span>
-                      <span class="sim-stage-label">Nodes</span>
-                      <span class="sim-stage-detail">Rendering markers from cloned nodes</span>
-                    </div>
-                    <div class="sim-stage-item" data-stage="links">
-                      <span class="sim-stage-icon">○</span>
-                      <span class="sim-stage-label">Links</span>
-                      <span class="sim-stage-detail">Synthesizing neighbour mesh &amp; gateway N31 links</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <!-- NOTE: scenario/sandbox/gate/lab banners + loading overlay moved to
+                   the FORGE middle view. SIM is a selection-proof district viewer. -->
             </div>
 
             <!-- Bottom Timeline Scrub Bar -->
@@ -634,8 +681,6 @@
               <div class="sim-speed-group">
                 <button class="sim-timeline-btn sim-speed-btn active" data-speed="1">1x</button>
                 <button class="sim-timeline-btn sim-speed-btn" data-speed="10">10x</button>
-                <button class="sim-timeline-btn sim-speed-btn" data-speed="50">50x</button>
-                <button class="sim-timeline-btn sim-speed-btn" data-speed="100">100x</button>
               </div>
 
               <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 2px;"></div>
@@ -657,37 +702,273 @@
             </div>
           </div>
 
-          <!-- Right Column: INSPECTOR & SCENARIO RESULT (340px) -->
+          <!-- Right Column: DATA INSPECTOR (340px). Clone dashboard + notifications
+               moved to the FORGE right column. -->
           <div id="sim-right">
-            <!-- Empty state until day is frozen -->
+            <!-- Empty state until a node pin is clicked -->
             <div id="sim-empty-state" class="sim-empty-state">
               <div>
-                <div style="font-size:13px; color:#A4B8C4; margin-bottom:6px;">FREEZE A DAY TO BEGIN</div>
-                <div style="font-size:10.5px; font-weight:normal; color:var(--text-secondary); line-height:1.4;">
-                  Select a mining day &amp; sector on the left, then click <b>FREEZE</b> to inspect geological state and simulate failure scenarios.
+                <div id="sim-empty-state-title" style="font-size:13px; color:#A4B8C4; margin-bottom:6px;">FULL DISTRICT — DATA VIEW</div>
+                <div id="sim-empty-state-msg" style="font-size:10.5px; font-weight:normal; color:var(--text-secondary); line-height:1.4;">
+                  Click any node pin to inspect its live readings. Drag the timeline or press <b>PLAY</b> to scrub the ground truth. Selections never change this tab.
                 </div>
               </div>
             </div>
 
-            <!-- Content container shown once day is frozen -->
+            <!-- Content container shown once a node pin is clicked -->
             <div id="sim-right-content" class="sim-right-content" style="display:none;">
-              <!-- Top: Node Telemetry Inspector -->
-              <div id="sim-inspector-panel">
+              <div id="sim-data-inspector-panel">
                 <div class="panel-header">
-                  <span>SENSOR TELEMETRY INSPECTOR</span>
+                  <span id="sim-data-inspector-title">NODE DATA</span>
+                  <span class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">LIVE DATA</span>
                 </div>
-                <div id="sim-inspector-body" class="sim-panel-scroll">
-                  <!-- Populated when user clicks sensor pins or freezes -->
+                <div id="sim-data-inspector-body" class="sim-panel-scroll">
+                  <!-- Populated when user clicks a node pin -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORGE TAB (Scenario Forge — creation lab; SIMULATION tab stays a pure data viewer) -->
+      <div id="tab-forge" class="tab-view" style="display:none; flex:1; height:100%;">
+        <div class="forge-container">
+          <!-- Left Column: FORGE CONTROL (320px). Same element IDs as before the
+               split, so sim-tab.js drives this tab with no selector changes. -->
+          <div id="sim-left">
+            <div class="panel-header">
+              <span>SCENARIO FORGE</span>
+              <span class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">LAB 8010</span>
+            </div>
+            <div class="sim-control-body">
+              <!-- Day Slider Section -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">TEMPORAL DRIFT CONTROL</div>
+                <div class="sim-row">
+                  <span class="sim-label">MINING DAY:</span>
+                  <span class="sim-val-display" id="sim-day-display">Day 0</span>
+                </div>
+                <input type="range" id="sim-day-slider" class="sim-slider" min="0" max="690" step="1" value="0">
+                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-secondary); font-family:monospace;">
+                  <span>0d (INIT)</span>
+                  <span>172d (BENCH)</span>
+                  <span>690d (FINAL)</span>
                 </div>
               </div>
 
-              <!-- Bottom: Scenario Result Display -->
-              <div id="sim-scenario-result-panel">
-                <div class="panel-header" style="background:#1F1212; border-top:1px solid var(--border-bevel-dark);">
-                  <span style="color:#FFB4B4;">SCENARIO CONSEQUENCE ANALYSIS</span>
+              <!-- Region comes ONLY from the MAP SIM-box selection (no zone picker) -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">EXPERIMENT REGION</div>
+                <div id="sim-region-readout" style="font-size:10.5px; color:var(--text-secondary); line-height:1.5; font-family:monospace;">
+                  No region — draw a SIM box on MAP.
                 </div>
-                <div id="sim-scenario-result-body" class="sim-panel-scroll">
-                  <!-- Populated when scenario is run or refusal returned -->
+              </div>
+
+              <!-- Freeze Action (removed from FORGE flow) -->
+              <button id="btn-sim-freeze" class="sim-btn-freeze" style="display:none;">FREEZE</button>
+
+              <!-- Hypothetical Event Selection -->
+              <div class="sim-section-box">
+                <div class="sim-section-title">HYPOTHETICAL EVENT INJECTION</div>
+                <div class="sim-scenario-grid">
+                  <button class="sim-scenario-btn active" data-type="crack">CRACK</button>
+                  <button class="sim-scenario-btn" data-type="tilt">TILT</button>
+                  <button class="sim-scenario-btn" data-type="vibration">VIBRATION</button>
+                  <button class="sim-scenario-btn" data-type="sudden_sinking">CAVE-IN</button>
+                </div>
+              </div>
+
+              <!-- Per-Event Parameters -->
+              <div class="sim-section-box" id="sim-event-params-section">
+                <div class="sim-section-title">EVENT PARAMETERS</div>
+                <!-- CRACK params -->
+                <div id="sim-params-crack" class="sim-event-param-group">
+                  <div class="sim-row" style="margin-bottom:4px;">
+                    <span class="sim-label">DAYS AHEAD:</span>
+                    <input type="number" id="sim-days-ahead" class="sim-input-number" min="1" max="180" value="30">
+                  </div>
+                  <div class="sim-row">
+                    <span class="sim-label">RADIUS:</span>
+                    <input type="number" id="sim-crack-radius" class="sim-input-number" min="10" max="500" value="150" step="10">
+                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">m</span>
+                  </div>
+                </div>
+                <!-- TILT params -->
+                <div id="sim-params-tilt" class="sim-event-param-group" style="display:none;">
+                  <div class="sim-row" style="margin-bottom:4px;">
+                    <span class="sim-label">TILT RATE:</span>
+                    <input type="number" id="sim-tilt-rate" class="sim-input-number" min="0.1" max="50" value="5.0" step="0.5">
+                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">mm/m</span>
+                  </div>
+                  <div class="sim-row" style="margin-bottom:4px;">
+                    <span class="sim-label">DIRECTION:</span>
+                    <input type="number" id="sim-tilt-dir" class="sim-input-number" min="0" max="360" value="0" step="15">
+                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">°</span>
+                  </div>
+                  <div class="sim-row">
+                    <span class="sim-label">RADIUS:</span>
+                    <input type="number" id="sim-tilt-radius" class="sim-input-number" min="10" max="500" value="100" step="10">
+                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">m</span>
+                  </div>
+                </div>
+                <!-- VIBRATION params -->
+                <div id="sim-params-vibration" class="sim-event-param-group" style="display:none;">
+                  <div style="font-size:10px; color:var(--text-secondary); line-height:1.35;">
+                    Dynamic roof caving vibration &amp; DGMS PPV limits across sector (zero ground change).
+                  </div>
+                </div>
+                <!-- CAVE-IN params -->
+                <div id="sim-params-sudden_sinking" class="sim-event-param-group" style="display:none;">
+                  <div class="sim-row">
+                    <span class="sim-label">COLLAPSE RADIUS:</span>
+                    <input type="number" id="sim-cavein-radius" class="sim-input-number" min="5" max="400" value="60" step="5">
+                    <span style="font-size:9px; color:var(--text-secondary); margin-left:3px;">m</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Run Scenario Button -->
+              <button id="btn-sim-run-scenario" class="sim-btn-run">RUN EXPERIMENT</button>
+            </div>
+          </div>
+
+          <!-- Middle Column: FORGE 3D REGION VIEW (selection terrain + clones + experiment overlays) -->
+          <div id="forge-middle">
+            <div class="sim-toolbar">
+              <span style="font-size:10px; font-weight:bold; color:var(--text-secondary); letter-spacing:0.04em;">REGION:</span>
+              <div id="sim-session-chip-container" style="display:inline-flex; align-items:center;"></div>
+              <button id="btn-sim-close-session" class="sim-timeline-btn" title="Close sandbox session and return to the MAP tab" style="border-color:#FF5252; color:#FF8A8A;" disabled>✕ CLOSE</button>
+              <div style="width:1px; height:16px; background:var(--border-bevel-dark); margin:0 4px;"></div>
+              <button id="forge-recenter-btn" class="sim-timeline-btn" title="Re-fit camera to the selection bounds">⤢ RECENTER</button>
+              <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+                <span id="forge-coords" style="font-family:monospace; font-size:10px; color:var(--text-mono);">Lat: 18.6435 | Lng: 79.5725</span>
+              </div>
+            </div>
+
+            <div class="sim-canvas-wrap" style="background:#05090D;">
+              <!-- 3D region viewport (simulation/frontend ?embed=1), clipped to
+                   the sandbox selection. Banners + loading overlay stay on top. -->
+              <iframe id="forge-embed-frame" title="FORGE 3D region viewport"></iframe>
+
+              <!-- Embed fallback notice (hidden unless no 3D source answers) -->
+              <div id="forge-embed-fallback" class="sim-embed-fallback" style="display:none;">
+                <div class="sim-embed-fallback-body"></div>
+                <button class="sim-timeline-btn sim-embed-retry-btn">RETRY</button>
+              </div>
+
+              <!-- Floating Scenario Banner -->
+              <div id="sim-scenario-banner" class="sim-scenario-banner" style="display:none;">
+                HYPOTHETICAL SCENARIO LAB &bull; FROZEN AT DAY <span id="sim-banner-day">0</span> (WHAT-IF MODE)
+              </div>
+
+              <!-- Floating Sandbox Banner -->
+              <div id="sim-sandbox-banner" class="sim-sandbox-banner" style="display:none;">
+                <span class="sim-sandbox-pulse-dot"></span>
+                <span>SANDBOX ACTIVE &bull; SESSION <b id="sim-sandbox-session-id">--</b> &bull; DAY <span id="sim-sandbox-day">0</span> &bull; <span id="sim-sandbox-nodes-count">0</span> CLONED NODES</span>
+              </div>
+
+              <!-- Gate Banner (no SIM-channel selection and no session) -->
+              <div id="sim-gate-banner" class="sim-gate-banner" style="display:none;">
+                <span class="sim-gate-icon">⚠️</span>
+                <span class="sim-gate-text">Select nodes on the MAP tab first (SIM box tool)</span>
+              </div>
+
+              <!-- Lab Server (:8010) Error Banner -->
+              <div id="sim-lab-down-banner" class="sim-lab-down-banner" style="display:none;">
+                <span class="sim-gate-icon">⚠️</span>
+                <span id="sim-lab-down-text">SCENARIO LAB (:8010) OFFLINE — Geologic simulations unavailable</span>
+              </div>
+
+              <!-- Loading Overlay with Stages (Cloning -> Camera -> Trough -> Nodes -> Links) -->
+              <div id="sim-loading-overlay" class="sim-loading-overlay" style="display:none;">
+                <div class="sim-loading-card">
+                  <div class="sim-loading-header">
+                    <div class="sim-loading-spinner"></div>
+                    <div class="sim-loading-title">INITIALIZING FORGE SANDBOX</div>
+                  </div>
+                  <div class="sim-loading-subtitle" id="sim-loading-status-text">Preparing isolated clone environment...</div>
+                  <div class="sim-loading-stages" id="sim-loading-stages">
+                    <div class="sim-stage-item" data-stage="cloning">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Cloning</span>
+                      <span class="sim-stage-detail">Deep-copying selected node records</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="camera">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Camera</span>
+                      <span class="sim-stage-detail">Framing 3D viewport camera to selection bounds</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="trough">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Trough</span>
+                      <span class="sim-stage-detail">Pulling :8010 subsidence &amp; crack models</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="nodes">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Nodes</span>
+                      <span class="sim-stage-detail">Rendering markers from cloned nodes</span>
+                    </div>
+                    <div class="sim-stage-item" data-stage="links">
+                      <span class="sim-stage-icon">○</span>
+                      <span class="sim-stage-label">Links</span>
+                      <span class="sim-stage-detail">Synthesizing neighbour mesh &amp; gateway N31 links</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: FORGE DASHBOARD (health board + clones + feed + results, 360px).
+               Hidden until a region is selected (no session = no dashboard). -->
+          <div id="forge-right" style="display:none;">
+            <div id="forge-health-panel">
+              <div class="panel-header">
+                <span style="color:#00FF88;">DISTRICT HEALTH — ALL NODES</span>
+                <span id="forge-health-badge" class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">-- NODES</span>
+              </div>
+              <div id="forge-health-body" class="sim-panel-scroll">
+                <!-- Populated with one dot per district node -->
+              </div>
+            </div>
+
+            <div id="sim-inspector-panel">
+              <div class="panel-header" style="border-top:1px solid var(--border-bevel-dark);">
+                <span id="sim-inspector-header-title">SANDBOX CLUSTER NODES</span>
+                <span id="sim-nodes-count-badge" class="panel-badge" style="background:#1B445A; color:#00FF88; border:1px solid #00CC44;">0 CLONED</span>
+              </div>
+              <div id="sim-inspector-body" class="sim-panel-scroll">
+                <!-- Populated on sandbox load -->
+              </div>
+            </div>
+
+            <div id="sim-notifications-panel">
+              <div class="panel-header" style="background:#182026; border-top:1px solid var(--border-bevel-dark);">
+                <span style="color:#FFA500;">SANDBOX SCENARIO NOTIFICATIONS</span>
+                <span id="sim-notifications-badge" class="panel-badge" style="background:#2A2010; color:#FFA500; border:1px solid #FFA500;">OFFLINE FEED</span>
+              </div>
+              <div id="sim-notifications-body" class="sim-panel-scroll">
+                <!-- Populated on scenario runs and sandbox events -->
+              </div>
+            </div>
+
+            <div id="sim-scenario-result-panel">
+              <div class="panel-header" style="background:#1F1212; border-top:1px solid var(--border-bevel-dark);">
+                <span style="color:#FFB4B4;">SCENARIO CONSEQUENCE ANALYSIS</span>
+              </div>
+              <div id="sim-scenario-result-body" class="sim-panel-scroll">
+                <div class="sim-card">
+                  <div class="sim-card-header">
+                    <div style="font-size:11px; color:#00FF88; font-weight:bold;">SANDBOX ISOLATION VERIFIED</div>
+                    <span class="sim-badge-success">OFF-LINE COPY</span>
+                  </div>
+                  <div style="font-size:10.5px; color:var(--text-primary); line-height:1.4;">
+                    Pick CRACK / TILT / VIBRATION / CAVE-IN + parameters, press RUN EXPERIMENT — the consequence forecast for this isolated segment appears here.
+                  </div>
+                  <div style="font-size:9.5px; color:var(--text-secondary); line-height:1.35; margin-top:2px;">
+                    This simulation runs in an isolated sandbox. Events injected here will <b>NOT</b> alter active sensor thresholds or alert logs on the live dashboard.
+                  </div>
                 </div>
               </div>
             </div>
@@ -1601,6 +1882,7 @@
 
   <!-- Simulation tab & live status modules -->
   <script src="js/sim/sim-live.js"></script>
+  <script src="js/sim/sim-embed.js"></script>
   <script src="js/sim/sim-tab.js"></script>
 
   <!-- App init -->

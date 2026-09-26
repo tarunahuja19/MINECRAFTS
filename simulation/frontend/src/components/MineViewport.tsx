@@ -1,14 +1,16 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
-import { Canvas } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useImperativeHandle, forwardRef, type ReactNode } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
+import type { CrackLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
 import type { EmbedClipBounds } from "../embed";
 import { sampleBaseGroundY } from "../utils/terrainSampler";
 import { TerrainMesh } from "./TerrainMesh";
 import { NodeMarkers } from "./NodeMarkers";
 import { TargetBeacon } from "./TargetBeacon";
 import { TerrainLegend } from "./TerrainLegend";
+import { CollapseDust, type ImpactBurst } from "./CollapseDust";
 
 export type CameraPreset = "overview" | "highland" | "pit" | "cutaway" | "topdown";
 
@@ -46,7 +48,16 @@ interface MineViewportProps {
   targetLocation: TargetLocation | null;
   collapseRadiusM?: number;
   showMeshTopology?: boolean;
-  vibrationActive?: boolean;
+  /** Blast pulse counter; each increment replays the shockwave ring. */
+  vibrationPulse?: number;
+  /** Wall-clock driver (ms) for in-flight mesh animation; see TerrainMesh. */
+  animMs?: number;
+  /** True while an event is settling; its falling edge forces a final pass. */
+  flightActive?: boolean;
+  /** World-shake amplitude in metres; 0 = still. Decays in the parent. */
+  shakeAmp?: number;
+  /** Live impact dust bursts; empty = none. */
+  bursts?: ImpactBurst[];
   onSelectNode: (id: number) => void;
   onTerrainClick: (x: number, y: number, elev: number) => void;
   wireframe?: boolean;
@@ -54,6 +65,91 @@ interface MineViewportProps {
   clipBounds?: EmbedClipBounds | null;
   /** Embed-mode node allowlist; null = spatial/default filtering. */
   nodeFilter?: number[] | null;
+  /** Lab crack segments overlay (dashboard `set-cracks`); empty = none. */
+  crackLines?: CrackLine[];
+}
+
+/**
+ * Crack ground-break overlay: new segments draw red with a dark split core,
+ * pre-existing segments draw dim orange. Lines ride ~2 m above the sampled
+ * base ground so they never z-fight the mesh. WebGL draws 1 px lines, so the
+ * "break" read comes from the dark-core-over-red pairing, not width.
+ */
+function CrackLinesOverlay({ lines }: { lines: CrackLine[] }) {
+  const geoms = useMemo(() => {
+    const fresh: number[] = [];
+    const old: number[] = [];
+    const core: number[] = [];
+    for (const s of lines) {
+      const y0 = sampleBaseGroundY(s.x0, s.y0);
+      const y1 = sampleBaseGroundY(s.x1, s.y1);
+      const h0 = Number.isFinite(y0) ? y0 : 0;
+      const h1 = Number.isFinite(y1) ? y1 : 0;
+      const target = s.isNew ? fresh : old;
+      target.push(s.x0, h0 + 2.0, s.y0, s.x1, h1 + 2.0, s.y1);
+      if (s.isNew) {
+        core.push(s.x0, h0 + 2.7, s.y0, s.x1, h1 + 2.7, s.y1);
+      }
+    }
+    const mk = (arr: number[]) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(arr), 3));
+      return g;
+    };
+    return { fresh: mk(fresh), old: mk(old), core: mk(core) };
+  }, [lines]);
+
+  useEffect(() => {
+    return () => {
+      geoms.fresh.dispose();
+      geoms.old.dispose();
+      geoms.core.dispose();
+    };
+  }, [geoms]);
+
+  if (lines.length === 0) return null;
+  return (
+    <group>
+      <lineSegments geometry={geoms.old}>
+        <lineBasicMaterial color="#FF8800" transparent opacity={0.75} />
+      </lineSegments>
+      <lineSegments geometry={geoms.fresh}>
+        <lineBasicMaterial color="#FF2222" transparent opacity={0.95} />
+      </lineSegments>
+      <lineSegments geometry={geoms.core}>
+        <lineBasicMaterial color="#050505" transparent opacity={1.0} />
+      </lineSegments>
+    </group>
+  );
+}
+
+/**
+ * Blast/impact shake, applied to the WORLD rather than the camera.
+ *
+ * Offsetting the camera fights OrbitControls (with damping it re-reads the
+ * camera every frame and would absorb the jitter as drift). Shaking the scene
+ * contents instead is visually identical and stateless: a fresh random offset
+ * per frame, snapped back to exactly zero when the amplitude dies.
+ */
+function ShakeGroup({ amp, children }: { amp: number; children: ReactNode }) {
+  const ref = useRef<THREE.Group>(null);
+  const ampRef = useRef(amp);
+  ampRef.current = amp;
+  useFrame(() => {
+    const g = ref.current;
+    if (!g) return;
+    const a = ampRef.current;
+    if (a <= 0.001) {
+      if (g.position.lengthSq() !== 0) g.position.set(0, 0, 0);
+      return;
+    }
+    g.position.set(
+      (Math.random() - 0.5) * 2.0 * a,
+      (Math.random() - 0.5) * 1.2 * a,
+      (Math.random() - 0.5) * 2.0 * a
+    );
+  });
+  return <group ref={ref}>{children}</group>;
 }
 
 export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
@@ -72,12 +168,17 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   targetLocation,
   collapseRadiusM = 75,
   showMeshTopology = true,
-  vibrationActive = false,
+  vibrationPulse = 0,
+  animMs = 0,
+  flightActive = false,
+  shakeAmp = 0,
+  bursts = [],
   onSelectNode,
   onTerrainClick,
   wireframe = false,
   clipBounds = null,
   nodeFilter = null,
+  crackLines = [],
 }, ref) => {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
@@ -106,9 +207,15 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   const clipKey = clipBounds
     ? `${clipBounds.xMin},${clipBounds.yMin},${clipBounds.xMax},${clipBounds.yMax}`
     : "";
+  const prevClipRef = useRef<boolean>(!!clipBounds);
   useEffect(() => {
-    if (!clipBounds) return;
-    focusOnBounds(clipBounds);
+    if (clipBounds) {
+      focusOnBounds(clipBounds);
+      prevClipRef.current = true;
+    } else if (prevClipRef.current) {
+      applyCameraPreset("overview");
+      prevClipRef.current = false;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clipKey]);
 
@@ -216,47 +323,60 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
           target={[0, 70, 0]}
         />
 
-        {/* Dynamic 600m Natural Rolling Terrain Mesh */}
-        <TerrainMesh
-          z0Mesh={z0Mesh}
-          baseBowlMesh={baseBowlMesh}
-          elevMinM={elevMinM}
-          elevMaxM={elevMaxM}
-          timeScalar={timeScalar}
-          perturbations={perturbations}
-          latestPacket={latestPacket}
-          exaggeration={exaggeration}
-          windowSizeM={windowSizeM}
-          wireframe={wireframe}
-          vibrationActive={vibrationActive}
-          onTerrainClick={onTerrainClick}
-          clipBounds={clipBounds}
-        />
+        {/* World-shake group: blast/impact jitter moves the scene, never the
+            camera (see ShakeGroup). Lights and controls stay outside. */}
+        <ShakeGroup amp={shakeAmp}>
+          {/* Dynamic 600m Natural Rolling Terrain Mesh */}
+          <TerrainMesh
+            z0Mesh={z0Mesh}
+            baseBowlMesh={baseBowlMesh}
+            elevMinM={elevMinM}
+            elevMaxM={elevMaxM}
+            timeScalar={timeScalar}
+            perturbations={perturbations}
+            latestPacket={latestPacket}
+            exaggeration={exaggeration}
+            windowSizeM={windowSizeM}
+            wireframe={wireframe}
+            animMs={animMs}
+            flightActive={flightActive}
+            vibrationPulse={vibrationPulse}
+            waveOrigin={targetLocation ? { x: targetLocation.x, y: targetLocation.y } : null}
+            onTerrainClick={onTerrainClick}
+            clipBounds={clipBounds}
+          />
 
-        {/* 33 Sensor Node Geodetic Monuments & Extensometer Baseline Links */}
-        <NodeMarkers
-          nodes={nodes}
-          nodeTelemetry={nodeTelemetry}
-          z0Mesh={z0Mesh}
-          baseBowlMesh={baseBowlMesh}
-          timeScalar={timeScalar}
-          perturbations={perturbations}
-          latestPacket={latestPacket}
-          exaggeration={exaggeration}
-          selectedNodeId={selectedNodeId}
-          onSelectNode={onSelectNode}
-          showMeshTopology={showMeshTopology}
-          nodeFilter={nodeFilter}
-          clipBounds={clipBounds}
-        />
+          {/* 33 Sensor Node Geodetic Monuments & Extensometer Baseline Links */}
+          <NodeMarkers
+            nodes={nodes}
+            nodeTelemetry={nodeTelemetry}
+            z0Mesh={z0Mesh}
+            baseBowlMesh={baseBowlMesh}
+            timeScalar={timeScalar}
+            perturbations={perturbations}
+            latestPacket={latestPacket}
+            exaggeration={exaggeration}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={onSelectNode}
+            showMeshTopology={showMeshTopology}
+            nodeFilter={nodeFilter}
+            clipBounds={clipBounds}
+          />
 
-        {/* 3D Holographic Target Beacon (Terrain-conforming red radius ring) */}
-        <TargetBeacon
-          target={targetLocation}
-          radiusM={collapseRadiusM}
-          exaggeration={exaggeration}
-          perturbations={perturbations}
-        />
+          {/* 3D Holographic Target Beacon (Terrain-conforming red radius ring) */}
+          <TargetBeacon
+            target={targetLocation}
+            radiusM={collapseRadiusM}
+            exaggeration={exaggeration}
+            perturbations={perturbations}
+          />
+
+          {/* Lab crack ground-break overlay (embed `set-cracks` command) */}
+          <CrackLinesOverlay lines={crackLines} />
+
+          {/* Impact dust thrown by collapse / tilt triggers */}
+          <CollapseDust bursts={bursts} />
+        </ShakeGroup>
       </Canvas>
 
       {/* Key to the viewport's colour scales: the fused height/depth ramp,

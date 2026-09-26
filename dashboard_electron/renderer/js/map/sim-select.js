@@ -489,11 +489,13 @@ var simSelect = (function () {
       return;
     }
 
+    if (selection && selection.channel === '3d') selection = null;
     var hasSelection = (typeof selectionStore !== 'undefined' && typeof selectionStore.has === 'function')
-      ? selectionStore.has()
+      ? selectionStore.has('sim')
       : Boolean(selection);
 
-    var sel = selection || ((hasSelection && typeof selectionStore !== 'undefined' && typeof selectionStore.get === 'function') ? selectionStore.get() : null);
+    var sel = (selection && selection.channel !== '3d' ? selection : null) ||
+      ((hasSelection && typeof selectionStore !== 'undefined' && typeof selectionStore.get === 'function') ? selectionStore.get('sim') : null);
 
     var count = 0;
     if (hasSelection && sel) {
@@ -504,10 +506,15 @@ var simSelect = (function () {
       }
     }
 
+    // No number on the SIM button without nodes: a zero-node selection (or
+    // none at all) shows no badge rather than a "0".
+    var showBadge = hasSelection && count > 0;
     simBadgeEl.textContent = String(count);
-    simBadgeEl.style.display = hasSelection ? 'inline-block' : 'none';
-    if (hasSelection) {
+    simBadgeEl.style.display = showBadge ? 'inline-block' : 'none';
+    if (showBadge) {
       simBadgeEl.title = count + ' node' + (count === 1 ? '' : 's') + ' in selection';
+    } else {
+      simBadgeEl.title = '';
     }
   }
 
