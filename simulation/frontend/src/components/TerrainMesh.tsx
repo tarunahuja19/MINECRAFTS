@@ -374,8 +374,11 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
         const state = globalGeomechanics.evaluatePoint(xCoord, yCoord, z0, nowSec);
 
         // Include any server perturbations if present
-        // The event drop is kept apart from the bowl (`state.dropDistanceM`)
-        // because the two are coloured on different ramps. Its gradient is
+        // The event drop is kept apart from the bowl because the two are
+        // coloured on different ramps. Local cave-ins (SIM tab, standalone
+        // app) are events too: `state.interventionDropM` joins the server
+        // perturbations here, so a 10 m hole gets the hot ramp everywhere
+        // instead of saturating the 2.25 m blue one. Its gradient is
         // accumulated alongside, for the event contours' slope gate.
         let serverPerturbDrop = 0.0;
         let eventGradX = 0.0;
@@ -398,6 +401,13 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
             }
           }
         }
+
+        // What the event ramp colours: server events plus local cave-ins.
+        // `totalDrop` below must not use it (`dropDistanceM` already holds the
+        // local part).
+        const eventDrop = serverPerturbDrop + Math.max(0.0, state.interventionDropM);
+        eventGradX += state.interventionSlopeX;
+        eventGradY += state.interventionSlopeY;
 
         // `state.dropDistanceM` is already clamped inside evaluatePoint, but
         // `serverPerturbDrop` is summed on top of it here and was previously
@@ -501,9 +511,9 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
         //   * bowl  (`state.dropDistanceM`): the blue DEPTH_STOPS over one
         //     seam's worth of settlement, BOWL_RAMP_MAX_M, contoured every
         //     0.25 m.
-        //   * event (`serverPerturbDrop`): HOT_STOPS on a log scale from 5 cm
+        //   * event (`eventDrop`, server events + local cave-ins): HOT_STOPS on a log scale from 5 cm
         //     to 25 m, contoured every 1 m, blended over the bowl colour.
-        const bowlDrop = state.dropDistanceM;
+        const bowlDrop = Math.max(0.0, state.dropDistanceM - state.interventionDropM);
         if (bowlDrop > SUBSIDENCE_EPS_M) {
           // Linear in depth, deliberately: equal depth = equal colour step,
           // which is also what makes the contour bands evenly spaced in
@@ -541,11 +551,11 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
           tempColor.multiplyScalar(1.0 - SUBSIDENCE_SHADOW * blend * (1.0 - t));
         }
 
-        if (serverPerturbDrop > EVENT_DROP_MIN_M) {
-          rampColor.setRGB(...hotColor(eventDropT(serverPerturbDrop)), THREE.SRGBColorSpace);
+        if (eventDrop > EVENT_DROP_MIN_M) {
+          rampColor.setRGB(...hotColor(eventDropT(eventDrop)), THREE.SRGBColorSpace);
           rampColor.multiplyScalar(
             1.0 - 0.34 * contourStrength(
-              serverPerturbDrop,
+              eventDrop,
               EVENT_CONTOUR_INTERVAL_M,
               Math.hypot(eventGradX, eventGradY) / EVENT_CONTOUR_MIN_SLOPE,
             ),
@@ -553,14 +563,14 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
           // Fades in over 2 -> 5 cm so the event's edge is not a hard line.
           const eventBlend = Math.min(
             1.0,
-            (serverPerturbDrop - EVENT_DROP_MIN_M) / 0.03,
+            (eventDrop - EVENT_DROP_MIN_M) / 0.03,
           );
           tempColor.lerp(rampColor, eventBlend);
         }
 
         // Keep the hillshade relief visible through the overlays, so the
         // bowl still reads as a 3-D depression rather than a flat decal.
-        if (elevationShading && (bowlDrop > SUBSIDENCE_EPS_M || serverPerturbDrop > EVENT_DROP_MIN_M)) {
+        if (elevationShading && (bowlDrop > SUBSIDENCE_EPS_M || eventDrop > EVENT_DROP_MIN_M)) {
           const relief = 0.88 + 0.12 * elevationShading.shade[vIdx];
           tempColor.multiplyScalar(relief);
         }

@@ -112,6 +112,15 @@ export interface GroundStateAtPoint {
   elevation: number;
   initialElevation: number;
   dropDistanceM: number;
+  /**
+   * The part of `dropDistanceM` that comes from local cave-in interventions
+   * (bowl minus heave rim), before the depth ceiling. The rest is the
+   * baseline settlement bowl. TerrainMesh colours the two on different ramps.
+   */
+  interventionDropM: number;
+  /** Slope of `interventionDropM` (m/m), for the hot ramp's contour gate. */
+  interventionSlopeX: number;
+  interventionSlopeY: number;
   /** Heave-ring uplift included in `elevation`, m. Subsidence-only otherwise. */
   rimUpliftM: number;
   tiltDeg: number;
@@ -615,6 +624,9 @@ export class LiveGeomechanicsEngine {
     let curvature = 0.0;
     let totalVibrationM = 0.0;
     let totalRimM = 0.0;
+    let interventionDropM = 0.0;
+    let interventionSlopeX = 0.0;
+    let interventionSlopeY = 0.0;
 
     if (this.bowlPx && this.bowlPy) {
       totalDropM += this.sampleProfile(this.bowlPx, x) * this.sampleProfile(this.bowlPy, y);
@@ -630,7 +642,9 @@ export class LiveGeomechanicsEngine {
       const d = Math.hypot(dx, dy);
       const amp = inter.magnitudeM * tf;
 
-      totalDropM += amp * bowlProfile(d, inter.radiusM);
+      const bowlDropM = amp * bowlProfile(d, inter.radiusM);
+      totalDropM += bowlDropM;
+      interventionDropM += bowlDropM;
 
       // Radial slope, decomposed onto x and y. At d = 0 the bowl is flat by
       // symmetry, so the radial unit vector is undefined and contributes
@@ -639,6 +653,8 @@ export class LiveGeomechanicsEngine {
       if (d > 1e-6) {
         slopeX += dSdd * (dx / d);
         slopeY += dSdd * (dy / d);
+        interventionSlopeX += dSdd * (dx / d);
+        interventionSlopeY += dSdd * (dy / d);
       }
 
       curvature += amp * bowlProfileSecondDerivative(d, inter.radiusM);
@@ -652,10 +668,13 @@ export class LiveGeomechanicsEngine {
       const rim = amp * rimProfile(d, inter.radiusM);
       totalDropM -= rim;
       totalRimM += rim;
+      interventionDropM -= rim;
       const dRimdd = -amp * rimProfileDerivative(d, inter.radiusM);
       if (d > 1e-6) {
         slopeX += dRimdd * (dx / d);
         slopeY += dRimdd * (dy / d);
+        interventionSlopeX += dRimdd * (dx / d);
+        interventionSlopeY += dRimdd * (dy / d);
       }
       curvature -= amp * rimProfileSecondDerivative(d, inter.radiusM);
 
@@ -704,6 +723,9 @@ export class LiveGeomechanicsEngine {
       elevation: baseElevation - totalDropM + totalVibrationM,
       initialElevation: baseElevation,
       dropDistanceM: totalDropM,
+      interventionDropM,
+      interventionSlopeX,
+      interventionSlopeY,
       rimUpliftM: totalRimM,
       tiltDeg: (Math.atan(slopeMag) * 180.0) / Math.PI,
       // Tilt in engineering units: mm of fall per m of run.
