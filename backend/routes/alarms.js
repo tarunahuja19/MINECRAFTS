@@ -5,6 +5,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const { query } = require('../db/db');
+const sms = require('../notifications/sms');
 
 // The dashboard's offline fixture. Previously this pointed at an `r4-dashboard`
 // directory that does not exist in this repo, so the route silently returned []
@@ -126,6 +127,8 @@ router.post('/', async (req, res) => {
     if (typeof broadcastFn === 'function') {
       broadcastFn({ type: 'alarm', alarm: alarm });
     }
+
+    sms.sendAlarmSms(alarm);
 
     res.status(201).json({ ok: true, alarm_id: alarm.alarm_id });
   } catch (err) {
