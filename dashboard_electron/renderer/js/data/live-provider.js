@@ -20,8 +20,8 @@ var liveProvider = (function () {
     }
     return '8080';
   };
-  var WS_URL = 'ws://' + (window.location.hostname || 'localhost') + ':' + getPort() + '/ws';
-  var API_BASE = 'http://' + (window.location.hostname || 'localhost') + ':' + getPort();
+  var API_BASE = (typeof window !== 'undefined' && window.API_BASE) ? window.API_BASE : ('http://' + (window.location.hostname || 'localhost') + ':' + getPort());
+  var WS_URL = (typeof window !== 'undefined' && window.WS_URL) ? window.WS_URL : (API_BASE.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:') + '/ws');
 
   var started = false;
 

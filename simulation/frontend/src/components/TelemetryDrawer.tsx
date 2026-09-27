@@ -3,6 +3,7 @@ import { Download, Search, Terminal, X } from "lucide-react";
 import type { LogEntry, NodeDef, NodeTelemetry, ZoneTelemetry } from "../types";
 import { STATE_COLORS } from "../types";
 import { SeismographOscilloscope } from "./SeismographOscilloscope";
+import { SIM_BASE_URL } from "../utils/config";
 
 interface TelemetryDrawerProps {
   logs: LogEntry[];
@@ -52,13 +53,11 @@ export const TelemetryDrawer: React.FC<TelemetryDrawerProps> = ({
   });
 
   const handleDownloadNodesCsv = () => {
-    const host = window.location.hostname || "localhost";
-    window.open(`http://${host}:8000/data/nodes.csv`, "_blank");
+    window.open(`${SIM_BASE_URL}/data/nodes.csv`, "_blank");
   };
 
   const handleDownloadEventsCsv = () => {
-    const host = window.location.hostname || "localhost";
-    window.open(`http://${host}:8000/data/events.csv`, "_blank");
+    window.open(`${SIM_BASE_URL}/data/events.csv`, "_blank");
   };
 
   return (

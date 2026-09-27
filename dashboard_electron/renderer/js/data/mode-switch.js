@@ -8,11 +8,11 @@ var modeSwitch = (function () {
   function init() {
     modeIndicator = document.getElementById('mode-indicator');
 
-    // Auto-detect if live backend is running and default to LIVE mode
-    fetch('http://localhost:8080/api/health')
+    var apiBase = window.API_BASE || 'http://localhost:8080';
+    fetch(apiBase + '/api/health')
       .then(function (res) {
         if (res.ok) {
-          console.log('[mode-switch] Live backend detected on port 8080. Initializing in LIVE SIMULATION mode.');
+          console.log('[mode-switch] Live backend detected at ' + apiBase + '. Initializing in LIVE SIMULATION mode.');
           setMode('live');
         } else {
           setMode('fixture');
@@ -70,8 +70,9 @@ var modeSwitch = (function () {
       liveProvider.start();
       updateModeDisplay('LIVE SIMULATION', false);
 
+      var apiBase = window.API_BASE || 'http://localhost:8080';
       // Load canonical nodes from live PostgreSQL backend
-      fetch('http://localhost:8080/api/nodes')
+      fetch(apiBase + '/api/nodes')
         .then(function (r) { return r.json(); })
         .then(function (nodes) {
           bus.emit('nodes-loaded', nodes);
@@ -82,7 +83,7 @@ var modeSwitch = (function () {
         });
 
       // Load initial alarms from live PostgreSQL backend
-      fetch('http://localhost:8080/api/alarms')
+      fetch(apiBase + '/api/alarms')
         .then(function (r) { return r.json(); })
         .then(function (alarms) {
           if (Array.isArray(alarms)) {

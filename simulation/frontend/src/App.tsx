@@ -34,6 +34,7 @@ import {
   type EmbedClipBounds,
   type EmbedParentCommand,
 } from "./embed";
+import { SIM_BASE_URL, BACKEND_URL, SIM_WS_URL } from "./utils/config";
 import type {
   InitPayload,
   NeighborDistance,
@@ -317,8 +318,7 @@ export const App: React.FC = () => {
     let reconnectTimeout: any;
 
     const connectWs = () => {
-      const host = window.location.hostname || "localhost";
-      const wsUrl = `ws://${host}:8000/ws`;
+      const wsUrl = SIM_WS_URL;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -343,7 +343,7 @@ export const App: React.FC = () => {
 
         // Recover latest simulation packet if available (§Phase 13 reconnect)
         if (!engineReadOnly) {
-          fetch("/simulation/packets/latest")
+          fetch(`${SIM_BASE_URL}/simulation/packets/latest`)
             .then((res) => (res.ok ? res.json() : null))
             .then((pkt: SimulationPacket | null) => {
               if (pkt) {
@@ -395,7 +395,7 @@ export const App: React.FC = () => {
             } else {
               console.log(`[WS] packet ${packetNotif.packet_id} available notification received`);
               // Automatically pull packet without user click (§Phase 6)
-              fetch(`/simulation/packets/${packetNotif.packet_id}`)
+              fetch(`${SIM_BASE_URL}/simulation/packets/${packetNotif.packet_id}`)
                 .then((res) => {
                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   return res.json();
@@ -591,7 +591,7 @@ export const App: React.FC = () => {
 
     // Dual-channel reliability: also dispatch via HTTP POST /control
     if (payload && payload.action) {
-      fetch("/control", {
+      fetch(`${SIM_BASE_URL}/control`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -650,9 +650,8 @@ export const App: React.FC = () => {
     sendWsAction({ action: "reset" });
 
     // 2. Await database wipe before closing
-    const host = window.location.hostname || "localhost";
     try {
-      await fetch(`http://${host}:8080/api/system/reset`, { method: "POST" });
+      await fetch(`${BACKEND_URL}/api/system/reset`, { method: "POST" });
     } catch (e) {
       console.warn("Reset POST error:", e);
     }

@@ -68,7 +68,7 @@ var simTab = (function () {
       var match = window.location.search.match(/[?&]backend_port=(\d+)/);
       if (match) port = match[1];
     }
-    var apiBase = 'http://' + (window.location.hostname || 'localhost') + ':' + port;
+    var apiBase = (typeof window !== 'undefined' && window.API_BASE) || ('http://' + (window.location.hostname || 'localhost') + ':' + port);
     fetch(apiBase + '/api/simulation/status', { cache: 'no-store' })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1104,7 +1104,7 @@ var simTab = (function () {
       })
       .catch(function (seedErr) {
         var reason = seedErr && seedErr.message ? seedErr.message : 'offline';
-        var apiBase = 'http://' + (window.location.hostname || 'localhost') + ':8080';
+        var apiBase = (typeof window !== 'undefined' && window.API_BASE) || ('http://' + (window.location.hostname || 'localhost') + ':8080');
         fetch(apiBase + '/api/simulation/status', { cache: 'no-store' })
           .then(function (res) {
             if (!res.ok) throw new Error('HTTP ' + res.status);
