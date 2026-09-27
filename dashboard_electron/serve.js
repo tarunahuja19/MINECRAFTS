@@ -156,7 +156,15 @@ async function handleTile(req, res, layer, z, x, y) {
 
 const server = http.createServer((req, res) => {
   let reqPath = decodeURI(req.url.split('?')[0]);
-  if (reqPath === '/' || reqPath === '') reqPath = '/renderer/index.html';
+  // Redirect (not just internally rewrite) so the browser's URL becomes
+  // /renderer/index.html — otherwise the page's relative asset paths
+  // (css/hmi.css, lib/leaflet/leaflet.css, ...) resolve against "/" and 404
+  // in a real browser tab. Electron never hits this path — it loads
+  // renderer/index.html directly via loadFile().
+  if (reqPath === '/' || reqPath === '') {
+    res.writeHead(302, { Location: '/renderer/index.html' });
+    return res.end();
+  }
 
   const tileMatch = reqPath.match(/^\/tiles\/([a-z]+)\/(\d+)\/(\d+)\/(\d+)\.png$/);
   if (tileMatch) {
