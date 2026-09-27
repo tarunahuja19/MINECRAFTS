@@ -1,0 +1,144 @@
+{
+  "version": "1.0.0",
+  "units": "All strain/tilt values are mm/m (millistrain-equivalent slope/strain). PPV is mm/s. Pore pressure is kPa. Battery is V. Time windows are hours or days as named per field.",
+  "levels": ["NORMAL", "ADVISORY", "WARNING", "CRITICAL"],
+  "conditions": {
+    "tilt_change": {
+      "label": "Tilt change since install",
+      "unit": "mm/m",
+      "direction": "above",
+      "advisory": 1.5,
+      "warning": 3.0,
+      "critical": 10.0,
+      "basis": "3 and 10 mm/m carried from sandbox/constants.py TILT_WARNING_MM_M/TILT_CRITICAL_MM_M (ASSUMED); advisory 1.5 ASSUMED",
+      "applies_to_tiers": ["1A", "1B", "1C", "2A", "2B"],
+      "description": "How far this node's tilt has moved from its day-0 install reading, in millimetres of tilt per metre of baseline; sustained tilt is the earliest sign a node sits over a moving subsidence trough."
+    },
+    "strain_tensile": {
+      "label": "Tensile strain",
+      "unit": "mm/m",
+      "direction": "above",
+      "advisory": 1.5,
+      "warning": 3.0,
+      "critical": 5.3,
+      "basis": "5.3 mm/m Kamptee coalfield limit carried from constants.py EPS_TENSILE_LIMIT (VERIFY: no DGMS circular cited)",
+      "applies_to_tiers": ["1B"],
+      "description": "The greatest stretching (tensile) ground strain measured at this node, in millimetres of stretch per metre; high tensile strain is what opens cracks and pulls foundations apart."
+    },
+    "strain_compressive": {
+      "label": "Compressive strain",
+      "unit": "mm/m",
+      "direction": "above",
+      "advisory": 2.0,
+      "warning": 4.0,
+      "critical": 6.6,
+      "basis": "6.6 mm/m Kamptee (VERIFY)",
+      "applies_to_tiers": ["1B"],
+      "description": "The greatest squeezing (compressive) ground strain measured at this node, in millimetres of compression per metre (magnitude, sign discarded); high compressive strain buckles slabs and heaves floors."
+    },
+    "tilt_rate": {
+      "label": "Tilt rate (24 h)",
+      "unit": "mm/m per day",
+      "direction": "above",
+      "advisory": 0.3,
+      "warning": 1.0,
+      "critical": null,
+      "basis": "ASSUMED early-warning threshold; no cited source. No CRITICAL rung — a fast rate is a leading indicator, the absolute tilt_change limits carry the CRITICAL call.",
+      "applies_to_tiers": ["1A", "1B", "1C", "2A", "2B"],
+      "description": "How fast this node's tilt is changing right now, in millimetres per metre per day over the last 24 hours; a fast rate flags active ground movement even before the total tilt is large."
+    },
+    "crack_width": {
+      "label": "Crack width",
+      "unit": "mm",
+      "direction": "above",
+      "advisory": 1,
+      "warning": 5,
+      "critical": 15,
+      "basis": "Burland, Broms & de Mello (1977) / BRE Digest 251 damage categories by crack width: 0 negligible <0.1, 1 very slight <1, 2 slight 1-5, 3 moderate 5-15, 4 severe 15-25, 5 very severe >25 mm",
+      "applies_to_tiers": ["1B"],
+      "description": "The width of the widest crack tracked at this node, in millimetres, classified against the Burland/BRE Digest 251 building-damage categories.",
+      "categories": [
+        {"cat": 0, "name": "negligible", "min_mm": 0, "max_mm": 0.1, "description": "Hairline cracks, no structural significance."},
+        {"cat": 1, "name": "very slight", "min_mm": 0.1, "max_mm": 1, "description": "Fine cracks, easily treated during normal decoration."},
+        {"cat": 2, "name": "slight", "min_mm": 1, "max_mm": 5, "description": "Cracks easily filled; some external repointing may be needed for weather-tightness."},
+        {"cat": 3, "name": "moderate", "min_mm": 5, "max_mm": 15, "description": "Cracks need some opening-up and can be patched by a mason; possible slight jamming of doors and windows."},
+        {"cat": 4, "name": "severe", "min_mm": 15, "max_mm": 25, "description": "Extensive repair involving breaking-out and replacing sections of wall; door and window frames distorted, floors sloping."},
+        {"cat": 5, "name": "very severe", "min_mm": 25, "max_mm": null, "description": "Structural damage requiring major repair, including partial or complete rebuilding."}
+      ]
+    },
+    "ppv": {
+      "label": "Peak particle velocity",
+      "unit": "mm/s",
+      "direction": "above",
+      "advisory": null,
+      "warning": null,
+      "critical": null,
+      "basis": "DGMS (Tech) Circular 7 of 1997, domestic structures (VERIFY every number against the circular)",
+      "applies_to_tiers": ["1A", "1B", "1C"],
+      "description": "Peak particle velocity from blasting or ground shock, in millimetres per second, judged against the frequency-dependent DGMS domestic-structure limit for the dominant vibration frequency.",
+      "limits_by_band": [
+        {"max_hz": 8, "limit": 5},
+        {"max_hz": 25, "limit": 10},
+        {"max_hz": null, "limit": 15}
+      ],
+      "fractions": {"advisory": 0.5, "warning": 0.7, "critical": 1.0}
+    },
+    "pore_pressure_rise": {
+      "label": "Pore pressure rise over 7-day baseline",
+      "unit": "kPa",
+      "direction": "above",
+      "advisory": 15,
+      "warning": 30,
+      "critical": 50,
+      "basis": "ASSUMED",
+      "applies_to_tiers": ["2B"],
+      "description": "The rise in pore water pressure at this node above its trailing 7-day baseline, in kilopascals; a rising pore pressure can precede slope or floor failure."
+    },
+    "battery_low": {
+      "label": "Battery low",
+      "unit": "V",
+      "direction": "below",
+      "advisory": 3.4,
+      "warning": null,
+      "critical": null,
+      "basis": "practice",
+      "applies_to_tiers": ["1A", "1B", "1C", "2A", "2B", "3"],
+      "description": "The node's battery voltage; a low reading means the node may go offline before it is serviced."
+    },
+    "comms_stale": {
+      "label": "Comms stale",
+      "unit": null,
+      "direction": null,
+      "advisory": null,
+      "warning": null,
+      "critical": null,
+      "basis": "practice",
+      "applies_to_tiers": ["1A", "1B", "1C", "2A", "2B", "3"],
+      "description": "No data packet has arrived from this node for several expected reporting intervals; the node may be offline, jammed, or out of range.",
+      "stale_after_cadences": 3
+    },
+    "sensor_flatline": {
+      "label": "Sensor flatline",
+      "unit": null,
+      "direction": null,
+      "advisory": null,
+      "warning": null,
+      "critical": null,
+      "basis": "practice; window ASSUMED",
+      "applies_to_tiers": ["1A", "1B", "1C", "2A", "2B", "3"],
+      "description": "A sensor channel has reported the exact same value for hours on end, which usually means the sensor is stuck rather than the ground being perfectly still.",
+      "flat_window_h": 6
+    }
+  },
+  "lifecycle": {
+    "on_delay_samples": 3,
+    "deadband_frac": 0.10,
+    "latch": ["CRITICAL"],
+    "median_filter_h": {
+      "tilt_change": 24,
+      "strain_tensile": 24,
+      "strain_compressive": 24
+    },
+    "basis": "ISA-18.2 / EEMUA 191 practice; values ASSUMED"
+  }
+}
