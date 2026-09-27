@@ -169,7 +169,14 @@ class DatabaseManager:
 
         try:
             if DATABASE_URL:
-                self.pool = await asyncpg.create_pool(dsn=DATABASE_URL, min_size=1, max_size=5, timeout=2.0)
+                ssl_mode = "require" if ("supabase" in DATABASE_URL or "sslmode=require" in DATABASE_URL) else None
+                self.pool = await asyncpg.create_pool(
+                    dsn=DATABASE_URL,
+                    min_size=1,
+                    max_size=5,
+                    timeout=5.0,
+                    ssl=ssl_mode
+                )
             else:
                 self.pool = await asyncpg.create_pool(
                     host=PGHOST,
