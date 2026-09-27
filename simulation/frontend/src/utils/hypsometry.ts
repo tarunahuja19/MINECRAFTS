@@ -228,6 +228,81 @@ export function hotColor(t: number): [number, number, number] {
   return sampleRamp(t, HOT_STOPS);
 }
 
+// ---------------------------------------------------------------------------
+// Heatmap ramps: warm sequential, diverging, traffic-light, risk
+// ---------------------------------------------------------------------------
+
+export const TILT_STOPS: [number, string][] = [
+  [0.00, "#f0e8d8"],
+  [0.25, "#d4a64a"],
+  [0.50, "#b8722e"],
+  [0.75, "#8c3a1c"],
+  [1.00, "#4a0e0a"],
+];
+
+export const STRAIN_STOPS: [number, string][] = [
+  [0.00, "#f2ead0"],
+  [0.25, "#d09838"],
+  [0.50, "#b05a22"],
+  [0.75, "#7e2a14"],
+  [1.00, "#3e0808"],
+];
+
+export const CURVATURE_STOPS: [number, string][] = [
+  [0.00, "#1a6e5c"],
+  [0.25, "#338a7a"],
+  [0.50, "#7a7a7a"],
+  [0.75, "#9a4488"],
+  [1.00, "#6e1858"],
+];
+
+export const PPV_STOPS: [number, string][] = [
+  [0.00, "#e8e0c8"],
+  [0.25, "#cca030"],
+  [0.50, "#b46420"],
+  [0.75, "#882818"],
+  [1.00, "#420808"],
+];
+
+export const RSSI_STOPS: [number, string][] = [
+  [0.00, "#882218"],
+  [0.33, "#b87820"],
+  [0.66, "#b8a830"],
+  [1.00, "#2a7a38"],
+];
+
+export const RISK_STOPS: [number, string][] = [
+  [0.00, "#2a7a38"],
+  [0.25, "#a89828"],
+  [0.50, "#c86020"],
+  [0.75, "#882218"],
+  [1.00, "#1a0808"],
+];
+
+export function tiltColor(t: number): [number, number, number] {
+  return sampleRamp(t, TILT_STOPS);
+}
+
+export function strainColor(t: number): [number, number, number] {
+  return sampleRamp(t, STRAIN_STOPS);
+}
+
+export function curvatureColor(t: number): [number, number, number] {
+  return sampleRamp(t, CURVATURE_STOPS);
+}
+
+export function ppvColor(t: number): [number, number, number] {
+  return sampleRamp(t, PPV_STOPS);
+}
+
+export function rssiColor(t: number): [number, number, number] {
+  return sampleRamp(t, RSSI_STOPS);
+}
+
+export function riskColor(t: number): [number, number, number] {
+  return sampleRamp(t, RISK_STOPS);
+}
+
 /**
  * Piecewise-linear sample of a stop list at `t`, clamped to [0, 1].
  *

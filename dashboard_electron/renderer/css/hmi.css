@@ -2362,3 +2362,91 @@ html, body {
   box-sizing: border-box;
 }
 
+/* Heatmap Overlay Legend */
+.heatmap-legend {
+  position: absolute;
+  bottom: 32px;
+  left: 12px;
+  z-index: 1000;
+  background: #1E2830;
+  border: 1px solid #2E3E4A;
+  border-radius: 2px;
+  padding: 8px 12px;
+  min-width: 180px;
+  pointer-events: auto;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.heatmap-legend-title {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  color: #C5D6DC;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.heatmap-legend-bar {
+  width: 100%;
+  height: 10px;
+  border: 1px solid #2E3E4A;
+  border-radius: 1px;
+}
+
+.heatmap-legend-ticks {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.heatmap-legend-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: #8EA1A8;
+  white-space: nowrap;
+}
+
+.heatmap-legend-note {
+  font-size: 9px;
+  color: #5A7080;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* ==========================================================================
+   Map & Heatmap Focus Outline & Selection Artifact Suppression
+   ========================================================================== */
+.leaflet-container:focus,
+.leaflet-container *:focus,
+.leaflet-pane,
+.leaflet-pane:focus,
+.leaflet-pane *,
+.leaflet-image-layer,
+.leaflet-image-layer:focus,
+.leaflet-overlay-pane svg,
+.leaflet-overlay-pane path,
+#map-container:focus,
+#map-container *:focus {
+  outline: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Ensure heatmap overlay pane is strictly non-interactive and smoothly interpolated */
+.leaflet-heatmapPane-pane {
+  pointer-events: none !important;
+  outline: none !important;
+}
+
+.leaflet-heatmapPane-pane img,
+.leaflet-image-layer.leaflet-pane-heatmapPane {
+  pointer-events: none !important;
+  user-select: none !important;
+  outline: none !important;
+  border: none !important;
+  image-rendering: auto !important; /* smooth bilinear interpolation */
+}
+

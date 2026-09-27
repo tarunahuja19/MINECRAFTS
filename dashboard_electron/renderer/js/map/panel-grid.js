@@ -158,10 +158,19 @@ var panelGrid = (function () {
     return null;
   }
 
+  function isHeatmapActive() {
+    return (typeof heatmapOverlay !== 'undefined' && typeof heatmapOverlay.getMode === 'function' && heatmapOverlay.getMode() !== 'none');
+  }
+
   function styleForCell(cellId) {
     if (selectedCellId === cellId) return GRID_CONFIG.selectedStyle;
     var d = cellsData[cellId];
     var base = (d && d.nodeCount === 0) ? GRID_CONFIG.emptyStyle : GRID_CONFIG.defaultStyle;
+
+    // When continuous geotechnical heatmap is active, completely disable all sector fill so the heatmap is never blocked by rectangles
+    if (isHeatmapActive()) {
+      return Object.assign({}, base, { fill: false, fillOpacity: 0 });
+    }
 
     if (!surfaceOn) return base;
 
@@ -234,7 +243,22 @@ var panelGrid = (function () {
       bus.on('telemetry', function () {
         if (surfaceOn) restyleAllCells();
       });
+      bus.on('heatmap-mode', function (mode) {
+        clearSelection();
+        if (mode && mode !== 'none') {
+          if (surfaceOn) {
+            surfaceOn = false;
+            var btnSurface = document.getElementById('btn-grid-surface');
+            if (btnSurface) setActive(btnSurface, false);
+          }
+        }
+        restyleAllCells();
+      });
     }
+
+    map.on('click', function () {
+      clearSelection();
+    });
 
     console.log('[PANEL_GRID] Initialized 8x8 Sector Grid (64 Sectors) over Panel A');
   }
@@ -304,8 +328,9 @@ var panelGrid = (function () {
         );
         polygon._cellId = cellId;
 
-        // Mouse events
+        // Mouse events - suppressed during active continuous heatmap analysis
         polygon.on('mouseover', function () {
+          if (isHeatmapActive()) return;
           var cid = this._cellId;
           if (selectedCellId !== cid) {
             this.setStyle(GRID_CONFIG.hoverStyle);
@@ -313,6 +338,7 @@ var panelGrid = (function () {
         });
 
         polygon.on('mouseout', function () {
+          if (isHeatmapActive()) return;
           var cid = this._cellId;
           if (selectedCellId !== cid) {
             // styleForCell, not defaultStyle: a hovered empty cell must fall
@@ -326,12 +352,19 @@ var panelGrid = (function () {
           if (typeof areaSelect3D !== 'undefined' && typeof areaSelect3D.isCursorModeActive === 'function' && areaSelect3D.isCursorModeActive()) {
             return;
           }
+          // Never select or highlight grid sectors when heatmap overlay analysis is active
+          if (isHeatmapActive()) {
+            return;
+          }
           selectSector(this._cellId);
         });
 
         polygon.on('dblclick', function (e) {
           L.DomEvent.stopPropagation(e);
           if (typeof areaSelect3D !== 'undefined' && typeof areaSelect3D.isCursorModeActive === 'function' && areaSelect3D.isCursorModeActive()) {
+            return;
+          }
+          if (isHeatmapActive()) {
             return;
           }
           trigger3DView(this._cellId);
@@ -419,6 +452,9 @@ var panelGrid = (function () {
       btnSurface.addEventListener('click', function () {
         surfaceOn = !surfaceOn;
         setActive(btnSurface, surfaceOn);
+        if (surfaceOn && typeof heatmapOverlay !== 'undefined' && heatmapOverlay.setMode) {
+          heatmapOverlay.setMode('none');
+        }
         restyleAllCells();
       });
     }
@@ -428,8 +464,28 @@ var panelGrid = (function () {
     setActive(btnSurface, surfaceOn);
   }
 
+  function clearSelection() {
+    if (selectedCellId && cellPolygons[selectedCellId]) {
+      var prevId = selectedCellId;
+      selectedCellId = null;
+      cellPolygons[prevId].setStyle(styleForCell(prevId));
+      var oldTag = document.getElementById('grid-tag-' + prevId);
+      if (oldTag) oldTag.classList.remove('active');
+    }
+    selectedCellId = null;
+    if (typeof window !== 'undefined') {
+      window.__selectedGridSector = null;
+    }
+  }
+
   function selectSector(cellId) {
     if (!cellsData[cellId]) return;
+
+    // Clicking already selected cell toggles selection off
+    if (selectedCellId === cellId) {
+      clearSelection();
+      return;
+    }
 
     // Reset previously selected cell
     if (selectedCellId && cellPolygons[selectedCellId]) {
@@ -454,7 +510,9 @@ var panelGrid = (function () {
     var cellData = cellsData[cellId];
 
     // Expose for external access and 3D window caller
-    window.__selectedGridSector = cellData;
+    if (typeof window !== 'undefined') {
+      window.__selectedGridSector = cellData;
+    }
 
     // Emit event across app bus for selection
     if (typeof bus !== 'undefined') {
@@ -527,12 +585,21 @@ var panelGrid = (function () {
   return {
     init: init,
     selectSector: selectSector,
+    clearSelection: clearSelection,
     getSelectedSector: getSelectedSector,
     getAllSectors: getAllSectors,
     trigger3DView: trigger3DView,
     setGridVisible: function (on) { gridOn = !!on; applyVisibility(); },
     setLabelsVisible: function (on) { labelsOn = !!on; applyVisibility(); },
-    setSurfaceVisible: function (on) { surfaceOn = !!on; restyleAllCells(); },
+    setSurfaceVisible: function (on) {
+      surfaceOn = !!on;
+      var btnSurface = document.getElementById('btn-grid-surface');
+      if (btnSurface) setActive(btnSurface, surfaceOn);
+      if (surfaceOn && typeof heatmapOverlay !== 'undefined' && heatmapOverlay.setMode) {
+        heatmapOverlay.setMode('none');
+      }
+      restyleAllCells();
+    },
     setFeatureEnabled: function (enabled) {
       ENABLE_GRID_FEATURE = Boolean(enabled);
       gridOn = ENABLE_GRID_FEATURE;

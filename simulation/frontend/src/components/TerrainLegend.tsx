@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import type { HeatmapMode } from "../types";
 import {
   HEIGHT_STOPS,
   RAMP_FLOOR,
@@ -7,6 +8,12 @@ import {
   EVENT_RAMP_MAX_M,
   EVENT_RAMP_MIN_M,
   eventDropT,
+  TILT_STOPS,
+  STRAIN_STOPS,
+  CURVATURE_STOPS,
+  PPV_STOPS,
+  RSSI_STOPS,
+  RISK_STOPS,
 } from "../utils/hypsometry";
 import {
   SUBSIDENCE_SHADOW,
@@ -28,7 +35,50 @@ interface TerrainLegendProps {
   /** Panel elevation extremes, m AMSL, from the server's DEM metadata. */
   elevMinM?: number;
   elevMaxM?: number;
+  heatmapMode?: HeatmapMode;
 }
+
+const HEATMAP_LEGEND: Record<
+  string,
+  { label: string; stops: [number, string][]; ticks: string[]; note: string }
+> = {
+  tilt: {
+    label: "TILT",
+    stops: TILT_STOPS,
+    ticks: ["0", "5", "10", "15", "20 mm/m"],
+    note: "Ground slope induced by subsidence, mm per m.",
+  },
+  strain: {
+    label: "TENSILE STRAIN",
+    stops: STRAIN_STOPS,
+    ticks: ["0", "2.5", "5", "7.5", "10 mm/m"],
+    note: "Horizontal tensile strain at surface, mm per m.",
+  },
+  curvature: {
+    label: "CURVATURE",
+    stops: CURVATURE_STOPS,
+    ticks: ["0", "0.001", "0.003", "0.005 1/m"],
+    note: "Surface curvature magnitude, 1/m. Green = convex, purple = concave.",
+  },
+  ppv: {
+    label: "PPV",
+    stops: PPV_STOPS,
+    ticks: ["0", "12.5", "25", "37.5", "50 mm/s"],
+    note: "Peak particle velocity estimated from vibration displacement.",
+  },
+  rssi: {
+    label: "RSSI",
+    stops: RSSI_STOPS,
+    ticks: ["-120", "-90", "-60", "-30 dBm"],
+    note: "Received signal strength. Red = weak, green = strong.",
+  },
+  risk: {
+    label: "RISK INDEX",
+    stops: RISK_STOPS,
+    ticks: ["0.0", "0.25", "0.50", "0.75", "1.0"],
+    note: "Composite risk: 35% tilt + 35% strain + 30% depth.",
+  },
+};
 
 const PANEL: React.CSSProperties = {
   position: "absolute",
@@ -116,6 +166,7 @@ function RampBar({
 export const TerrainLegend: React.FC<TerrainLegendProps> = ({
   elevMinM,
   elevMaxM,
+  heatmapMode = "none",
 }) => {
   // Open by default. The depth scale needs to be readable at a glance —
   // a collapsed panel means the operator can't decode a colour on the bowl
@@ -126,7 +177,13 @@ export const TerrainLegend: React.FC<TerrainLegendProps> = ({
   const hasElev = elevMinM !== undefined && elevMaxM !== undefined;
   const mid = hasElev ? (elevMinM! + elevMaxM!) / 2 : undefined;
 
-  const title = "TERRAIN: HEIGHT / DEPTH / EVENT";
+  const hmLegend = heatmapMode !== "none" && heatmapMode !== "depth"
+    ? HEATMAP_LEGEND[heatmapMode] ?? null
+    : null;
+
+  const title = hmLegend
+    ? `TERRAIN: HEIGHT / ${hmLegend.label}`
+    : "TERRAIN: HEIGHT / DEPTH / EVENT";
 
   return (
     <div style={PANEL}>
@@ -150,59 +207,80 @@ export const TerrainLegend: React.FC<TerrainLegendProps> = ({
             shaded by Horn (1981) hillshade. m AMSL.
           </div>
 
-          {/* Ground that has MOVED is drawn on second and third scales,
-              overlaid once a bowl forms — otherwise a colour is ambiguous
-              between "high ridge" and "deep bowl". */}
-          <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
-            SETTLEMENT BOWL
-          </div>
-          <div style={{ marginTop: 4 }}>
-            <RampBar stops={DEPTH_STOPS} shadow />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", color: "#a3a4a6", marginTop: 3 }}>
-            {[0, 0.25, 0.5, 0.75, 1].map((frac) => (
-              <span key={frac}>{(frac * BOWL_RAMP_MAX_M).toFixed(frac === 0 ? 0 : 2)} m</span>
-            ))}
-          </div>
-          <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
-            How far the ground has settled below where it started: blue =
-            just moved, red = {BOWL_RAMP_MAX_M.toFixed(2)} m, one seam's
-            worth. Dark rings every {BOWL_CONTOUR_INTERVAL_M.toFixed(2)} m —
-            closely spaced rings mean a steep flank, wide spacing a flat floor.
-          </div>
+          {hmLegend ? (
+            <>
+              <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
+                {hmLegend.label}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <RampBar stops={hmLegend.stops} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#a3a4a6", marginTop: 3 }}>
+                {hmLegend.ticks.map((t, i) => (
+                  <span key={i}>{t}</span>
+                ))}
+              </div>
+              <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
+                {hmLegend.note}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Ground that has MOVED is drawn on second and third scales,
+                  overlaid once a bowl forms — otherwise a colour is ambiguous
+                  between "high ridge" and "deep bowl". */}
+              <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
+                SETTLEMENT BOWL
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <RampBar stops={DEPTH_STOPS} shadow />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#a3a4a6", marginTop: 3 }}>
+                {[0, 0.25, 0.5, 0.75, 1].map((frac) => (
+                  <span key={frac}>{(frac * BOWL_RAMP_MAX_M).toFixed(frac === 0 ? 0 : 2)} m</span>
+                ))}
+              </div>
+              <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
+                How far the ground has settled below where it started: blue =
+                just moved, red = {BOWL_RAMP_MAX_M.toFixed(2)} m, one seam's
+                worth. Dark rings every {BOWL_CONTOUR_INTERVAL_M.toFixed(2)} m —
+                closely spaced rings mean a steep flank, wide spacing a flat floor.
+              </div>
 
-          <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
-            EVENT DROP (LOG SCALE)
-          </div>
-          <div style={{ marginTop: 4 }}>
-            <RampBar stops={HOT_STOPS} />
-          </div>
-          {/* Log scale, so the ticks are not evenly spaced: each sits where
-              eventDropT puts its drop. */}
-          <div style={{ position: "relative", height: 12, color: "#a3a4a6", marginTop: 3 }}>
-            {[EVENT_RAMP_MIN_M, 0.5, 1, 5, EVENT_RAMP_MAX_M].map((d) => {
-              const t = eventDropT(d);
-              return (
-                <span
-                  key={d}
-                  style={{
-                    position: "absolute",
-                    left: `${t * 100}%`,
-                    transform: t >= 1 ? "translateX(-100%)" : t <= 0 ? "none" : "translateX(-50%)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {d < 1 ? `${d * 100} cm` : `${d} m`}
-                </span>
-              );
-            })}
-          </div>
-          <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
-            Drop carved by a cave-in or tilt on top of the bowl, shown where
-            it exceeds 2 cm. Dark rings every {EVENT_CONTOUR_INTERVAL_M.toFixed(0)} m.
-            Panel relief is {((elevMaxM ?? 370) - (elevMinM ?? 196)).toFixed(0)} m, so
-            these need scales of their own to be visible at all.
-          </div>
+              <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
+                EVENT DROP (LOG SCALE)
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <RampBar stops={HOT_STOPS} />
+              </div>
+              {/* Log scale, so the ticks are not evenly spaced: each sits where
+                  eventDropT puts its drop. */}
+              <div style={{ position: "relative", height: 12, color: "#a3a4a6", marginTop: 3 }}>
+                {[EVENT_RAMP_MIN_M, 0.5, 1, 5, EVENT_RAMP_MAX_M].map((d) => {
+                  const t = eventDropT(d);
+                  return (
+                    <span
+                      key={d}
+                      style={{
+                        position: "absolute",
+                        left: `${t * 100}%`,
+                        transform: t >= 1 ? "translateX(-100%)" : t <= 0 ? "none" : "translateX(-50%)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {d < 1 ? `${d * 100} cm` : `${d} m`}
+                    </span>
+                  );
+                })}
+              </div>
+              <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
+                Drop carved by a cave-in or tilt on top of the bowl, shown where
+                it exceeds 2 cm. Dark rings every {EVENT_CONTOUR_INTERVAL_M.toFixed(0)} m.
+                Panel relief is {((elevMaxM ?? 370) - (elevMinM ?? 196)).toFixed(0)} m, so
+                these need scales of their own to be visible at all.
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

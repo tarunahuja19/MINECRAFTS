@@ -99,8 +99,10 @@ export const SUBSIDENCE_SHADOW = 0.22;
  */
 const MAX_SAG_EXAGGERATION = 8;
 import { sampleGrid, setTerrainSource } from "../utils/terrainSampler";
+import type { HeatmapMode } from "../types";
 import {
   buildElevationCdf,
+  curvatureColor,
   depthColor,
   equalAreaT,
   eventDropT,
@@ -108,6 +110,11 @@ import {
   heightColor,
   hillshade,
   hotColor,
+  ppvColor,
+  riskColor,
+  rssiColor,
+  strainColor,
+  tiltColor,
 } from "../utils/hypsometry";
 
 /**
@@ -164,7 +171,17 @@ interface TerrainMeshProps {
    * the whole panel, so a small sector renders sharper, not coarser.
    */
   clipBounds?: EmbedClipBounds | null;
+  /** Active heatmap overlay mode; "none" = default terrain colouring. */
+  heatmapMode?: HeatmapMode;
 }
+
+// Normalisation ceilings for each heatmap channel. Values beyond these
+// saturate at the ramp's top end. Chosen to span the realistic range
+// on a ~600 m subsidence panel without wasting colour on extrema.
+const HEATMAP_MAX_TILT = 20.0;       // mm/m
+const HEATMAP_MAX_STRAIN = 10.0;     // mm/m (tensile)
+const HEATMAP_MAX_CURVATURE = 0.005; // 1/m
+const HEATMAP_MAX_PPV = 50.0;        // mm/s  derived from vib displacement
 
 export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   z0Mesh,
@@ -185,6 +202,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
   waveOrigin = null,
   onTerrainClick,
   clipBounds = null,
+  heatmapMode = "none",
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
 
@@ -515,66 +533,147 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
         //     0.25 m.
         //   * event (`eventDrop`, server events + local cave-ins): HOT_STOPS on a log scale from 5 cm
         //     to 25 m, contoured every 1 m, blended over the bowl colour.
+        //
+        // Heatmap overlay: when a mode is active, it replaces this colouring
+        // entirely. "none" and "depth" fall through to the bowl + event
+        // colouring below.
         const bowlDrop = Math.max(0.0, state.dropDistanceM - state.interventionDropM);
-        if (bowlDrop > SUBSIDENCE_EPS_M) {
-          // Linear in depth, deliberately: equal depth = equal colour step,
-          // which is also what makes the contour bands evenly spaced in
-          // depth. (An earlier sqrt spent ramp on the outer skirt.)
-          const t = Math.min(1.0, bowlDrop / BOWL_RAMP_MAX_M);
-          const [cr, cg, cb] = depthColor(t);
+        if (heatmapMode !== "none" && heatmapMode !== "depth") {
+          // ---- Non-depth heatmap modes ----
+          let channelT = 0;
+          switch (heatmapMode) {
+            case "tilt":
+              channelT = Math.min(1.0, state.tiltMmPerM / HEATMAP_MAX_TILT);
+              break;
+            case "strain":
+              channelT = Math.min(1.0, state.tensileStrainMmPerM / HEATMAP_MAX_STRAIN);
+              break;
+            case "curvature":
+              channelT = Math.min(1.0, Math.abs(state.curvaturePerM) / HEATMAP_MAX_CURVATURE);
+              break;
+            case "ppv": {
+              const ppvApprox = Math.abs(state.vibrationDisplacementM) * 1000.0 * 2.0 * Math.PI;
+              channelT = Math.min(1.0, ppvApprox / HEATMAP_MAX_PPV);
+              break;
+            }
+            case "rssi": {
+              const dist = Math.hypot(xCoord, yCoord);
+              channelT = Math.max(0, 1.0 - dist / 300.0);
+              break;
+            }
+            case "risk": {
+              const tiltNorm = Math.min(1.0, state.tiltMmPerM / HEATMAP_MAX_TILT);
+              const strainNorm = Math.min(1.0, state.tensileStrainMmPerM / HEATMAP_MAX_STRAIN);
+              const depthNorm = Math.min(1.0, totalDrop / CUMULATIVE_DEPTH_MAX_M);
+              channelT = Math.min(1.0, 0.35 * tiltNorm + 0.35 * strainNorm + 0.30 * depthNorm);
+              break;
+            }
+          }
+
+          const rampFn = heatmapMode === "tilt" ? tiltColor
+            : heatmapMode === "strain" ? strainColor
+            : heatmapMode === "curvature" ? curvatureColor
+            : heatmapMode === "ppv" ? ppvColor
+            : heatmapMode === "rssi" ? rssiColor
+            : riskColor;
+
+          const [cr, cg, cb] = rampFn(channelT);
           rampColor.setRGB(cr, cg, cb, THREE.SRGBColorSpace);
 
-          // Contours: a smooth ramp cannot show a bowl's floor (an R = 85 m
-          // bowl varies by 0.02 m over its inner 25 m), so depth is quantised
-          // into rings that the eye reads by spacing, as on a topographic
-          // map. Gated on the analytic slope `tiltMmPerM` so they outline
-          // flanks and fade out on flat ground instead of flooding it.
-          rampColor.multiplyScalar(
-            1.0 - 0.34 * contourStrength(
-              bowlDrop,
-              BOWL_CONTOUR_INTERVAL_M,
-              state.tiltMmPerM / CONTOUR_MIN_SLOPE_MM_PER_M,
-            ),
+          // Spatial proximity gate: inside any active intervention's
+          // influence area, the ramp fully replaces the terrain colour
+          // even when the physical channel reads zero (e.g. tilt at the
+          // exact bowl centre where the surface is flat by symmetry).
+          // Without this, zero-value vertices fall through to terrain
+          // colour and the centre of every bowl looks un-heatmapped.
+          let proximityBlend = 0;
+          const liveIntersHeatmap = globalGeomechanics.interventions;
+          for (let hi = 0; hi < liveIntersHeatmap.length; hi++) {
+            const inter = liveIntersHeatmap[hi];
+            const hdx = xCoord - inter.cx;
+            const hdy = yCoord - inter.cy;
+            const hDist = Math.hypot(hdx, hdy);
+            // Blend reaches 1.0 within the bowl radius, fades to 0 at 1.5x
+            const hBlend = 1.0 - Math.min(1.0, Math.max(0, hDist / (inter.radiusM * 1.5)));
+            if (hBlend > proximityBlend) proximityBlend = hBlend;
+          }
+          // Also gate on totalDrop: if the ground moved, show heatmap.
+          if (totalDrop > 0.01) {
+            const dropGate = Math.min(1.0, totalDrop / 0.5);
+            if (dropGate > proximityBlend) proximityBlend = dropGate;
+          }
+
+          const blend = Math.max(
+            channelT > 0.001 ? Math.min(1.0, channelT * 8.0) : 0,
+            proximityBlend,
           );
+          tempColor.lerp(rampColor, Math.max(blend, 0.15));
 
-          // Blend, faded in over the first few centimetres so the bowl
-          // dissolves into undisturbed terrain instead of ending on a ring.
-          // `blend` alone is the weight; a second depth factor on top would
-          // let the lighter height base show through at full depth (see
-          // verify_bowl_physics.mjs's composite sweep).
-          const blend = Math.min(1.0, bowlDrop / SUBSIDENCE_FADE_M);
-          tempColor.lerp(rampColor, blend);
+          if (elevationShading) {
+            const relief = 0.88 + 0.12 * elevationShading.shade[vIdx];
+            tempColor.multiplyScalar(relief);
+          }
+        } else {
+          if (bowlDrop > SUBSIDENCE_EPS_M) {
+            // Linear in depth, deliberately: equal depth = equal colour step,
+            // which is also what makes the contour bands evenly spaced in
+            // depth. (An earlier sqrt spent ramp on the outer skirt.)
+            const t = Math.min(1.0, bowlDrop / BOWL_RAMP_MAX_M);
+            const [cr, cg, cb] = depthColor(t);
+            rampColor.setRGB(cr, cg, cb, THREE.SRGBColorSpace);
 
-          // Excavation shadow: darkens the blended result, strongest at ramp
-          // entry and releasing as the ramp darkens on its own. It must
-          // multiply AFTER the lerp, and the (1 - t) decay is essential: a
-          // flat `1 - SUBSIDENCE_SHADOW * blend` crushes the deep end (1260
-          // composite violations at shadow >= 0.55). See hypsometry.ts.
-          tempColor.multiplyScalar(1.0 - SUBSIDENCE_SHADOW * blend * (1.0 - t));
-        }
+            // Contours: a smooth ramp cannot show a bowl's floor (an R = 85 m
+            // bowl varies by 0.02 m over its inner 25 m), so depth is quantised
+            // into rings that the eye reads by spacing, as on a topographic
+            // map. Gated on the analytic slope `tiltMmPerM` so they outline
+            // flanks and fade out on flat ground instead of flooding it.
+            rampColor.multiplyScalar(
+              1.0 - 0.34 * contourStrength(
+                bowlDrop,
+                BOWL_CONTOUR_INTERVAL_M,
+                state.tiltMmPerM / CONTOUR_MIN_SLOPE_MM_PER_M,
+              ),
+            );
 
-        if (eventDrop > EVENT_DROP_MIN_M) {
-          rampColor.setRGB(...hotColor(eventDropT(eventDrop)), THREE.SRGBColorSpace);
-          rampColor.multiplyScalar(
-            1.0 - 0.34 * contourStrength(
-              eventDrop,
-              EVENT_CONTOUR_INTERVAL_M,
-              Math.hypot(eventGradX, eventGradY) / EVENT_CONTOUR_MIN_SLOPE,
-            ),
-          );
-          // Fades in over 2 -> 5 cm so the event's edge is not a hard line.
-          const eventBlend = Math.min(
-            1.0,
-            (eventDrop - EVENT_DROP_MIN_M) / 0.03,
-          );
-          tempColor.lerp(rampColor, eventBlend);
-        }
+            // Blend, faded in over the first few centimetres so the bowl
+            // dissolves into undisturbed terrain instead of ending on a ring.
+            // `blend` alone is the weight; a second depth factor on top would
+            // let the lighter height base show through at full depth (see
+            // verify_bowl_physics.mjs's composite sweep).
+            const blend = Math.min(1.0, bowlDrop / SUBSIDENCE_FADE_M);
+            tempColor.lerp(rampColor, blend);
 
-        // Keep the hillshade relief visible through the overlays, so the
-        // bowl still reads as a 3-D depression rather than a flat decal.
-        if (elevationShading && (bowlDrop > SUBSIDENCE_EPS_M || eventDrop > EVENT_DROP_MIN_M)) {
-          const relief = 0.88 + 0.12 * elevationShading.shade[vIdx];
-          tempColor.multiplyScalar(relief);
+            // Excavation shadow: darkens the blended result, strongest at ramp
+            // entry and releasing as the ramp darkens on its own. It must
+            // multiply AFTER the lerp, and the (1 - t) decay is essential: a
+            // flat `1 - SUBSIDENCE_SHADOW * blend` crushes the deep end (1260
+            // composite violations at shadow >= 0.55). See hypsometry.ts.
+            tempColor.multiplyScalar(1.0 - SUBSIDENCE_SHADOW * blend * (1.0 - t));
+          }
+
+          if (eventDrop > EVENT_DROP_MIN_M) {
+            rampColor.setRGB(...hotColor(eventDropT(eventDrop)), THREE.SRGBColorSpace);
+            rampColor.multiplyScalar(
+              1.0 - 0.34 * contourStrength(
+                eventDrop,
+                EVENT_CONTOUR_INTERVAL_M,
+                Math.hypot(eventGradX, eventGradY) / EVENT_CONTOUR_MIN_SLOPE,
+              ),
+            );
+            // Fades in over 2 -> 5 cm so the event's edge is not a hard line.
+            const eventBlend = Math.min(
+              1.0,
+              (eventDrop - EVENT_DROP_MIN_M) / 0.03,
+            );
+            tempColor.lerp(rampColor, eventBlend);
+          }
+
+          // Keep the hillshade relief visible through the overlays, so the
+          // bowl still reads as a 3-D depression rather than a flat decal.
+          if (elevationShading && (bowlDrop > SUBSIDENCE_EPS_M || eventDrop > EVENT_DROP_MIN_M)) {
+            const relief = 0.88 + 0.12 * elevationShading.shade[vIdx];
+            tempColor.multiplyScalar(relief);
+          }
         }
 
         // Ejecta scorch: thrown rock and settled dust stain the ground in and
@@ -634,6 +733,7 @@ export const TerrainMesh: React.FC<TerrainMeshProps> = ({
     viewWindow,
     animMs,
     flightActive,
+    heatmapMode,
   ]);
 
   // Handle terrain click to pick exact (x, y) target coordinates

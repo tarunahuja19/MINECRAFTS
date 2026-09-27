@@ -3,7 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { CrackLine, EventZone, PreviewLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
+import type { CrackLine, EventZone, PreviewLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation, HeatmapMode } from "../types";
 import type { EmbedClipBounds } from "../embed";
 import { sampleBaseGroundY, sampleGroundY } from "../utils/terrainSampler";
 import { TerrainMesh } from "./TerrainMesh";
@@ -90,6 +90,8 @@ interface MineViewportProps {
   tiltArrows?: TiltArrowSpec[];
   /** Live crack dust lines (FORGE). */
   crackDusts?: CrackDustSpec[];
+  /** Active heatmap overlay mode; "none" = default terrain colouring. */
+  heatmapMode?: HeatmapMode;
 }
 
 /** Dashed amber line A-B riding the deformed ground (FORGE DRAW CRACK preview). */
@@ -248,6 +250,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   zoneRings = true,
   tiltArrows = [],
   crackDusts = [],
+  heatmapMode = "none",
 }, ref) => {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
@@ -435,6 +438,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
             waveOrigin={targetLocation ? { x: targetLocation.x, y: targetLocation.y } : null}
             onTerrainClick={onTerrainClick}
             clipBounds={clipBounds}
+            heatmapMode={heatmapMode}
           />
 
           {/* 33 Sensor Node Geodetic Monuments & Extensometer Baseline Links */}
@@ -489,7 +493,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
 
       {/* Key to the viewport's colour scales: the fused height/depth ramp,
           plus the soil body's own. */}
-      <TerrainLegend elevMinM={elevMinM} elevMaxM={elevMaxM} />
+      <TerrainLegend elevMinM={elevMinM} elevMaxM={elevMaxM} heatmapMode={heatmapMode} />
     </div>
   );
 });

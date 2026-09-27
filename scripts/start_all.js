@@ -312,7 +312,7 @@ async function main() {
   const viteProc = spawn(viteBin, viteArgs, {
     cwd: path.join(ROOT_DIR, 'simulation', 'frontend'),
     stdio: 'inherit',
-    shell: false
+    shell: process.platform === 'win32'
   });
   children.push(viteProc);
   await waitForHttp('http://127.0.0.1:5173/', 25000, viteProc);
@@ -330,7 +330,7 @@ async function main() {
     const electronProc = spawn(electronBin, electronArgs, {
       cwd: path.join(ROOT_DIR, 'dashboard_electron'),
       stdio: 'inherit',
-      shell: false,
+      shell: process.platform === 'win32',
       env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined }
     });
     children.push(electronProc);

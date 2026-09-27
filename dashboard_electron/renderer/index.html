@@ -345,6 +345,17 @@
                           <button class="hud-btn" id="btn-grid-labels" title="Show or hide the sector labels (A1..H8)">LABELS</button>
                           <button class="hud-btn" id="btn-grid-surface" title="Shade each sector by its subsidence surface value, independent of the grid line colour">SURFACE</button>
                         </div>
+                        <!-- Heatmap mode selector -->
+                        <div class="map-btn-group" id="heatmap-controls-group">
+                          <button class="hud-btn heatmap-mode-btn active" data-mode="none">OFF</button>
+                          <button class="hud-btn heatmap-mode-btn" data-mode="depth">DEPTH</button>
+                          <button class="hud-btn heatmap-mode-btn" data-mode="tilt">TILT</button>
+                          <button class="hud-btn heatmap-mode-btn" data-mode="strain">STRAIN</button>
+                          <button class="hud-btn heatmap-mode-btn" data-mode="curvature">CURV</button>
+                          <button class="hud-btn heatmap-mode-btn" data-mode="ppv">PPV</button>
+                          <button class="hud-btn heatmap-mode-btn" data-mode="rssi">RSSI</button>
+                          <button class="hud-btn heatmap-mode-btn" data-mode="risk">RISK</button>
+                        </div>
                       </div>
 
                       <div id="map-hud-legend" class="map-hud-legend">
@@ -1834,6 +1845,7 @@
   <script src="js/map/area-select-3d.js"></script>
   <script src="js/map/send-to-sim.js"></script>
   <script src="js/map/sim-select.js"></script>
+  <script src="js/map/heatmap-overlay.js"></script>
   <script src="js/map/confidence-badge.js"></script>
   <script src="js/map/lastgasp-marker.js"></script>
   <script src="js/map/ring-fallback.js"></script>

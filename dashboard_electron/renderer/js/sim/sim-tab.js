@@ -748,6 +748,17 @@ var simTab = (function () {
     if (effectType && typeof simEmbed !== 'undefined' && simEmbed.sendForgeEffect) {
       simEmbed.sendForgeEffect(effectType, ex, ey, erad, edepth, ppv, extra);
     }
+    if (typeof bus !== 'undefined' && bus.emit) {
+      if (effectType === 'cave_in' || effectType === 'tilt') {
+        bus.emit('forge-collapse', {
+          cx: ex,
+          cy: ey,
+          radiusM: erad || 70,
+          magnitudeM: edepth || 0.75,
+          settled: true
+        });
+      }
+    }
     clearForgePreview();
     updateForgeRange(function () {
       playForge();
@@ -1070,6 +1081,19 @@ var simTab = (function () {
           forgeState.day = 0;
         }
         forgeState.events = Array.isArray(seedData.events) ? seedData.events : [];
+        if (typeof bus !== 'undefined' && bus.emit) {
+          forgeState.events.forEach(function (ev) {
+            if (ev.type === 'cave_in' || ev.kind === 'tilt') {
+              bus.emit('forge-collapse', {
+                cx: ev.x,
+                cy: ev.y,
+                radiusM: ev.radius_m || 70,
+                magnitudeM: ev.depth_m || 0.75,
+                settled: true
+              });
+            }
+          });
+        }
         renderForgeEvents();
         resetForgeAlarms();
         if (note) {
