@@ -345,6 +345,9 @@ var realTerrain3D = (function () {
         frameSectorCamera(inst, inst.currentSector, false);
         addSectorOverlay(inst, inst.currentSector);
         addSensorMarkers(inst, inst.currentSector);
+        if (currentHeatmapMode !== 'none') {
+          updateHeatmap(inst, currentHeatmapMode);
+        }
       }
     }
 
@@ -429,6 +432,10 @@ var realTerrain3D = (function () {
     addSectorOverlay(inst, sectorData);
     addSensorMarkers(inst, sectorData);
     applyTerrainWhenReady(inst);
+
+    if (currentHeatmapMode !== 'none') {
+      updateHeatmap(inst, currentHeatmapMode);
+    }
   }
 
   function ensureBoundaryLayers(inst, geojson) {
@@ -748,6 +755,115 @@ var realTerrain3D = (function () {
     }
   }
 
+  var currentHeatmapMode = (typeof heatmapOverlay !== 'undefined' && heatmapOverlay.getMode) ? heatmapOverlay.getMode() : 'none';
+
+  function updateHeatmap(inst, mode) {
+    if (!inst || !inst.map) return;
+    var targetMode = (mode !== undefined) ? mode : currentHeatmapMode;
+    if (targetMode === undefined || targetMode === null) targetMode = 'none';
+
+    // If mode is 'none', remove layer and source if present
+    if (targetMode === 'none') {
+      try {
+        if (inst.map.getLayer('heatmap-layer')) inst.map.removeLayer('heatmap-layer');
+        if (inst.map.getSource('heatmap-source')) inst.map.removeSource('heatmap-source');
+      } catch (_) {}
+      return;
+    }
+
+    if (!inst.map.isStyleLoaded()) {
+      inst.map.once('idle', function () {
+        updateHeatmap(inst, targetMode);
+      });
+      return;
+    }
+
+    var sector = inst.currentSector;
+    var b = getSectorBounds(sector);
+    if (!b) return;
+
+    if (typeof heatmapOverlay === 'undefined' || !heatmapOverlay.evaluatePoint || !heatmapOverlay.channelValue) {
+      return;
+    }
+
+    var stops = heatmapOverlay.RAMP_FOR_MODE ? heatmapOverlay.RAMP_FOR_MODE[targetMode] : null;
+    if (!stops) return;
+
+    var HRES = 80;
+    var canvas = document.createElement('canvas');
+    canvas.width = HRES;
+    canvas.height = HRES;
+    var ctx = canvas.getContext('2d');
+    var imgData = ctx.createImageData(HRES, HRES);
+    var data = imgData.data;
+
+    for (var row = 0; row < HRES; row++) {
+      var lat = b.maxLat - (row + 0.5) * (b.maxLat - b.minLat) / HRES;
+      for (var col = 0; col < HRES; col++) {
+        var lng = b.minLng + (col + 0.5) * (b.maxLng - b.minLng) / HRES;
+        var xy = (typeof mapView !== 'undefined' && mapView.latLonToXY) ? mapView.latLonToXY(lat, lng) : [0, 0];
+        var pt = heatmapOverlay.evaluatePoint(xy[0], xy[1]);
+        var t = Math.min(1.0, Math.max(0.0, heatmapOverlay.channelValue(targetMode, pt)));
+        var idx = (row * HRES + col) * 4;
+
+        if (t < 0.04) {
+          data[idx] = 0;
+          data[idx + 1] = 0;
+          data[idx + 2] = 0;
+          data[idx + 3] = 0;
+        } else {
+          var rgb = heatmapOverlay.sampleRamp255(t, stops);
+          var normT = (t - 0.04) / 0.96;
+          var alpha = Math.min(215, Math.round(75 + 140 * Math.pow(normT, 0.85)));
+          data[idx] = rgb[0];
+          data[idx + 1] = rgb[1];
+          data[idx + 2] = rgb[2];
+          data[idx + 3] = alpha;
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    var dataUrl = canvas.toDataURL();
+    var coords = [
+      [b.minLng, b.maxLat], // top-left
+      [b.maxLng, b.maxLat], // top-right
+      [b.maxLng, b.minLat], // bottom-right
+      [b.minLng, b.minLat]  // bottom-left
+    ];
+
+    try {
+      if (inst.map.getLayer('heatmap-layer')) inst.map.removeLayer('heatmap-layer');
+      if (inst.map.getSource('heatmap-source')) inst.map.removeSource('heatmap-source');
+
+      inst.map.addSource('heatmap-source', {
+        type: 'image',
+        url: dataUrl,
+        coordinates: coords
+      });
+
+      var beforeLayer = inst.map.getLayer('sector-line-outer') ? 'sector-line-outer' : undefined;
+      inst.map.addLayer({
+        id: 'heatmap-layer',
+        type: 'raster',
+        source: 'heatmap-source',
+        paint: {
+          'raster-opacity': 0.88,
+          'raster-fade-duration': 0
+        }
+      }, beforeLayer);
+    } catch (err) {
+      console.warn('[REAL_TERRAIN_3D] Heatmap drape notice:', err.message);
+    }
+  }
+
+  function setHeatmapMode(mode) {
+    currentHeatmapMode = mode || 'none';
+    Object.keys(instances).forEach(function (k) {
+      updateHeatmap(instances[k], currentHeatmapMode);
+    });
+  }
+
   // Listen on bus for node selection to highlight marker in 3D
   if (typeof bus !== 'undefined' && bus.on) {
     bus.on('node-selected', function (nodeId) {
@@ -761,6 +877,34 @@ var realTerrain3D = (function () {
         }
       });
     });
+
+    bus.on('heatmap-mode', function (mode) {
+      setHeatmapMode(mode);
+    });
+
+    bus.on('telemetry', function () {
+      if (currentHeatmapMode !== 'none') {
+        Object.keys(instances).forEach(function (k) {
+          updateHeatmap(instances[k], currentHeatmapMode);
+        });
+      }
+    });
+
+    bus.on('alarm', function () {
+      if (currentHeatmapMode !== 'none') {
+        Object.keys(instances).forEach(function (k) {
+          updateHeatmap(instances[k], currentHeatmapMode);
+        });
+      }
+    });
+
+    bus.on('forge-collapse', function () {
+      if (currentHeatmapMode !== 'none') {
+        Object.keys(instances).forEach(function (k) {
+          updateHeatmap(instances[k], currentHeatmapMode);
+        });
+      }
+    });
   }
 
   return {
@@ -768,6 +912,8 @@ var realTerrain3D = (function () {
     loadSector: loadSector,
     setExaggeration: setExaggeration,
     setCameraPreset: setCameraPreset,
+    setHeatmapMode: setHeatmapMode,
+    getHeatmapMode: function () { return currentHeatmapMode; },
     onResize: onResize,
     destroy: destroy,
     getInstance: getInstance,

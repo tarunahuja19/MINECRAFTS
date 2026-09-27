@@ -208,6 +208,37 @@ export interface LiveMathEvaluation {
  */
 export type PhysicalEventType = "collapse" | "stress" | "tilt" | "vibration";
 
+// ---------------------------------------------------------------------------
+// Heatmap overlay modes
+// ---------------------------------------------------------------------------
+
+export type HeatmapMode =
+  | "none"
+  | "depth"
+  | "tilt"
+  | "strain"
+  | "curvature"
+  | "ppv"
+  | "rssi"
+  | "risk";
+
+export interface HeatmapModeInfo {
+  value: HeatmapMode;
+  label: string;
+  unit: string;
+}
+
+export const HEATMAP_MODES: HeatmapModeInfo[] = [
+  { value: "none",      label: "OFF",        unit: "" },
+  { value: "depth",     label: "DEPTH",      unit: "m" },
+  { value: "tilt",      label: "TILT",       unit: "mm/m" },
+  { value: "strain",    label: "STRAIN",     unit: "mm/m" },
+  { value: "curvature", label: "CURVATURE",  unit: "1/m" },
+  { value: "ppv",       label: "PPV",        unit: "mm/s" },
+  { value: "rssi",      label: "RSSI",       unit: "dBm" },
+  { value: "risk",      label: "RISK INDEX", unit: "" },
+];
+
 /** Distance from the selected sensor node to one of its nearest neighbours. */
 export interface NeighborDistance {
   id: number;

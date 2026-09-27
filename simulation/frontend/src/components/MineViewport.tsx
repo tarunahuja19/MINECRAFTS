@@ -3,7 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { CrackLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation } from "../types";
+import type { CrackLine, NodeDef, NodeTelemetry, Perturbation, SimulationPacket, TargetLocation, HeatmapMode } from "../types";
 import type { EmbedClipBounds } from "../embed";
 import { sampleBaseGroundY } from "../utils/terrainSampler";
 import { TerrainMesh } from "./TerrainMesh";
@@ -67,6 +67,8 @@ interface MineViewportProps {
   nodeFilter?: number[] | null;
   /** Lab crack segments overlay (dashboard `set-cracks`); empty = none. */
   crackLines?: CrackLine[];
+  /** Active heatmap overlay mode; "none" = default terrain colouring. */
+  heatmapMode?: HeatmapMode;
 }
 
 /**
@@ -179,6 +181,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   clipBounds = null,
   nodeFilter = null,
   crackLines = [],
+  heatmapMode = "none",
 }, ref) => {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
@@ -356,6 +359,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
             waveOrigin={targetLocation ? { x: targetLocation.x, y: targetLocation.y } : null}
             onTerrainClick={onTerrainClick}
             clipBounds={clipBounds}
+            heatmapMode={heatmapMode}
           />
 
           {/* 33 Sensor Node Geodetic Monuments & Extensometer Baseline Links */}
@@ -393,7 +397,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
 
       {/* Key to the viewport's colour scales: the fused height/depth ramp,
           plus the soil body's own. */}
-      <TerrainLegend elevMinM={elevMinM} elevMaxM={elevMaxM} />
+      <TerrainLegend elevMinM={elevMinM} elevMaxM={elevMaxM} heatmapMode={heatmapMode} />
     </div>
   );
 });

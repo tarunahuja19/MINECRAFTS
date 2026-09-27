@@ -3,6 +3,7 @@ import { GroundPhysicsModal, type InfoKey } from "./components/GroundPhysicsModa
 import { LiveMathModal } from "./components/LiveMathModal";
 import { MineViewport, type MineViewportHandle } from "./components/MineViewport";
 import type { ImpactBurst } from "./components/CollapseDust";
+import type { HeatmapMode } from "./types";
 import { FALLBACK_NODES } from "./components/NodeMarkers";
 import { MenuBar } from "./components/MenuBar";
 import { RightInspectorPanel } from "./components/RightInspectorPanel";
@@ -171,6 +172,7 @@ export const App: React.FC = () => {
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [wireframe, setWireframe] = useState<boolean>(false);
   const [showMeshTopology, setShowMeshTopology] = useState<boolean>(false);
+  const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>("none");
 
   // Structured Log Stream
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -1175,6 +1177,7 @@ export const App: React.FC = () => {
             onSelectNode={handleSelectNode}
             onTerrainClick={handleTerrainClick}
             wireframe={wireframe}
+            heatmapMode={heatmapMode}
             clipBounds={embedClip}
             nodeFilter={embedNodes}
             crackLines={crackLines}
@@ -1253,6 +1256,7 @@ export const App: React.FC = () => {
               onSelectNode={handleSelectNode}
               onTerrainClick={handleTerrainClick}
               wireframe={wireframe}
+              heatmapMode={heatmapMode}
             />
 
             {/* Quick Floating Button to toggle Nodes Table if closed */}
@@ -1342,6 +1346,8 @@ export const App: React.FC = () => {
           onToggleMeshTopology={() => setShowMeshTopology(!showMeshTopology)}
           onResetCamera={handleResetCamera}
           onSelectCameraPreset={handleSelectCameraPreset}
+          heatmapMode={heatmapMode}
+          onChangeHeatmapMode={setHeatmapMode}
         />
       </div>
 

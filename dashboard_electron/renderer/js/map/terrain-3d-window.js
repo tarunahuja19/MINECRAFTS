@@ -99,6 +99,17 @@ var terrain3DWindow = (function () {
           '<button class="terrain-tool-btn" id="btn-exag-1">1x</button>' +
           '<button class="terrain-tool-btn active" id="btn-exag-3">3x</button>' +
           '<button class="terrain-tool-btn" id="btn-exag-5">5x</button>' +
+          '<span style="width:1px; height:16px; background:#2A3B4A; margin:0 4px;"></span>' +
+          '<span style="font-size:9.5px; color:#94A3B8; font-weight:bold;">HEATMAP:</span>' +
+          '<select id="terrain-heatmap-mode" style="background:#14222A; color:#D4D8DC; border:1px solid #2E3E4A; border-radius:2px; font-family:Courier New,monospace; font-size:10px; padding:2px 4px; cursor:pointer;">' +
+            '<option value="none">None</option>' +
+            '<option value="depth">Depth (m)</option>' +
+            '<option value="tilt">Tilt (mm/m)</option>' +
+            '<option value="strain">Strain (mm/m)</option>' +
+            '<option value="curvature">Curvature (1/m)</option>' +
+            '<option value="ppv">PPV (mm/s)</option>' +
+            '<option value="risk">Risk Index</option>' +
+          '</select>' +
         '</div>' +
 
         '<div style="display:flex; align-items:center; gap:6px; margin-left:auto;">' +
@@ -230,10 +241,193 @@ var terrain3DWindow = (function () {
       });
     });
 
+    // Heatmap mode selector
+    var heatmapSelect = windowEl.querySelector('#terrain-heatmap-mode');
+    if (heatmapSelect) {
+      heatmapSelect.addEventListener('change', function () {
+        var mode = this.value;
+        if (typeof realTerrain3D !== 'undefined' && realTerrain3D.setHeatmapMode) {
+          realTerrain3D.setHeatmapMode(mode);
+        } else {
+          renderHeatmapOverlay(mode);
+        }
+      });
+      if (typeof bus !== 'undefined') {
+        bus.on('heatmap-mode', function (mode) {
+          heatmapSelect.value = mode || 'none';
+        });
+      }
+    }
+
     function setActiveTiltBtn(activeBtn) {
       [btnTilt65, btnTilt0, btnTilt78].forEach(function (b) { b.classList.remove('active'); });
       activeBtn.classList.add('active');
     }
+  }
+
+  // ---- Heatmap overlay for 3D MapLibre view ----
+  var heatmapCanvas = null;
+  var currentHeatmapMode = 'none';
+  var HEATMAP_RES = 96;
+
+  // Colour ramp stops (matches heatmap-overlay.js)
+  var HEATMAP_STOPS = (typeof heatmapOverlay !== 'undefined' && heatmapOverlay.RAMP_FOR_MODE) ? heatmapOverlay.RAMP_FOR_MODE : {
+    depth:     [[0.00,'#06b6d4'],[0.25,'#3b82f6'],[0.50,'#8b5cf6'],[0.75,'#d946ef'],[1.00,'#ff0055']],
+    tilt:      [[0.00,'#00e5ff'],[0.25,'#10b981'],[0.50,'#facc15'],[0.75,'#fb923c'],[1.00,'#ef4444']],
+    strain:    [[0.00,'#38bdf8'],[0.25,'#6366f1'],[0.50,'#a855f7'],[0.75,'#ec4899'],[1.00,'#f43f5e']],
+    curvature: [[0.00,'#06b6d4'],[0.35,'#3b82f6'],[0.60,'#a855f7'],[0.80,'#f43f5e'],[1.00,'#fbbf24']],
+    ppv:       [[0.00,'#38bdf8'],[0.25,'#818cf8'],[0.50,'#f472b6'],[0.75,'#fb7185'],[1.00,'#ef4444']],
+    risk:      [[0.00,'#10b981'],[0.25,'#84cc16'],[0.50,'#f59e0b'],[0.75,'#ea580c'],[1.00,'#dc2626']]
+  };
+  var HEATMAP_MAX = { tilt: 35, strain: 24.0, curvature: 0.005, ppv: 25, depth: 2.5 };
+
+  function hexToRgbLocal(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function sampleRampLocal(t, stops) {
+    var tc = Math.min(1.0, Math.max(0.0, t));
+    for (var i = 0; i < stops.length - 1; i++) {
+      if (tc >= stops[i][0] && tc <= stops[i + 1][0]) {
+        var f = stops[i + 1][0] === stops[i][0] ? 0 : (tc - stops[i][0]) / (stops[i + 1][0] - stops[i][0]);
+        var a = hexToRgbLocal(stops[i][1]);
+        var b = hexToRgbLocal(stops[i + 1][1]);
+        return [Math.round(a[0] + f * (b[0] - a[0])), Math.round(a[1] + f * (b[1] - a[1])), Math.round(a[2] + f * (b[2] - a[2]))];
+      }
+    }
+    return hexToRgbLocal(stops[stops.length - 1][1]);
+  }
+
+  function renderHeatmapOverlay(mode) {
+    currentHeatmapMode = mode;
+    var inst = realTerrain3D.getInstance ? realTerrain3D.getInstance('real-terrain-3d-map') : null;
+    var mlMap = inst ? inst.map : (realTerrain3D.getMap ? realTerrain3D.getMap('real-terrain-3d-map') : null);
+    if (!mlMap) return;
+
+    // Remove existing overlay
+    try { if (mlMap.getLayer('heatmap-layer')) mlMap.removeLayer('heatmap-layer'); } catch (_) {}
+    try { if (mlMap.getSource('heatmap-source')) mlMap.removeSource('heatmap-source'); } catch (_) {}
+
+    if (mode === 'none' || !HEATMAP_STOPS[mode]) return;
+
+    // Get sector bounds for the overlay coordinates
+    if (!currentSector) return;
+    var sb = null;
+    if (currentSector.lngRange && currentSector.latRange) {
+      sb = {
+        minLat: Math.min(currentSector.latRange[0], currentSector.latRange[1]),
+        maxLat: Math.max(currentSector.latRange[0], currentSector.latRange[1]),
+        minLng: Math.min(currentSector.lngRange[0], currentSector.lngRange[1]),
+        maxLng: Math.max(currentSector.lngRange[0], currentSector.lngRange[1])
+      };
+    } else if (currentSector.bounds && currentSector.bounds.length >= 2) {
+      sb = {
+        minLat: Math.min(currentSector.bounds[0][0], currentSector.bounds[1][0]),
+        maxLat: Math.max(currentSector.bounds[0][0], currentSector.bounds[1][0]),
+        minLng: Math.min(currentSector.bounds[0][1], currentSector.bounds[1][1]),
+        maxLng: Math.max(currentSector.bounds[0][1], currentSector.bounds[1][1])
+      };
+    } else if (currentSector.center) {
+      sb = {
+        minLat: currentSector.center[0] - 0.003,
+        maxLat: currentSector.center[0] + 0.003,
+        minLng: currentSector.center[1] - 0.003,
+        maxLng: currentSector.center[1] + 0.003
+      };
+    }
+    if (!sb) return;
+
+    // Convert to panel-frame metres for evaluation
+    var xRange = currentSector.xRange || [-150, 150];
+    var yRange = currentSector.yRange || [-150, 150];
+
+    // Use heatmapOverlay's evaluatePoint if available, else approximate
+    var hasPhysics = typeof heatmapOverlay !== 'undefined' && heatmapOverlay.getMode;
+
+    // Render to canvas
+    if (!heatmapCanvas) {
+      heatmapCanvas = document.createElement('canvas');
+      heatmapCanvas.width = HEATMAP_RES;
+      heatmapCanvas.height = HEATMAP_RES;
+    }
+    var hCtx = heatmapCanvas.getContext('2d');
+    var imgData = hCtx.createImageData(HEATMAP_RES, HEATMAP_RES);
+    var data = imgData.data;
+    var stops = HEATMAP_STOPS[mode];
+    var xMin = xRange[0], xMax = xRange[1];
+    var yMin = yRange[0], yMax = yRange[1];
+    var cellW = (xMax - xMin) / HEATMAP_RES;
+    var cellH = (yMax - yMin) / HEATMAP_RES;
+
+    for (var row = 0; row < HEATMAP_RES; row++) {
+      var y = yMax - (row + 0.5) * cellH;
+      for (var col = 0; col < HEATMAP_RES; col++) {
+        var x = xMin + (col + 0.5) * cellW;
+        var t = 0;
+
+        if (hasPhysics && heatmapOverlay.evaluatePoint && heatmapOverlay.channelValue) {
+          // Use the real geomechanics physics engine for accurate heatmap
+          try {
+            var pt = heatmapOverlay.evaluatePoint(x, y);
+            t = Math.min(1.0, Math.max(0.0, heatmapOverlay.channelValue(mode, pt)));
+          } catch (_) {
+            t = 0;
+          }
+        } else {
+          // Distance-based approximation fallback for standalone popout
+          var sCenterX = (xMin + xMax) / 2;
+          var sCenterY = (yMin + yMax) / 2;
+          var distFromCenter = Math.hypot(x - sCenterX, y - sCenterY);
+          var sHalfW = Math.max(50, (xMax - xMin) / 2);
+          if (mode === 'depth') {
+            t = Math.max(0, 1.0 - distFromCenter / sHalfW) * 0.7;
+          } else if (mode === 'tilt') {
+            var tiltPeak = sHalfW * 0.4;
+            t = Math.exp(-Math.pow((distFromCenter - tiltPeak) / (sHalfW * 0.3), 2)) * 0.8;
+          } else if (mode === 'strain') {
+            t = Math.exp(-Math.pow(distFromCenter / (sHalfW * 0.5), 2)) * 0.6;
+          } else if (mode === 'curvature') {
+            t = Math.exp(-Math.pow(distFromCenter / (sHalfW * 0.4), 2)) * 0.7;
+          } else if (mode === 'ppv') {
+            t = Math.max(0, 1.0 - distFromCenter / (sHalfW * 1.2)) * 0.5;
+          } else if (mode === 'risk') {
+            t = Math.max(0, 1.0 - distFromCenter / sHalfW) * 0.65;
+          }
+        }
+
+        t = Math.min(1.0, Math.max(0, t));
+        var rgb = sampleRampLocal(t, stops);
+        var normT = Math.max(0, (t - 0.04) / 0.96);
+        var alpha = t < 0.04 ? 0 : Math.min(215, Math.round(75 + 140 * Math.pow(normT, 0.85)));
+        var idx = (row * HEATMAP_RES + col) * 4;
+        data[idx] = rgb[0];
+        data[idx + 1] = rgb[1];
+        data[idx + 2] = rgb[2];
+        data[idx + 3] = alpha;
+      }
+    }
+    hCtx.putImageData(imgData, 0, 0);
+
+    // Add as MapLibre image source + layer
+    var dataUrl = heatmapCanvas.toDataURL();
+    mlMap.addSource('heatmap-source', {
+      type: 'image',
+      url: dataUrl,
+      coordinates: [
+        [sb.minLng, sb.maxLat], // top-left
+        [sb.maxLng, sb.maxLat], // top-right
+        [sb.maxLng, sb.minLat], // bottom-right
+        [sb.minLng, sb.minLat]  // bottom-left
+      ]
+    });
+    mlMap.addLayer({
+      id: 'heatmap-layer',
+      type: 'raster',
+      source: 'heatmap-source',
+      paint: { 'raster-opacity': 0.75, 'raster-fade-duration': 0 }
+    });
+
   }
 
   var openSectorDebounceTimer = null;

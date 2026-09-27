@@ -95,6 +95,17 @@
         <button class="terrain-tool-btn" id="std-btn-exag-1">1x</button>
         <button class="terrain-tool-btn active" id="std-btn-exag-3">3x</button>
         <button class="terrain-tool-btn" id="std-btn-exag-5">5x</button>
+        <span style="width:1px; height:16px; background:#2A3B4A; margin:0 4px;"></span>
+        <span style="font-size:9.5px; color:#94A3B8; font-weight:bold;">HEATMAP:</span>
+        <select id="std-heatmap-mode" style="background:#14222A; color:#D4D8DC; border:1px solid #2E3E4A; border-radius:2px; font-family:'Courier New',monospace; font-size:10px; padding:2px 4px; cursor:pointer;">
+          <option value="none">None</option>
+          <option value="depth">Depth (m)</option>
+          <option value="tilt">Tilt (mm/m)</option>
+          <option value="strain">Strain (mm/m)</option>
+          <option value="curvature">Curvature (1/m)</option>
+          <option value="ppv">PPV (mm/s)</option>
+          <option value="risk">Risk Index</option>
+        </select>
       </div>
     </div>
 
@@ -242,6 +253,132 @@
         var cLng = sectorData.center[1];
         window.open('https://earth.google.com/web/@' + cLat + ',' + cLng + ',230a,400d,35y,45h,60t,0r', '_blank');
       });
+
+      // Heatmap overlay for standalone 3D window
+      var HEATMAP_STOPS = {
+        depth:     [[0.00,'#06b6d4'],[0.25,'#3b82f6'],[0.50,'#8b5cf6'],[0.75,'#d946ef'],[1.00,'#ff0055']],
+        tilt:      [[0.00,'#00e5ff'],[0.25,'#10b981'],[0.50,'#facc15'],[0.75,'#fb923c'],[1.00,'#ef4444']],
+        strain:    [[0.00,'#38bdf8'],[0.25,'#6366f1'],[0.50,'#a855f7'],[0.75,'#ec4899'],[1.00,'#f43f5e']],
+        curvature: [[0.00,'#06b6d4'],[0.35,'#3b82f6'],[0.60,'#a855f7'],[0.80,'#f43f5e'],[1.00,'#fbbf24']],
+        ppv:       [[0.00,'#38bdf8'],[0.25,'#818cf8'],[0.50,'#f472b6'],[0.75,'#fb7185'],[1.00,'#ef4444']],
+        risk:      [[0.00,'#10b981'],[0.25,'#84cc16'],[0.50,'#f59e0b'],[0.75,'#ea580c'],[1.00,'#dc2626']]
+      };
+      var HEATMAP_RES = 96;
+
+      function hexToRgb(hex) {
+        var n = parseInt(hex.slice(1), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+      }
+
+      function sampleRamp(t, stops) {
+        var tc = Math.min(1.0, Math.max(0.0, t));
+        for (var i = 0; i < stops.length - 1; i++) {
+          if (tc >= stops[i][0] && tc <= stops[i + 1][0]) {
+            var f = stops[i + 1][0] === stops[i][0] ? 0 : (tc - stops[i][0]) / (stops[i + 1][0] - stops[i][0]);
+            var a = hexToRgb(stops[i][1]), b = hexToRgb(stops[i + 1][1]);
+            return [Math.round(a[0]+f*(b[0]-a[0])), Math.round(a[1]+f*(b[1]-a[1])), Math.round(a[2]+f*(b[2]-a[2]))];
+          }
+        }
+        return hexToRgb(stops[stops.length - 1][1]);
+      }
+
+      var stdHeatmapSelect = document.getElementById('std-heatmap-mode');
+      if (stdHeatmapSelect) {
+        stdHeatmapSelect.addEventListener('change', function () {
+          var mode = this.value;
+          var mlMap = realTerrain3D.getMap ? realTerrain3D.getMap('std-terrain-map') : null;
+          if (!mlMap) return;
+
+          try { if (mlMap.getLayer('heatmap-layer')) mlMap.removeLayer('heatmap-layer'); } catch(_){}
+          try { if (mlMap.getSource('heatmap-source')) mlMap.removeSource('heatmap-source'); } catch(_){}
+
+          if (mode === 'none' || !HEATMAP_STOPS[mode] || !sectorData) return;
+
+          var sb = { minLat: sectorData.bounds[0][0], maxLat: sectorData.bounds[1][0],
+                     minLng: sectorData.bounds[0][1], maxLng: sectorData.bounds[1][1] };
+
+          var hCanvas = document.createElement('canvas');
+          hCanvas.width = HEATMAP_RES; hCanvas.height = HEATMAP_RES;
+          var hCtx = hCanvas.getContext('2d');
+          var imgData = hCtx.createImageData(HEATMAP_RES, HEATMAP_RES);
+          var data = imgData.data;
+          var stops = HEATMAP_STOPS[mode];
+
+          var ORIGIN_LAT = 18.6435;
+          var ORIGIN_LON = 79.5725;
+          var M_PER_DEG_LAT = 111320.0;
+          var M_PER_DEG_LON = M_PER_DEG_LAT * Math.cos(ORIGIN_LAT * Math.PI / 180);
+          function toXY(lat, lon) {
+            return [(lon - ORIGIN_LON) * M_PER_DEG_LON, (lat - ORIGIN_LAT) * M_PER_DEG_LAT];
+          }
+
+          var openerHeatmap = null;
+          try {
+            if (window.opener && window.opener.heatmapOverlay && window.opener.heatmapOverlay.evaluatePoint) {
+              openerHeatmap = window.opener.heatmapOverlay;
+            }
+          } catch (_) {}
+
+          for (var row = 0; row < HEATMAP_RES; row++) {
+            var lat = sb.maxLat - (row + 0.5) * (sb.maxLat - sb.minLat) / HEATMAP_RES;
+            for (var col = 0; col < HEATMAP_RES; col++) {
+              var lng = sb.minLng + (col + 0.5) * (sb.maxLng - sb.minLng) / HEATMAP_RES;
+              var t = 0;
+
+              if (openerHeatmap) {
+                try {
+                  var xy = toXY(lat, lng);
+                  var pt = openerHeatmap.evaluatePoint(xy[0], xy[1]);
+                  t = Math.min(1.0, Math.max(0.0, openerHeatmap.channelValue(mode, pt)));
+                } catch (_) {}
+              }
+
+              if (!openerHeatmap) {
+                var targetLng = (sb.minLng + sb.maxLng) / 2;
+                var targetLat = (sb.minLat + sb.maxLat) / 2;
+                if (sectorData && sectorData.nodes && sectorData.nodes.length > 0 && Array.isArray(nodesData)) {
+                  var warnNodes = nodesData.filter(function (n) {
+                    return sectorData.nodes.indexOf(n.node_id) !== -1 && (n.state === 'critical' || n.state === 'warning');
+                  });
+                  if (warnNodes.length > 0) {
+                    targetLng = warnNodes[0].lng;
+                    targetLat = warnNodes[0].lat;
+                  }
+                }
+                var dLng = (lng - targetLng) / (sb.maxLng - sb.minLng);
+                var dLat = (lat - targetLat) / (sb.maxLat - sb.minLat);
+                var dist = Math.hypot(dLng, dLat) * 2;
+                if (mode === 'depth') t = Math.max(0, 1.0 - dist / 0.8) * 0.7;
+                else if (mode === 'tilt') t = Math.exp(-Math.pow((dist - 0.3) / 0.2, 2)) * 0.8;
+                else if (mode === 'strain') t = Math.exp(-Math.pow(dist / 0.4, 2)) * 0.6;
+                else if (mode === 'curvature') t = Math.exp(-Math.pow(dist / 0.3, 2)) * 0.7;
+                else if (mode === 'ppv') t = Math.max(0, 1.0 - dist / 0.9) * 0.5;
+                else if (mode === 'risk') t = Math.max(0, 1.0 - dist / 0.7) * 0.65;
+              }
+
+              t = Math.min(1.0, Math.max(0.0, t));
+              var rgb = sampleRamp(t, stops);
+              var normT = Math.max(0, (t - 0.04) / 0.96);
+              var alpha = t < 0.04 ? 0 : Math.min(215, Math.round(75 + 140 * Math.pow(normT, 0.85)));
+              var idx = (row * HEATMAP_RES + col) * 4;
+              data[idx] = rgb[0]; data[idx+1] = rgb[1]; data[idx+2] = rgb[2]; data[idx+3] = alpha;
+            }
+          }
+          hCtx.putImageData(imgData, 0, 0);
+
+          mlMap.addSource('heatmap-source', {
+            type: 'image', url: hCanvas.toDataURL(),
+            coordinates: [
+              [sb.minLng, sb.maxLat], [sb.maxLng, sb.maxLat],
+              [sb.maxLng, sb.minLat], [sb.minLng, sb.minLat]
+            ]
+          });
+          mlMap.addLayer({
+            id: 'heatmap-layer', type: 'raster', source: 'heatmap-source',
+            paint: { 'raster-opacity': 0.88, 'raster-fade-duration': 0 }
+          });
+        });
+      }
     })();
   </script>
 </body>

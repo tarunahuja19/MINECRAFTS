@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Camera, Crosshair, Flame, Waves, X } from "lucide-react";
-import type { NeighborDistance, NodeDef, NodeTelemetry, PhysicalEventType, SegmentState, TargetLocation } from "../types";
+import type { NeighborDistance, NodeDef, NodeTelemetry, PhysicalEventType, SegmentState, TargetLocation, HeatmapMode } from "../types";
+import { HEATMAP_MODES } from "../types";
 import { STATE_COLORS } from "../types";
 import { evaluateNaturalElevation } from "../utils/proceduralTerrain";
 import { globalGeomechanics, S_MAX_FULL_M } from "../utils/geomechanicsEngine";
@@ -47,6 +48,8 @@ interface RightInspectorPanelProps {
   onToggleMeshTopology: () => void;
   onResetCamera: () => void;
   onSelectCameraPreset: (preset: "overview" | "highland" | "pit" | "cutaway" | "topdown") => void;
+  heatmapMode: HeatmapMode;
+  onChangeHeatmapMode: (mode: HeatmapMode) => void;
 }
 
 export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
@@ -77,6 +80,8 @@ export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
   onToggleMeshTopology,
   onResetCamera,
   onSelectCameraPreset,
+  heatmapMode,
+  onChangeHeatmapMode,
 }) => {
   const [activeInfo, setActiveInfo] = useState<InfoItem | null>(null);
   const [remoteDetails, setRemoteDetails] = useState<any>(null);
@@ -86,7 +91,7 @@ export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
   // Collapsed by default, same spirit as TerrainLegend's own useState(false):
   // these are set-once controls (camera, wireframe, scale) and must not push
   // the live node readings off screen.
-  const [viewOpen, setViewOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(true);
 
   // Fetch this node's full channel set from the backend. Which channels
   // come back is decided by the node's tier, and absent ones are null.
@@ -898,6 +903,29 @@ export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
                     >
                       {showMeshTopology ? "on" : "off"}
                     </button>
+                  </div>
+                  <div className="menu-slider-row">
+                    <span>Heatmap</span>
+                    <select
+                      value={heatmapMode}
+                      onChange={(e) => onChangeHeatmapMode(e.target.value as HeatmapMode)}
+                      style={{
+                        background: "var(--bg-panel)",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: 2,
+                        fontFamily: "var(--font-mono, monospace)",
+                        fontSize: 10,
+                        padding: "2px 4px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {HEATMAP_MODES.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}{m.unit ? ` (${m.unit})` : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

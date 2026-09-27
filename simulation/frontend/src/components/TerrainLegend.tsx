@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { HEIGHT_STOPS, RAMP_FLOOR, DEPTH_STOPS } from "../utils/hypsometry";
+import type { HeatmapMode } from "../types";
+import {
+  HEIGHT_STOPS, RAMP_FLOOR, DEPTH_STOPS,
+  TILT_STOPS, STRAIN_STOPS, CURVATURE_STOPS,
+  PPV_STOPS, RSSI_STOPS, RISK_STOPS,
+} from "../utils/hypsometry";
 import { CUMULATIVE_DEPTH_MAX_M } from "../utils/geomechanicsEngine";
 import { SUBSIDENCE_SHADOW, CONTOUR_INTERVAL_M } from "./TerrainMesh";
 
@@ -16,7 +21,50 @@ interface TerrainLegendProps {
   /** Panel elevation extremes, m AMSL, from the server's DEM metadata. */
   elevMinM?: number;
   elevMaxM?: number;
+  heatmapMode?: HeatmapMode;
 }
+
+const HEATMAP_LEGEND: Record<
+  string,
+  { label: string; stops: [number, string][]; ticks: string[]; note: string }
+> = {
+  tilt: {
+    label: "TILT",
+    stops: TILT_STOPS,
+    ticks: ["0", "5", "10", "15", "20 mm/m"],
+    note: "Ground slope induced by subsidence, mm per m.",
+  },
+  strain: {
+    label: "TENSILE STRAIN",
+    stops: STRAIN_STOPS,
+    ticks: ["0", "2.5", "5", "7.5", "10 mm/m"],
+    note: "Horizontal tensile strain at surface, mm per m.",
+  },
+  curvature: {
+    label: "CURVATURE",
+    stops: CURVATURE_STOPS,
+    ticks: ["0", "0.001", "0.003", "0.005 1/m"],
+    note: "Surface curvature magnitude, 1/m. Green = convex, purple = concave.",
+  },
+  ppv: {
+    label: "PPV",
+    stops: PPV_STOPS,
+    ticks: ["0", "12.5", "25", "37.5", "50 mm/s"],
+    note: "Peak particle velocity estimated from vibration displacement.",
+  },
+  rssi: {
+    label: "RSSI",
+    stops: RSSI_STOPS,
+    ticks: ["-120", "-90", "-60", "-30 dBm"],
+    note: "Received signal strength. Red = weak, green = strong.",
+  },
+  risk: {
+    label: "RISK INDEX",
+    stops: RISK_STOPS,
+    ticks: ["0.0", "0.25", "0.50", "0.75", "1.0"],
+    note: "Composite risk: 35% tilt + 35% strain + 30% depth.",
+  },
+};
 
 const PANEL: React.CSSProperties = {
   position: "absolute",
@@ -104,6 +152,7 @@ function RampBar({
 export const TerrainLegend: React.FC<TerrainLegendProps> = ({
   elevMinM,
   elevMaxM,
+  heatmapMode = "none",
 }) => {
   // Open by default. The depth scale needs to be readable at a glance —
   // a collapsed panel means the operator can't decode a colour on the bowl
@@ -114,7 +163,13 @@ export const TerrainLegend: React.FC<TerrainLegendProps> = ({
   const hasElev = elevMinM !== undefined && elevMaxM !== undefined;
   const mid = hasElev ? (elevMinM! + elevMaxM!) / 2 : undefined;
 
-  const title = "TERRAIN: HEIGHT / DEPTH";
+  const hmLegend = heatmapMode !== "none" && heatmapMode !== "depth"
+    ? HEATMAP_LEGEND[heatmapMode] ?? null
+    : null;
+
+  const title = hmLegend
+    ? `TERRAIN: HEIGHT / ${hmLegend.label}`
+    : "TERRAIN: HEIGHT / DEPTH";
 
   return (
     <div style={PANEL}>
@@ -138,31 +193,49 @@ export const TerrainLegend: React.FC<TerrainLegendProps> = ({
             shaded by Horn (1981) hillshade. m AMSL.
           </div>
 
-          {/* Ground that has MOVED is drawn on a second, separate scale,
-              overlaid once a bowl forms — otherwise a colour is ambiguous
-              between "high ridge" and "deep bowl". */}
-          <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
-            DEPTH vs ORIGINAL GROUND
-          </div>
-          <div style={{ marginTop: 4 }}>
-            <RampBar stops={DEPTH_STOPS} shadow />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", color: "#a3a4a6", marginTop: 3 }}>
-            {[0, 0.25, 0.5, 0.75, 1].map((frac) => (
-              <span key={frac}>{(frac * CUMULATIVE_DEPTH_MAX_M).toFixed(0)} m</span>
-            ))}
-          </div>
-          <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
-            How far the ground has carved in below where it started, not its
-            height above sea level. Blue = just moved, red ={" "}
-            {CUMULATIVE_DEPTH_MAX_M.toFixed(0)} m down. Carve-in is a fraction
-            of this panel's {(
-              (elevMaxM ?? 370) - (elevMinM ?? 196)
-            ).toFixed(0)} m relief, so it needs its own scale to be visible at
-            all. Dark rings are depth contours every{" "}
-            {CONTOUR_INTERVAL_M.toFixed(0)} m — closely spaced rings mean a
-            steep flank, wide spacing means a flat floor.
-          </div>
+          {hmLegend ? (
+            <>
+              <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
+                {hmLegend.label}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <RampBar stops={hmLegend.stops} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#a3a4a6", marginTop: 3 }}>
+                {hmLegend.ticks.map((t, i) => (
+                  <span key={i}>{t}</span>
+                ))}
+              </div>
+              <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
+                {hmLegend.note}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", color: "#a3a4a6" }}>
+                DEPTH vs ORIGINAL GROUND
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <RampBar stops={DEPTH_STOPS} shadow />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "#a3a4a6", marginTop: 3 }}>
+                {[0, 0.25, 0.5, 0.75, 1].map((frac) => (
+                  <span key={frac}>{(frac * CUMULATIVE_DEPTH_MAX_M).toFixed(0)} m</span>
+                ))}
+              </div>
+              <div style={{ color: "#7c7d80", fontSize: 8.5, marginTop: 4, lineHeight: 1.35 }}>
+                How far the ground has carved in below where it started, not its
+                height above sea level. Blue = just moved, red ={" "}
+                {CUMULATIVE_DEPTH_MAX_M.toFixed(0)} m down. Carve-in is a fraction
+                of this panel's {(
+                  (elevMaxM ?? 370) - (elevMinM ?? 196)
+                ).toFixed(0)} m relief, so it needs its own scale to be visible at
+                all. Dark rings are depth contours every{" "}
+                {CONTOUR_INTERVAL_M.toFixed(0)} m — closely spaced rings mean a
+                steep flank, wide spacing means a flat floor.
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

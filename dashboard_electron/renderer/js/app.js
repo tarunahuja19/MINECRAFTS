@@ -57,6 +57,7 @@ document.getElementById('tab-map').style.display = 'flex';
   alarmBanner.init();
   alarmDetail.init();
   troughOverlay.init(map);
+  heatmapOverlay.init(map);
   confidenceBadge.init(map);
   lastgaspMarker.init(map);
   ringFallback.init(map);
