@@ -124,3 +124,39 @@ SIGMA_EXT_10UM = 1.0                    # 10 µm units
 SIGMA_TEMP_DC = 2.0                     # 0.1 °C units
 SIGMA_VBAT_MV = 5.0                     # mV
 
+# ---------------------------------------------------------------------------
+# ADRIYALA_FIT — the team's own fit to 283 digitised Adriyala LW1 survey
+# points (Ramalingeswarudu et al. 2022, DOI 10.18311/jmmf/2022/32099; RMS
+# 52.1 mm, R^2 0.985, peak 1201.7 mm vs measured 1267 mm --
+# sih-26-finale/mine-sim/data/fitted/adriyala_lw1_params.json), consumed by
+# sandbox/district.py (plan step G1, docs/plans/2026-09-27-data-365.md).
+# Geometry (depth/width/length) is shared with the primary block above --
+# H_DEPTH_M, W_PANEL_M, L_PANEL_M already equal the paper's 375 m / 250 m /
+# 2500 m -- only the Knothe/seam numbers below are refit; the primary block
+# and surface.py stay exactly as they were (additions only).
+# ---------------------------------------------------------------------------
+
+FIT_A_SUBS = 0.45                      # fitted subsidence factor (smallest a within 5% of best RMS)
+FIT_TAN_BETA = 2.5676                   # fitted (r = 375 / 2.5676 = 146.05 m)
+FIT_C_KNOTHE = 0.02358                  # per day, fitted jointly with survey_line_x_m
+FIT_M_SEAM_M = 3.6                      # extraction height, JMMF Table 1
+FIT_INFLECTION_OFFSET_M = 58.96         # fitted trough-edge inset (Knothe d)
+FIT_FACE_ADVANCE_M_PER_DAY = 4.0        # mine config A6_face_advance_m_per_day
+FIT_SOURCE_DOI = "10.18311/jmmf/2022/32099"  # Ramalingeswarudu et al. (2022), JMMF
+
+# Derived, never hand-typed (same rule as R_INFL/B_HORIZ above).
+FIT_R_INFL = H_DEPTH_M / FIT_TAN_BETA               # ~146.05 m, radius of influence for the fit
+FIT_FACE_START_Y_M = -(WINDOW_SIZE_M / 2.0 + FIT_R_INFL)  # ~ -446.05 m, same convention as FACE_START_Y_M
+
+# A 3-panel district on the fitted LW1 geometry: LW1 itself (the centre
+# panel, provenance "pinned") plus two neighbours repeating its geometry
+# (provenance "SYNTHETIC" -- not from the paper). One real panel alone
+# leaves half the 31-node layout quiet (docs/plans/2026-09-27-data-365.md
+# Context §3); three panels put every sensing node at >= 50 mm and
+# >= 3 mm/m of tilt across the year.
+DISTRICT_PANEL_X_M = (-290.0, 0.0, 290.0)    # 250 m panel + 40 m chain pillar (OPEN -- guess; the
+                                              # finale's own adriyala_lw1.yaml district block flags
+                                              # chain_pillar_width_m 40.0 the same way)
+DISTRICT_START_DAY = (-120.0, 0.0, 120.0)    # ASSUMED stagger, so all three panel ages appear in one year
+DISTRICT_PROVENANCE = ("synthetic", "pinned", "synthetic")  # same order as DISTRICT_PANEL_X_M
+
