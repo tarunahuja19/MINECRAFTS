@@ -56,6 +56,7 @@ document.getElementById('tab-map').style.display = 'flex';
   // Phase 3B — Alarm system modules
   alarmBanner.init();
   alarmDetail.init();
+  browserNotify.init();
   heatmapOverlay.init(map);
   confidenceBadge.init(map);
   lastgaspMarker.init(map);
