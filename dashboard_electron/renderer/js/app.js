@@ -56,7 +56,9 @@ document.getElementById('tab-map').style.display = 'flex';
   // Phase 3B — Alarm system modules
   alarmBanner.init();
   alarmDetail.init();
-  troughOverlay.init(map);
+  if (typeof troughOverlay !== 'undefined' && troughOverlay.init) {
+    troughOverlay.init(map);
+  }
   confidenceBadge.init(map);
   lastgaspMarker.init(map);
   ringFallback.init(map);

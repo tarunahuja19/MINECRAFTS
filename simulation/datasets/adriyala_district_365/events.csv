@@ -1,0 +1,1780 @@
+t_hour,type,node_id,detail
+0,crack_open,14,width_mm=0.060 burland_category=0
+0,crack_open,15,width_mm=0.090 burland_category=0
+0,crack_open,17,width_mm=0.020 burland_category=0
+0,crack_open,19,width_mm=0.020 burland_category=0
+0,face_position,LW0,panel=LW0 face_y_m=33.95
+0,face_position,LW1,panel=LW1 face_y_m=nan
+0,face_position,LW2,panel=LW2 face_y_m=nan
+1,crack_open,10,width_mm=0.040 burland_category=0
+1,crack_open,11,width_mm=0.060 burland_category=0
+1,crack_open,13,width_mm=0.020 burland_category=0
+2,crack_open,12,width_mm=0.070 burland_category=0
+3,crack_open,16,width_mm=0.010 burland_category=0
+5,crack_open,18,width_mm=0.050 burland_category=0
+7,blast,,q_kg=37.7 x_m=33.4 y_m=-384.1 z_m=-375.0
+7,fault,,"blast: Development heading blast 37.7 kg at (33.4, -384.1)"
+24,face_position,LW0,panel=LW0 face_y_m=37.95
+24,face_position,LW1,panel=LW1 face_y_m=-442.05
+24,face_position,LW2,panel=LW2 face_y_m=nan
+31,blast,,q_kg=38.2 x_m=-2.7 y_m=-417.8 z_m=-375.0
+31,fault,,"blast: Development heading blast 38.2 kg at (-2.7, -417.8)"
+48,face_position,LW0,panel=LW0 face_y_m=41.95
+48,face_position,LW1,panel=LW1 face_y_m=-438.05
+48,face_position,LW2,panel=LW2 face_y_m=nan
+55,blast,,q_kg=56.8 x_m=60.1 y_m=-381.3 z_m=-375.0
+55,fault,,"blast: Development heading blast 56.8 kg at (60.1, -381.3)"
+72,face_position,LW0,panel=LW0 face_y_m=45.95
+72,face_position,LW1,panel=LW1 face_y_m=-434.05
+72,face_position,LW2,panel=LW2 face_y_m=nan
+96,face_position,LW0,panel=LW0 face_y_m=49.95
+96,face_position,LW1,panel=LW1 face_y_m=-430.05
+96,face_position,LW2,panel=LW2 face_y_m=nan
+103,blast,,q_kg=38.3 x_m=43.3 y_m=-362.1 z_m=-375.0
+103,fault,,"blast: Development heading blast 38.3 kg at (43.3, -362.1)"
+120,face_position,LW0,panel=LW0 face_y_m=53.95
+120,face_position,LW1,panel=LW1 face_y_m=-426.05
+120,face_position,LW2,panel=LW2 face_y_m=nan
+127,blast,,q_kg=46.4 x_m=-65.3 y_m=-350.1 z_m=-375.0
+127,fault,,"blast: Development heading blast 46.4 kg at (-65.3, -350.1)"
+144,face_position,LW0,panel=LW0 face_y_m=57.95
+144,face_position,LW1,panel=LW1 face_y_m=-422.05
+144,face_position,LW2,panel=LW2 face_y_m=nan
+151,blast,,q_kg=38.2 x_m=81.9 y_m=-363.8 z_m=-375.0
+151,fault,,"blast: Development heading blast 38.2 kg at (81.9, -363.7)"
+168,face_position,LW0,panel=LW0 face_y_m=61.95
+168,face_position,LW1,panel=LW1 face_y_m=-418.05
+168,face_position,LW2,panel=LW2 face_y_m=nan
+175,blast,,q_kg=43.9 x_m=-73.0 y_m=-372.9 z_m=-375.0
+175,fault,,"blast: Development heading blast 43.9 kg at (-73.1, -372.9)"
+192,face_position,LW0,panel=LW0 face_y_m=65.95
+192,face_position,LW1,panel=LW1 face_y_m=-414.05
+192,face_position,LW2,panel=LW2 face_y_m=nan
+199,blast,,q_kg=40.5 x_m=86.2 y_m=-343.0 z_m=-375.0
+199,fault,,"blast: Development heading blast 40.5 kg at (86.2, -343.0)"
+216,face_position,LW0,panel=LW0 face_y_m=69.95
+216,face_position,LW1,panel=LW1 face_y_m=-410.05
+216,face_position,LW2,panel=LW2 face_y_m=nan
+223,blast,,q_kg=34.0 x_m=-10.4 y_m=-386.8 z_m=-375.0
+223,fault,,"blast: Development heading blast 34.0 kg at (-10.4, -386.8)"
+240,face_position,LW0,panel=LW0 face_y_m=73.95
+240,face_position,LW1,panel=LW1 face_y_m=-406.05
+240,face_position,LW2,panel=LW2 face_y_m=nan
+264,face_position,LW0,panel=LW0 face_y_m=77.95
+264,face_position,LW1,panel=LW1 face_y_m=-402.05
+264,face_position,LW2,panel=LW2 face_y_m=nan
+271,blast,,q_kg=41.0 x_m=96.3 y_m=-336.3 z_m=-375.0
+271,fault,,"blast: Development heading blast 41.0 kg at (96.3, -336.3)"
+288,face_position,LW0,panel=LW0 face_y_m=81.95
+288,face_position,LW1,panel=LW1 face_y_m=-398.05
+288,face_position,LW2,panel=LW2 face_y_m=nan
+295,blast,,q_kg=58.3 x_m=72.5 y_m=-375.4 z_m=-375.0
+295,fault,,"blast: Development heading blast 58.3 kg at (72.5, -375.4)"
+312,face_position,LW0,panel=LW0 face_y_m=85.95
+312,face_position,LW1,panel=LW1 face_y_m=-394.05
+312,face_position,LW2,panel=LW2 face_y_m=nan
+319,blast,,q_kg=48.2 x_m=39.9 y_m=-372.0 z_m=-375.0
+319,fault,,"blast: Development heading blast 48.2 kg at (39.9, -372.0)"
+336,face_position,LW0,panel=LW0 face_y_m=89.95
+336,face_position,LW1,panel=LW1 face_y_m=-390.05
+336,face_position,LW2,panel=LW2 face_y_m=nan
+343,blast,,q_kg=32.0 x_m=-83.4 y_m=-330.4 z_m=-375.0
+343,fault,,"blast: Development heading blast 32.0 kg at (-83.4, -330.4)"
+360,face_position,LW0,panel=LW0 face_y_m=93.95
+360,face_position,LW1,panel=LW1 face_y_m=-386.05
+360,face_position,LW2,panel=LW2 face_y_m=nan
+367,blast,,q_kg=37.4 x_m=-57.6 y_m=-327.1 z_m=-375.0
+367,fault,,"blast: Development heading blast 37.4 kg at (-57.6, -327.1)"
+384,face_position,LW0,panel=LW0 face_y_m=97.95
+384,face_position,LW1,panel=LW1 face_y_m=-382.05
+384,face_position,LW2,panel=LW2 face_y_m=nan
+391,blast,,q_kg=30.6 x_m=-87.1 y_m=-311.5 z_m=-375.0
+391,fault,,"blast: Development heading blast 30.6 kg at (-87.1, -311.5)"
+408,face_position,LW0,panel=LW0 face_y_m=101.95
+408,face_position,LW1,panel=LW1 face_y_m=-378.05
+408,face_position,LW2,panel=LW2 face_y_m=nan
+432,face_position,LW0,panel=LW0 face_y_m=105.95
+432,face_position,LW1,panel=LW1 face_y_m=-374.05
+432,face_position,LW2,panel=LW2 face_y_m=nan
+439,blast,,q_kg=22.2 x_m=23.6 y_m=-316.2 z_m=-375.0
+439,fault,,"blast: Development heading blast 22.2 kg at (23.6, -316.2)"
+456,face_position,LW0,panel=LW0 face_y_m=109.95
+456,face_position,LW1,panel=LW1 face_y_m=-370.05
+456,face_position,LW2,panel=LW2 face_y_m=nan
+463,blast,,q_kg=28.2 x_m=99.5 y_m=-321.9 z_m=-375.0
+463,fault,,"blast: Development heading blast 28.2 kg at (99.5, -321.9)"
+480,face_position,LW0,panel=LW0 face_y_m=113.95
+480,face_position,LW1,panel=LW1 face_y_m=-366.05
+480,face_position,LW2,panel=LW2 face_y_m=nan
+487,blast,,q_kg=20.1 x_m=-12.7 y_m=-308.6 z_m=-375.0
+487,fault,,"blast: Development heading blast 20.1 kg at (-12.7, -308.6)"
+504,face_position,LW0,panel=LW0 face_y_m=117.95
+504,face_position,LW1,panel=LW1 face_y_m=-362.05
+504,face_position,LW2,panel=LW2 face_y_m=nan
+511,blast,,q_kg=47.8 x_m=-40.0 y_m=-308.6 z_m=-375.0
+511,fault,,"blast: Development heading blast 47.8 kg at (-40.0, -308.6)"
+528,face_position,LW0,panel=LW0 face_y_m=121.95
+528,face_position,LW1,panel=LW1 face_y_m=-358.05
+528,face_position,LW2,panel=LW2 face_y_m=nan
+535,blast,,q_kg=28.9 x_m=-37.3 y_m=-312.6 z_m=-375.0
+535,fault,,"blast: Development heading blast 28.8 kg at (-37.3, -312.6)"
+552,face_position,LW0,panel=LW0 face_y_m=125.95
+552,face_position,LW1,panel=LW1 face_y_m=-354.05
+552,face_position,LW2,panel=LW2 face_y_m=nan
+559,blast,,q_kg=33.5 x_m=-41.4 y_m=-291.6 z_m=-375.0
+559,fault,,"blast: Development heading blast 33.5 kg at (-41.4, -291.6)"
+576,face_position,LW0,panel=LW0 face_y_m=129.95
+576,face_position,LW1,panel=LW1 face_y_m=-350.05
+576,face_position,LW2,panel=LW2 face_y_m=nan
+600,face_position,LW0,panel=LW0 face_y_m=133.95
+600,face_position,LW1,panel=LW1 face_y_m=-346.05
+600,face_position,LW2,panel=LW2 face_y_m=nan
+624,face_position,LW0,panel=LW0 face_y_m=137.95
+624,face_position,LW1,panel=LW1 face_y_m=-342.05
+624,face_position,LW2,panel=LW2 face_y_m=nan
+631,blast,,q_kg=44.5 x_m=-44.1 y_m=-302.9 z_m=-375.0
+631,fault,,"blast: Development heading blast 44.5 kg at (-44.1, -302.9)"
+648,face_position,LW0,panel=LW0 face_y_m=141.95
+648,face_position,LW1,panel=LW1 face_y_m=-338.05
+648,face_position,LW2,panel=LW2 face_y_m=nan
+655,blast,,q_kg=45.3 x_m=12.2 y_m=-292.4 z_m=-375.0
+655,fault,,"blast: Development heading blast 45.3 kg at (12.2, -292.4)"
+672,face_position,LW0,panel=LW0 face_y_m=145.95
+672,face_position,LW1,panel=LW1 face_y_m=-334.05
+672,face_position,LW2,panel=LW2 face_y_m=nan
+679,blast,,q_kg=33.6 x_m=28.6 y_m=-312.0 z_m=-375.0
+679,fault,,"blast: Development heading blast 33.6 kg at (28.6, -312.0)"
+696,face_position,LW0,panel=LW0 face_y_m=149.95
+696,face_position,LW1,panel=LW1 face_y_m=-330.05
+696,face_position,LW2,panel=LW2 face_y_m=nan
+703,blast,,q_kg=31.0 x_m=-51.1 y_m=-259.1 z_m=-375.0
+703,fault,,"blast: Development heading blast 31.0 kg at (-51.1, -259.1)"
+720,face_position,LW0,panel=LW0 face_y_m=153.95
+720,face_position,LW1,panel=LW1 face_y_m=-326.05
+720,face_position,LW2,panel=LW2 face_y_m=nan
+727,blast,,q_kg=41.9 x_m=-36.5 y_m=-272.5 z_m=-375.0
+727,fault,,"blast: Development heading blast 41.9 kg at (-36.5, -272.5)"
+744,face_position,LW0,panel=LW0 face_y_m=157.95
+744,face_position,LW1,panel=LW1 face_y_m=-322.05
+744,face_position,LW2,panel=LW2 face_y_m=nan
+768,face_position,LW0,panel=LW0 face_y_m=161.95
+768,face_position,LW1,panel=LW1 face_y_m=-318.05
+768,face_position,LW2,panel=LW2 face_y_m=nan
+775,blast,,q_kg=31.2 x_m=62.2 y_m=-273.5 z_m=-375.0
+775,fault,,"blast: Development heading blast 31.2 kg at (62.2, -273.5)"
+792,face_position,LW0,panel=LW0 face_y_m=165.95
+792,face_position,LW1,panel=LW1 face_y_m=-314.05
+792,face_position,LW2,panel=LW2 face_y_m=nan
+799,blast,,q_kg=59.7 x_m=21.6 y_m=-249.1 z_m=-375.0
+799,fault,,"blast: Development heading blast 59.7 kg at (21.6, -249.1)"
+816,face_position,LW0,panel=LW0 face_y_m=169.95
+816,face_position,LW1,panel=LW1 face_y_m=-310.05
+816,face_position,LW2,panel=LW2 face_y_m=nan
+823,blast,,q_kg=25.3 x_m=23.7 y_m=-259.4 z_m=-375.0
+823,fault,,"blast: Development heading blast 25.3 kg at (23.7, -259.4)"
+840,face_position,LW0,panel=LW0 face_y_m=173.95
+840,face_position,LW1,panel=LW1 face_y_m=-306.05
+840,face_position,LW2,panel=LW2 face_y_m=nan
+847,blast,,q_kg=26.6 x_m=97.4 y_m=-243.7 z_m=-375.0
+847,fault,,"blast: Development heading blast 26.6 kg at (97.4, -243.7)"
+864,face_position,LW0,panel=LW0 face_y_m=177.95
+864,face_position,LW1,panel=LW1 face_y_m=-302.05
+864,face_position,LW2,panel=LW2 face_y_m=nan
+871,blast,,q_kg=28.7 x_m=-8.1 y_m=-247.2 z_m=-375.0
+871,fault,,"blast: Development heading blast 28.7 kg at (-8.1, -247.2)"
+888,face_position,LW0,panel=LW0 face_y_m=181.95
+888,face_position,LW1,panel=LW1 face_y_m=-298.05
+888,face_position,LW2,panel=LW2 face_y_m=nan
+895,blast,,q_kg=29.4 x_m=46.5 y_m=-237.8 z_m=-375.0
+895,fault,,"blast: Development heading blast 29.3 kg at (46.5, -237.8)"
+912,face_position,LW0,panel=LW0 face_y_m=185.95
+912,face_position,LW1,panel=LW1 face_y_m=-294.05
+912,face_position,LW2,panel=LW2 face_y_m=nan
+936,face_position,LW0,panel=LW0 face_y_m=189.95
+936,face_position,LW1,panel=LW1 face_y_m=-290.05
+936,face_position,LW2,panel=LW2 face_y_m=nan
+943,blast,,q_kg=30.6 x_m=98.0 y_m=-211.9 z_m=-375.0
+943,fault,,"blast: Development heading blast 30.6 kg at (98.0, -211.9)"
+960,face_position,LW0,panel=LW0 face_y_m=193.95
+960,face_position,LW1,panel=LW1 face_y_m=-286.05
+960,face_position,LW2,panel=LW2 face_y_m=nan
+967,blast,,q_kg=36.2 x_m=-11.6 y_m=-211.1 z_m=-375.0
+967,fault,,"blast: Development heading blast 36.3 kg at (-11.6, -211.1)"
+984,face_position,LW0,panel=LW0 face_y_m=197.95
+984,face_position,LW1,panel=LW1 face_y_m=-282.05
+984,face_position,LW2,panel=LW2 face_y_m=nan
+991,blast,,q_kg=49.0 x_m=91.0 y_m=-248.8 z_m=-375.0
+991,fault,,"blast: Development heading blast 49.0 kg at (91.0, -248.8)"
+1008,face_position,LW0,panel=LW0 face_y_m=201.95
+1008,face_position,LW1,panel=LW1 face_y_m=-278.05
+1008,face_position,LW2,panel=LW2 face_y_m=nan
+1015,blast,,q_kg=48.7 x_m=19.9 y_m=-236.0 z_m=-375.0
+1015,fault,,"blast: Development heading blast 48.7 kg at (19.9, -236.0)"
+1032,face_position,LW0,panel=LW0 face_y_m=205.95
+1032,face_position,LW1,panel=LW1 face_y_m=-274.05
+1032,face_position,LW2,panel=LW2 face_y_m=nan
+1039,blast,,q_kg=30.4 x_m=-95.2 y_m=-238.9 z_m=-375.0
+1039,fault,,"blast: Development heading blast 30.5 kg at (-95.2, -238.9)"
+1056,face_position,LW0,panel=LW0 face_y_m=209.95
+1056,face_position,LW1,panel=LW1 face_y_m=-270.05
+1056,face_position,LW2,panel=LW2 face_y_m=nan
+1063,blast,,q_kg=34.1 x_m=-76.5 y_m=-246.8 z_m=-375.0
+1063,fault,,"blast: Development heading blast 34.1 kg at (-76.5, -246.8)"
+1080,face_position,LW0,panel=LW0 face_y_m=213.95
+1080,face_position,LW1,panel=LW1 face_y_m=-266.05
+1080,face_position,LW2,panel=LW2 face_y_m=nan
+1104,face_position,LW0,panel=LW0 face_y_m=217.95
+1104,face_position,LW1,panel=LW1 face_y_m=-262.05
+1104,face_position,LW2,panel=LW2 face_y_m=nan
+1111,blast,,q_kg=26.3 x_m=-56.4 y_m=-232.8 z_m=-375.0
+1111,fault,,"blast: Development heading blast 26.3 kg at (-56.3, -232.8)"
+1128,face_position,LW0,panel=LW0 face_y_m=221.95
+1128,face_position,LW1,panel=LW1 face_y_m=-258.05
+1128,face_position,LW2,panel=LW2 face_y_m=nan
+1152,face_position,LW0,panel=LW0 face_y_m=225.95
+1152,face_position,LW1,panel=LW1 face_y_m=-254.05
+1152,face_position,LW2,panel=LW2 face_y_m=nan
+1159,blast,,q_kg=49.0 x_m=65.2 y_m=-227.1 z_m=-375.0
+1159,fault,,"blast: Development heading blast 49.0 kg at (65.3, -227.1)"
+1176,face_position,LW0,panel=LW0 face_y_m=229.95
+1176,face_position,LW1,panel=LW1 face_y_m=-250.05
+1176,face_position,LW2,panel=LW2 face_y_m=nan
+1183,blast,,q_kg=37.7 x_m=-89.2 y_m=-226.4 z_m=-375.0
+1183,fault,,"blast: Development heading blast 37.7 kg at (-89.2, -226.4)"
+1200,face_position,LW0,panel=LW0 face_y_m=233.95
+1200,face_position,LW1,panel=LW1 face_y_m=-246.05
+1200,face_position,LW2,panel=LW2 face_y_m=nan
+1207,blast,,q_kg=48.1 x_m=-23.6 y_m=-192.1 z_m=-375.0
+1207,fault,,"blast: Development heading blast 48.1 kg at (-23.6, -192.1)"
+1224,face_position,LW0,panel=LW0 face_y_m=237.95
+1224,face_position,LW1,panel=LW1 face_y_m=-242.05
+1224,face_position,LW2,panel=LW2 face_y_m=nan
+1231,blast,,q_kg=52.9 x_m=-38.0 y_m=-209.1 z_m=-375.0
+1231,fault,,"blast: Development heading blast 52.9 kg at (-38.0, -209.1)"
+1248,face_position,LW0,panel=LW0 face_y_m=241.95
+1248,face_position,LW1,panel=LW1 face_y_m=-238.05
+1248,face_position,LW2,panel=LW2 face_y_m=nan
+1272,face_position,LW0,panel=LW0 face_y_m=245.95
+1272,face_position,LW1,panel=LW1 face_y_m=-234.05
+1272,face_position,LW2,panel=LW2 face_y_m=nan
+1279,blast,,q_kg=43.5 x_m=-66.9 y_m=-164.9 z_m=-375.0
+1279,fault,,"blast: Development heading blast 43.5 kg at (-66.9, -164.9)"
+1296,face_position,LW0,panel=LW0 face_y_m=249.95
+1296,face_position,LW1,panel=LW1 face_y_m=-230.05
+1296,face_position,LW2,panel=LW2 face_y_m=nan
+1303,blast,,q_kg=34.8 x_m=-42.1 y_m=-189.9 z_m=-375.0
+1303,fault,,"blast: Development heading blast 34.8 kg at (-42.1, -189.9)"
+1320,face_position,LW0,panel=LW0 face_y_m=253.95
+1320,face_position,LW1,panel=LW1 face_y_m=-226.05
+1320,face_position,LW2,panel=LW2 face_y_m=nan
+1327,blast,,q_kg=32.7 x_m=18.2 y_m=-146.0 z_m=-375.0
+1327,fault,,"blast: Development heading blast 32.7 kg at (18.2, -146.0)"
+1344,face_position,LW0,panel=LW0 face_y_m=257.95
+1344,face_position,LW1,panel=LW1 face_y_m=-222.05
+1344,face_position,LW2,panel=LW2 face_y_m=nan
+1351,blast,,q_kg=24.5 x_m=88.4 y_m=-188.5 z_m=-375.0
+1351,fault,,"blast: Development heading blast 24.5 kg at (88.4, -188.5)"
+1368,face_position,LW0,panel=LW0 face_y_m=261.95
+1368,face_position,LW1,panel=LW1 face_y_m=-218.05
+1368,face_position,LW2,panel=LW2 face_y_m=nan
+1375,blast,,q_kg=39.4 x_m=6.4 y_m=-138.2 z_m=-375.0
+1375,fault,,"blast: Development heading blast 39.4 kg at (6.4, -138.2)"
+1392,face_position,LW0,panel=LW0 face_y_m=265.95
+1392,face_position,LW1,panel=LW1 face_y_m=-214.05
+1392,face_position,LW2,panel=LW2 face_y_m=nan
+1399,blast,,q_kg=54.0 x_m=60.0 y_m=-164.4 z_m=-375.0
+1399,fault,,"blast: Development heading blast 54.0 kg at (60.0, -164.4)"
+1416,face_position,LW0,panel=LW0 face_y_m=269.95
+1416,face_position,LW1,panel=LW1 face_y_m=-210.05
+1416,face_position,LW2,panel=LW2 face_y_m=nan
+1440,face_position,LW0,panel=LW0 face_y_m=273.95
+1440,face_position,LW1,panel=LW1 face_y_m=-206.05
+1440,face_position,LW2,panel=LW2 face_y_m=nan
+1447,blast,,q_kg=44.6 x_m=62.5 y_m=-143.6 z_m=-375.0
+1447,fault,,"blast: Development heading blast 44.6 kg at (62.5, -143.6)"
+1464,face_position,LW0,panel=LW0 face_y_m=277.95
+1464,face_position,LW1,panel=LW1 face_y_m=-202.05
+1464,face_position,LW2,panel=LW2 face_y_m=nan
+1471,blast,,q_kg=42.3 x_m=3.6 y_m=-123.4 z_m=-375.0
+1471,fault,,"blast: Development heading blast 42.3 kg at (3.6, -123.4)"
+1488,face_position,LW0,panel=LW0 face_y_m=281.95
+1488,face_position,LW1,panel=LW1 face_y_m=-198.05
+1488,face_position,LW2,panel=LW2 face_y_m=nan
+1512,face_position,LW0,panel=LW0 face_y_m=285.95
+1512,face_position,LW1,panel=LW1 face_y_m=-194.05
+1512,face_position,LW2,panel=LW2 face_y_m=nan
+1519,blast,,q_kg=46.4 x_m=-32.6 y_m=-119.9 z_m=-375.0
+1519,fault,,"blast: Development heading blast 46.4 kg at (-32.6, -119.9)"
+1536,face_position,LW0,panel=LW0 face_y_m=289.95
+1536,face_position,LW1,panel=LW1 face_y_m=-190.05
+1536,face_position,LW2,panel=LW2 face_y_m=nan
+1543,blast,,q_kg=34.0 x_m=11.6 y_m=-127.9 z_m=-375.0
+1543,fault,,"blast: Development heading blast 34.0 kg at (11.6, -127.9)"
+1560,face_position,LW0,panel=LW0 face_y_m=293.95
+1560,face_position,LW1,panel=LW1 face_y_m=-186.05
+1560,face_position,LW2,panel=LW2 face_y_m=nan
+1567,blast,,q_kg=54.2 x_m=-15.8 y_m=-153.1 z_m=-375.0
+1567,fault,,"blast: Development heading blast 54.2 kg at (-15.8, -153.1)"
+1584,face_position,LW0,panel=LW0 face_y_m=297.95
+1584,face_position,LW1,panel=LW1 face_y_m=-182.05
+1584,face_position,LW2,panel=LW2 face_y_m=nan
+1608,face_position,LW0,panel=LW0 face_y_m=301.95
+1608,face_position,LW1,panel=LW1 face_y_m=-178.05
+1608,face_position,LW2,panel=LW2 face_y_m=nan
+1615,blast,,q_kg=32.7 x_m=33.1 y_m=-107.3 z_m=-375.0
+1615,fault,,"blast: Development heading blast 32.7 kg at (33.1, -107.3)"
+1632,face_position,LW0,panel=LW0 face_y_m=305.95
+1632,face_position,LW1,panel=LW1 face_y_m=-174.05
+1632,face_position,LW2,panel=LW2 face_y_m=nan
+1639,blast,,q_kg=34.1 x_m=99.1 y_m=-131.4 z_m=-375.0
+1639,fault,,"blast: Development heading blast 34.1 kg at (99.1, -131.4)"
+1656,face_position,LW0,panel=LW0 face_y_m=309.95
+1656,face_position,LW1,panel=LW1 face_y_m=-170.05
+1656,face_position,LW2,panel=LW2 face_y_m=nan
+1663,blast,,q_kg=57.3 x_m=92.1 y_m=-109.5 z_m=-375.0
+1663,fault,,"blast: Development heading blast 57.3 kg at (92.1, -109.5)"
+1680,face_position,LW0,panel=LW0 face_y_m=313.95
+1680,face_position,LW1,panel=LW1 face_y_m=-166.05
+1680,face_position,LW2,panel=LW2 face_y_m=nan
+1687,blast,,q_kg=35.6 x_m=24.6 y_m=-130.0 z_m=-375.0
+1687,fault,,"blast: Development heading blast 35.6 kg at (24.6, -130.0)"
+1692,fault,31,gateway_outage_start: Gateway outage (6 h power / firmware reload)
+1698,fault,31,"gateway_outage_end: Gateway reboot complete, network links restored"
+1704,face_position,LW0,panel=LW0 face_y_m=317.95
+1704,face_position,LW1,panel=LW1 face_y_m=-162.05
+1704,face_position,LW2,panel=LW2 face_y_m=nan
+1711,blast,,q_kg=48.4 x_m=71.8 y_m=-111.4 z_m=-375.0
+1711,fault,,"blast: Development heading blast 48.4 kg at (71.8, -111.4)"
+1728,face_position,LW0,panel=LW0 face_y_m=321.95
+1728,face_position,LW1,panel=LW1 face_y_m=-158.05
+1728,face_position,LW2,panel=LW2 face_y_m=nan
+1735,blast,,q_kg=53.6 x_m=-66.7 y_m=-112.8 z_m=-375.0
+1735,fault,,"blast: Development heading blast 53.6 kg at (-66.7, -112.8)"
+1752,face_position,LW0,panel=LW0 face_y_m=325.95
+1752,face_position,LW1,panel=LW1 face_y_m=-154.05
+1752,face_position,LW2,panel=LW2 face_y_m=nan
+1776,face_position,LW0,panel=LW0 face_y_m=329.95
+1776,face_position,LW1,panel=LW1 face_y_m=-150.05
+1776,face_position,LW2,panel=LW2 face_y_m=nan
+1783,blast,,q_kg=26.9 x_m=88.2 y_m=-109.3 z_m=-375.0
+1783,fault,,"blast: Development heading blast 26.9 kg at (88.2, -109.3)"
+1800,face_position,LW0,panel=LW0 face_y_m=333.95
+1800,face_position,LW1,panel=LW1 face_y_m=-146.05
+1800,face_position,LW2,panel=LW2 face_y_m=nan
+1807,blast,,q_kg=53.4 x_m=-95.3 y_m=-117.2 z_m=-375.0
+1807,fault,,"blast: Development heading blast 53.4 kg at (-95.3, -117.2)"
+1824,face_position,LW0,panel=LW0 face_y_m=337.95
+1824,face_position,LW1,panel=LW1 face_y_m=-142.05
+1824,face_position,LW2,panel=LW2 face_y_m=nan
+1831,blast,,q_kg=51.0 x_m=-8.9 y_m=-103.3 z_m=-375.0
+1831,fault,,"blast: Development heading blast 51.0 kg at (-8.9, -103.3)"
+1848,face_position,LW0,panel=LW0 face_y_m=341.95
+1848,face_position,LW1,panel=LW1 face_y_m=-138.05
+1848,face_position,LW2,panel=LW2 face_y_m=nan
+1855,blast,,q_kg=56.0 x_m=58.7 y_m=-95.1 z_m=-375.0
+1855,fault,,"blast: Development heading blast 56.1 kg at (58.7, -95.1)"
+1872,face_position,LW0,panel=LW0 face_y_m=345.95
+1872,face_position,LW1,panel=LW1 face_y_m=-134.05
+1872,face_position,LW2,panel=LW2 face_y_m=nan
+1879,blast,,q_kg=56.0 x_m=-7.4 y_m=-97.1 z_m=-375.0
+1879,fault,,"blast: Development heading blast 56.0 kg at (-7.4, -97.1)"
+1896,face_position,LW0,panel=LW0 face_y_m=349.95
+1896,face_position,LW1,panel=LW1 face_y_m=-130.05
+1896,face_position,LW2,panel=LW2 face_y_m=nan
+1903,blast,,q_kg=44.5 x_m=-69.4 y_m=-49.0 z_m=-375.0
+1903,fault,,"blast: Development heading blast 44.5 kg at (-69.4, -49.0)"
+1920,face_position,LW0,panel=LW0 face_y_m=353.95
+1920,face_position,LW1,panel=LW1 face_y_m=-126.05
+1920,face_position,LW2,panel=LW2 face_y_m=nan
+1944,face_position,LW0,panel=LW0 face_y_m=357.95
+1944,face_position,LW1,panel=LW1 face_y_m=-122.05
+1944,face_position,LW2,panel=LW2 face_y_m=nan
+1951,blast,,q_kg=35.6 x_m=83.1 y_m=-90.1 z_m=-375.0
+1951,fault,,"blast: Development heading blast 35.6 kg at (83.1, -90.1)"
+1968,face_position,LW0,panel=LW0 face_y_m=361.95
+1968,face_position,LW1,panel=LW1 face_y_m=-118.05
+1968,face_position,LW2,panel=LW2 face_y_m=nan
+1975,blast,,q_kg=54.9 x_m=74.7 y_m=-46.6 z_m=-375.0
+1975,fault,,"blast: Development heading blast 54.9 kg at (74.7, -46.6)"
+1992,face_position,LW0,panel=LW0 face_y_m=365.95
+1992,face_position,LW1,panel=LW1 face_y_m=-114.05
+1992,face_position,LW2,panel=LW2 face_y_m=nan
+1999,blast,,q_kg=35.6 x_m=-43.9 y_m=-55.7 z_m=-375.0
+1999,fault,,"blast: Development heading blast 35.6 kg at (-43.9, -55.7)"
+2016,face_position,LW0,panel=LW0 face_y_m=369.95
+2016,face_position,LW1,panel=LW1 face_y_m=-110.05
+2016,face_position,LW2,panel=LW2 face_y_m=nan
+2023,blast,,q_kg=48.6 x_m=-35.9 y_m=-57.6 z_m=-375.0
+2023,fault,,"blast: Development heading blast 48.6 kg at (-35.8, -57.6)"
+2040,face_position,LW0,panel=LW0 face_y_m=373.95
+2040,face_position,LW1,panel=LW1 face_y_m=-106.05
+2040,face_position,LW2,panel=LW2 face_y_m=nan
+2047,blast,,q_kg=52.3 x_m=3.7 y_m=-71.0 z_m=-375.0
+2047,fault,,"blast: Development heading blast 52.3 kg at (3.7, -71.0)"
+2064,face_position,LW0,panel=LW0 face_y_m=377.95
+2064,face_position,LW1,panel=LW1 face_y_m=-102.05
+2064,face_position,LW2,panel=LW2 face_y_m=nan
+2071,blast,,q_kg=54.0 x_m=95.6 y_m=-59.0 z_m=-375.0
+2071,fault,,"blast: Development heading blast 54.0 kg at (95.6, -59.0)"
+2088,face_position,LW0,panel=LW0 face_y_m=381.95
+2088,face_position,LW1,panel=LW1 face_y_m=-98.05
+2088,face_position,LW2,panel=LW2 face_y_m=nan
+2112,face_position,LW0,panel=LW0 face_y_m=385.95
+2112,face_position,LW1,panel=LW1 face_y_m=-94.05
+2112,face_position,LW2,panel=LW2 face_y_m=nan
+2119,blast,,q_kg=48.2 x_m=72.8 y_m=-57.2 z_m=-375.0
+2119,fault,,"blast: Development heading blast 48.2 kg at (72.8, -57.2)"
+2136,face_position,LW0,panel=LW0 face_y_m=389.95
+2136,face_position,LW1,panel=LW1 face_y_m=-90.05
+2136,face_position,LW2,panel=LW2 face_y_m=nan
+2143,blast,,q_kg=21.2 x_m=87.7 y_m=-24.4 z_m=-375.0
+2143,fault,,"blast: Development heading blast 21.2 kg at (87.7, -24.4)"
+2160,face_position,LW0,panel=LW0 face_y_m=393.95
+2160,face_position,LW1,panel=LW1 face_y_m=-86.05
+2160,face_position,LW2,panel=LW2 face_y_m=nan
+2167,blast,,q_kg=44.7 x_m=20.9 y_m=-18.1 z_m=-375.0
+2167,fault,,"blast: Development heading blast 44.7 kg at (20.9, -18.1)"
+2184,face_position,LW0,panel=LW0 face_y_m=397.95
+2184,face_position,LW1,panel=LW1 face_y_m=-82.05
+2184,face_position,LW2,panel=LW2 face_y_m=nan
+2191,blast,,q_kg=52.1 x_m=-94.2 y_m=-53.6 z_m=-375.0
+2191,fault,,"blast: Development heading blast 52.1 kg at (-94.3, -53.6)"
+2208,face_position,LW0,panel=LW0 face_y_m=401.95
+2208,face_position,LW1,panel=LW1 face_y_m=-78.05
+2208,face_position,LW2,panel=LW2 face_y_m=nan
+2232,face_position,LW0,panel=LW0 face_y_m=405.95
+2232,face_position,LW1,panel=LW1 face_y_m=-74.05
+2232,face_position,LW2,panel=LW2 face_y_m=nan
+2239,blast,,q_kg=36.6 x_m=-2.4 y_m=4.7 z_m=-375.0
+2239,fault,,"blast: Development heading blast 36.6 kg at (-2.4, 4.7)"
+2256,face_position,LW0,panel=LW0 face_y_m=409.95
+2256,face_position,LW1,panel=LW1 face_y_m=-70.05
+2256,face_position,LW2,panel=LW2 face_y_m=nan
+2280,face_position,LW0,panel=LW0 face_y_m=413.95
+2280,face_position,LW1,panel=LW1 face_y_m=-66.05
+2280,face_position,LW2,panel=LW2 face_y_m=nan
+2287,blast,,q_kg=53.6 x_m=64.3 y_m=-42.7 z_m=-375.0
+2287,fault,,"blast: Development heading blast 53.6 kg at (64.3, -42.7)"
+2304,face_position,LW0,panel=LW0 face_y_m=417.95
+2304,face_position,LW1,panel=LW1 face_y_m=-62.05
+2304,face_position,LW2,panel=LW2 face_y_m=nan
+2311,blast,,q_kg=32.4 x_m=71.8 y_m=-19.1 z_m=-375.0
+2311,fault,,"blast: Development heading blast 32.4 kg at (71.8, -19.1)"
+2328,face_position,LW0,panel=LW0 face_y_m=421.95
+2328,face_position,LW1,panel=LW1 face_y_m=-58.05
+2328,face_position,LW2,panel=LW2 face_y_m=nan
+2335,blast,,q_kg=43.9 x_m=82.0 y_m=9.9 z_m=-375.0
+2335,fault,,"blast: Development heading blast 43.9 kg at (82.0, 9.9)"
+2352,face_position,LW0,panel=LW0 face_y_m=425.95
+2352,face_position,LW1,panel=LW1 face_y_m=-54.05
+2352,face_position,LW2,panel=LW2 face_y_m=nan
+2359,blast,,q_kg=49.9 x_m=-12.7 y_m=21.9 z_m=-375.0
+2359,fault,,"blast: Development heading blast 49.9 kg at (-12.7, 21.9)"
+2376,face_position,LW0,panel=LW0 face_y_m=429.95
+2376,face_position,LW1,panel=LW1 face_y_m=-50.05
+2376,face_position,LW2,panel=LW2 face_y_m=nan
+2383,blast,,q_kg=23.9 x_m=-16.6 y_m=1.0 z_m=-375.0
+2383,fault,,"blast: Development heading blast 23.9 kg at (-16.6, 1.0)"
+2400,face_position,LW0,panel=LW0 face_y_m=433.95
+2400,face_position,LW1,panel=LW1 face_y_m=-46.05
+2400,face_position,LW2,panel=LW2 face_y_m=nan
+2407,blast,,q_kg=34.2 x_m=62.1 y_m=25.7 z_m=-375.0
+2407,fault,,"blast: Development heading blast 34.2 kg at (62.1, 25.7)"
+2424,face_position,LW0,panel=LW0 face_y_m=437.95
+2424,face_position,LW1,panel=LW1 face_y_m=-42.05
+2424,face_position,LW2,panel=LW2 face_y_m=nan
+2448,face_position,LW0,panel=LW0 face_y_m=441.95
+2448,face_position,LW1,panel=LW1 face_y_m=-38.05
+2448,face_position,LW2,panel=LW2 face_y_m=nan
+2455,blast,,q_kg=26.9 x_m=-38.1 y_m=-1.7 z_m=-375.0
+2455,fault,,"blast: Development heading blast 26.9 kg at (-38.1, -1.7)"
+2472,face_position,LW0,panel=LW0 face_y_m=445.95
+2472,face_position,LW1,panel=LW1 face_y_m=-34.05
+2472,face_position,LW2,panel=LW2 face_y_m=nan
+2479,blast,,q_kg=37.3 x_m=89.6 y_m=32.7 z_m=-375.0
+2479,fault,,"blast: Development heading blast 37.3 kg at (89.6, 32.7)"
+2496,face_position,LW0,panel=LW0 face_y_m=449.95
+2496,face_position,LW1,panel=LW1 face_y_m=-30.05
+2496,face_position,LW2,panel=LW2 face_y_m=nan
+2503,blast,,q_kg=48.4 x_m=-78.0 y_m=-0.4 z_m=-375.0
+2503,fault,,"blast: Development heading blast 48.4 kg at (-78.0, -0.4)"
+2520,face_position,LW0,panel=LW0 face_y_m=453.95
+2520,face_position,LW1,panel=LW1 face_y_m=-26.05
+2520,face_position,LW2,panel=LW2 face_y_m=nan
+2527,blast,,q_kg=58.3 x_m=-59.4 y_m=16.1 z_m=-375.0
+2527,fault,,"blast: Development heading blast 58.3 kg at (-59.4, 16.1)"
+2544,face_position,LW0,panel=LW0 face_y_m=457.95
+2544,face_position,LW1,panel=LW1 face_y_m=-22.05
+2544,face_position,LW2,panel=LW2 face_y_m=nan
+2551,blast,,q_kg=24.2 x_m=16.2 y_m=47.7 z_m=-375.0
+2551,fault,,"blast: Development heading blast 24.2 kg at (16.2, 47.7)"
+2568,face_position,LW0,panel=LW0 face_y_m=461.95
+2568,face_position,LW1,panel=LW1 face_y_m=-18.05
+2568,face_position,LW2,panel=LW2 face_y_m=nan
+2575,blast,,q_kg=52.4 x_m=-33.9 y_m=56.9 z_m=-375.0
+2575,fault,,"blast: Development heading blast 52.4 kg at (-33.9, 56.9)"
+2592,face_position,LW0,panel=LW0 face_y_m=465.95
+2592,face_position,LW1,panel=LW1 face_y_m=-14.05
+2592,face_position,LW2,panel=LW2 face_y_m=nan
+2616,face_position,LW0,panel=LW0 face_y_m=469.95
+2616,face_position,LW1,panel=LW1 face_y_m=-10.05
+2616,face_position,LW2,panel=LW2 face_y_m=nan
+2623,blast,,q_kg=30.8 x_m=44.7 y_m=46.4 z_m=-375.0
+2623,fault,,"blast: Development heading blast 30.8 kg at (44.7, 46.4)"
+2640,face_position,LW0,panel=LW0 face_y_m=473.95
+2640,face_position,LW1,panel=LW1 face_y_m=-6.05
+2640,face_position,LW2,panel=LW2 face_y_m=nan
+2647,blast,,q_kg=28.1 x_m=17.1 y_m=18.2 z_m=-375.0
+2647,fault,,"blast: Development heading blast 28.1 kg at (17.1, 18.2)"
+2664,face_position,LW0,panel=LW0 face_y_m=477.95
+2664,face_position,LW1,panel=LW1 face_y_m=-2.05
+2664,face_position,LW2,panel=LW2 face_y_m=nan
+2671,blast,,q_kg=29.3 x_m=3.6 y_m=19.3 z_m=-375.0
+2671,fault,,"blast: Development heading blast 29.3 kg at (3.7, 19.3)"
+2688,face_position,LW0,panel=LW0 face_y_m=481.95
+2688,face_position,LW1,panel=LW1 face_y_m=1.95
+2688,face_position,LW2,panel=LW2 face_y_m=nan
+2695,blast,,q_kg=54.3 x_m=-69.5 y_m=43.9 z_m=-375.0
+2695,fault,,"blast: Development heading blast 54.3 kg at (-69.6, 43.9)"
+2712,face_position,LW0,panel=LW0 face_y_m=485.95
+2712,face_position,LW1,panel=LW1 face_y_m=5.95
+2712,face_position,LW2,panel=LW2 face_y_m=nan
+2719,blast,,q_kg=29.2 x_m=89.5 y_m=37.1 z_m=-375.0
+2719,fault,,"blast: Development heading blast 29.2 kg at (89.5, 37.1)"
+2736,face_position,LW0,panel=LW0 face_y_m=489.95
+2736,face_position,LW1,panel=LW1 face_y_m=9.95
+2736,face_position,LW2,panel=LW2 face_y_m=nan
+2743,blast,,q_kg=49.6 x_m=69.4 y_m=41.6 z_m=-375.0
+2743,fault,,"blast: Development heading blast 49.7 kg at (69.4, 41.6)"
+2760,face_position,LW0,panel=LW0 face_y_m=493.95
+2760,face_position,LW1,panel=LW1 face_y_m=13.95
+2760,face_position,LW2,panel=LW2 face_y_m=nan
+2784,face_position,LW0,panel=LW0 face_y_m=497.95
+2784,face_position,LW1,panel=LW1 face_y_m=17.95
+2784,face_position,LW2,panel=LW2 face_y_m=nan
+2791,blast,,q_kg=30.6 x_m=-82.9 y_m=78.1 z_m=-375.0
+2791,fault,,"blast: Development heading blast 30.6 kg at (-82.9, 78.1)"
+2804,fault,10,battery_replaced: Node 10 battery replaced (< 3.32V)
+2808,face_position,LW0,panel=LW0 face_y_m=501.95
+2808,face_position,LW1,panel=LW1 face_y_m=21.95
+2808,face_position,LW2,panel=LW2 face_y_m=nan
+2815,blast,,q_kg=27.2 x_m=49.9 y_m=74.4 z_m=-375.0
+2815,fault,,"blast: Development heading blast 27.2 kg at (49.9, 74.4)"
+2832,face_position,LW0,panel=LW0 face_y_m=505.95
+2832,face_position,LW1,panel=LW1 face_y_m=25.95
+2832,face_position,LW2,panel=LW2 face_y_m=nan
+2839,blast,,q_kg=59.8 x_m=-19.6 y_m=78.1 z_m=-375.0
+2839,fault,,"blast: Development heading blast 59.8 kg at (-19.6, 78.1)"
+2856,face_position,LW0,panel=LW0 face_y_m=509.95
+2856,face_position,LW1,panel=LW1 face_y_m=29.95
+2856,face_position,LW2,panel=LW2 face_y_m=nan
+2863,blast,,q_kg=42.2 x_m=-3.9 y_m=60.3 z_m=-375.0
+2863,fault,,"blast: Development heading blast 42.2 kg at (-3.9, 60.3)"
+2876,fault,29,battery_replaced: Node 29 battery replaced (< 3.32V)
+2877,fault,7,battery_replaced: Node 7 battery replaced (< 3.32V)
+2880,face_position,LW0,panel=LW0 face_y_m=513.95
+2880,face_position,LW1,panel=LW1 face_y_m=33.95
+2880,face_position,LW2,panel=LW2 face_y_m=nan
+2904,face_position,LW0,panel=LW0 face_y_m=517.95
+2904,face_position,LW1,panel=LW1 face_y_m=37.95
+2904,face_position,LW2,panel=LW2 face_y_m=-442.05
+2911,blast,,q_kg=53.4 x_m=-56.0 y_m=112.0 z_m=-375.0
+2911,fault,,"blast: Development heading blast 53.4 kg at (-56.0, 112.0)"
+2928,face_position,LW0,panel=LW0 face_y_m=521.95
+2928,face_position,LW1,panel=LW1 face_y_m=41.95
+2928,face_position,LW2,panel=LW2 face_y_m=-438.05
+2952,face_position,LW0,panel=LW0 face_y_m=525.95
+2952,face_position,LW1,panel=LW1 face_y_m=45.95
+2952,face_position,LW2,panel=LW2 face_y_m=-434.05
+2955,fault,12,battery_replaced: Node 12 battery replaced (< 3.32V)
+2959,blast,,q_kg=47.9 x_m=-74.3 y_m=102.5 z_m=-375.0
+2959,fault,,"blast: Development heading blast 47.9 kg at (-74.3, 102.5)"
+2976,face_position,LW0,panel=LW0 face_y_m=529.95
+2976,face_position,LW1,panel=LW1 face_y_m=49.95
+2976,face_position,LW2,panel=LW2 face_y_m=-430.05
+2977,fault,20,battery_replaced: Node 20 battery replaced (< 3.32V)
+2983,blast,,q_kg=38.5 x_m=-49.7 y_m=108.8 z_m=-375.0
+2983,fault,,"blast: Development heading blast 38.5 kg at (-49.7, 108.8)"
+2995,fault,17,battery_replaced: Node 17 battery replaced (< 3.32V)
+3000,face_position,LW0,panel=LW0 face_y_m=533.95
+3000,face_position,LW1,panel=LW1 face_y_m=53.95
+3000,face_position,LW2,panel=LW2 face_y_m=-426.05
+3000,fault,14,gauge_stuck_start: Node 14 Tier 1B strain gauge ADC stuck (3 days)
+3007,blast,,q_kg=42.8 x_m=-3.6 y_m=108.3 z_m=-375.0
+3007,fault,,"blast: Development heading blast 42.8 kg at (-3.6, 108.3)"
+3024,face_position,LW0,panel=LW0 face_y_m=537.95
+3024,face_position,LW1,panel=LW1 face_y_m=57.95
+3024,face_position,LW2,panel=LW2 face_y_m=-422.05
+3031,blast,,q_kg=48.9 x_m=42.0 y_m=106.3 z_m=-375.0
+3031,fault,,"blast: Development heading blast 48.9 kg at (42.0, 106.3)"
+3048,face_position,LW0,panel=LW0 face_y_m=541.95
+3048,face_position,LW1,panel=LW1 face_y_m=61.95
+3048,face_position,LW2,panel=LW2 face_y_m=-418.05
+3055,blast,,q_kg=30.5 x_m=-2.8 y_m=123.0 z_m=-375.0
+3055,fault,,"blast: Development heading blast 30.5 kg at (-2.8, 123.0)"
+3064,fault,24,battery_replaced: Node 24 battery replaced (< 3.32V)
+3072,face_position,LW0,panel=LW0 face_y_m=545.95
+3072,face_position,LW1,panel=LW1 face_y_m=65.95
+3072,face_position,LW2,panel=LW2 face_y_m=-414.05
+3072,fault,14,"gauge_stuck_end: Node 14 Tier 1B strain gauge ADC unstuck, normal telemetry resumed"
+3079,blast,,q_kg=32.1 x_m=8.3 y_m=115.3 z_m=-375.0
+3079,fault,,"blast: Development heading blast 32.1 kg at (8.3, 115.3)"
+3096,face_position,LW0,panel=LW0 face_y_m=549.95
+3096,face_position,LW1,panel=LW1 face_y_m=69.95
+3096,face_position,LW2,panel=LW2 face_y_m=-410.05
+3104,fault,16,battery_replaced: Node 16 battery replaced (< 3.32V)
+3115,fault,25,battery_replaced: Node 25 battery replaced (< 3.32V)
+3120,face_position,LW0,panel=LW0 face_y_m=553.95
+3120,face_position,LW1,panel=LW1 face_y_m=73.95
+3120,face_position,LW2,panel=LW2 face_y_m=-406.05
+3127,blast,,q_kg=20.4 x_m=-87.5 y_m=125.8 z_m=-375.0
+3127,fault,,"blast: Development heading blast 20.4 kg at (-87.5, 125.8)"
+3144,face_position,LW0,panel=LW0 face_y_m=557.95
+3144,face_position,LW1,panel=LW1 face_y_m=77.95
+3144,face_position,LW2,panel=LW2 face_y_m=-402.05
+3151,blast,,q_kg=45.4 x_m=-22.0 y_m=121.4 z_m=-375.0
+3151,fault,,"blast: Development heading blast 45.4 kg at (-22.0, 121.4)"
+3168,face_position,LW0,panel=LW0 face_y_m=561.95
+3168,face_position,LW1,panel=LW1 face_y_m=81.95
+3168,face_position,LW2,panel=LW2 face_y_m=-398.05
+3175,blast,,q_kg=59.0 x_m=97.5 y_m=154.7 z_m=-375.0
+3175,fault,,"blast: Development heading blast 59.0 kg at (97.5, 154.7)"
+3192,face_position,LW0,panel=LW0 face_y_m=565.95
+3192,face_position,LW1,panel=LW1 face_y_m=85.95
+3192,face_position,LW2,panel=LW2 face_y_m=-394.05
+3199,blast,,q_kg=31.3 x_m=90.2 y_m=111.7 z_m=-375.0
+3199,fault,,"blast: Development heading blast 31.3 kg at (90.2, 111.6)"
+3216,face_position,LW0,panel=LW0 face_y_m=569.95
+3216,face_position,LW1,panel=LW1 face_y_m=89.95
+3216,face_position,LW2,panel=LW2 face_y_m=-390.05
+3223,blast,,q_kg=53.9 x_m=-40.6 y_m=115.5 z_m=-375.0
+3223,fault,,"blast: Development heading blast 53.9 kg at (-40.6, 115.5)"
+3240,face_position,LW0,panel=LW0 face_y_m=573.95
+3240,face_position,LW1,panel=LW1 face_y_m=93.95
+3240,face_position,LW2,panel=LW2 face_y_m=-386.05
+3247,blast,,q_kg=55.6 x_m=79.1 y_m=151.5 z_m=-375.0
+3247,fault,,"blast: Development heading blast 55.6 kg at (79.1, 151.5)"
+3264,face_position,LW0,panel=LW0 face_y_m=577.95
+3264,face_position,LW1,panel=LW1 face_y_m=97.95
+3264,face_position,LW2,panel=LW2 face_y_m=-382.05
+3288,face_position,LW0,panel=LW0 face_y_m=581.95
+3288,face_position,LW1,panel=LW1 face_y_m=101.95
+3288,face_position,LW2,panel=LW2 face_y_m=-378.05
+3295,blast,,q_kg=26.0 x_m=42.9 y_m=149.6 z_m=-375.0
+3295,fault,,"blast: Development heading blast 26.0 kg at (42.9, 149.6)"
+3312,face_position,LW0,panel=LW0 face_y_m=585.95
+3312,face_position,LW1,panel=LW1 face_y_m=105.95
+3312,face_position,LW2,panel=LW2 face_y_m=-374.05
+3319,blast,,q_kg=34.2 x_m=91.7 y_m=168.7 z_m=-375.0
+3319,fault,,"blast: Development heading blast 34.2 kg at (91.7, 168.7)"
+3336,face_position,LW0,panel=LW0 face_y_m=589.95
+3336,face_position,LW1,panel=LW1 face_y_m=109.95
+3336,face_position,LW2,panel=LW2 face_y_m=-370.05
+3343,blast,,q_kg=52.1 x_m=-74.3 y_m=179.1 z_m=-375.0
+3343,fault,,"blast: Development heading blast 52.1 kg at (-74.3, 179.1)"
+3360,face_position,LW0,panel=LW0 face_y_m=593.95
+3360,face_position,LW1,panel=LW1 face_y_m=113.95
+3360,face_position,LW2,panel=LW2 face_y_m=-366.05
+3367,blast,,q_kg=35.5 x_m=8.6 y_m=195.2 z_m=-375.0
+3367,fault,,"blast: Development heading blast 35.5 kg at (8.6, 195.2)"
+3384,face_position,LW0,panel=LW0 face_y_m=597.95
+3384,face_position,LW1,panel=LW1 face_y_m=117.95
+3384,face_position,LW2,panel=LW2 face_y_m=-362.05
+3391,blast,,q_kg=49.5 x_m=88.4 y_m=177.0 z_m=-375.0
+3391,fault,,"blast: Development heading blast 49.5 kg at (88.4, 177.0)"
+3408,face_position,LW0,panel=LW0 face_y_m=601.95
+3408,face_position,LW1,panel=LW1 face_y_m=121.95
+3408,face_position,LW2,panel=LW2 face_y_m=-358.05
+3415,blast,,q_kg=31.6 x_m=83.4 y_m=193.1 z_m=-375.0
+3415,fault,,"blast: Development heading blast 31.5 kg at (83.4, 193.1)"
+3432,face_position,LW0,panel=LW0 face_y_m=605.95
+3432,face_position,LW1,panel=LW1 face_y_m=125.95
+3432,face_position,LW2,panel=LW2 face_y_m=-354.05
+3456,face_position,LW0,panel=LW0 face_y_m=609.95
+3456,face_position,LW1,panel=LW1 face_y_m=129.95
+3456,face_position,LW2,panel=LW2 face_y_m=-350.05
+3463,blast,,q_kg=21.8 x_m=73.5 y_m=183.6 z_m=-375.0
+3463,fault,,"blast: Development heading blast 21.8 kg at (73.4, 183.6)"
+3480,face_position,LW0,panel=LW0 face_y_m=613.95
+3480,face_position,LW1,panel=LW1 face_y_m=133.95
+3480,face_position,LW2,panel=LW2 face_y_m=-346.05
+3487,blast,,q_kg=41.5 x_m=34.8 y_m=185.2 z_m=-375.0
+3487,fault,,"blast: Development heading blast 41.5 kg at (34.8, 185.2)"
+3504,face_position,LW0,panel=LW0 face_y_m=617.95
+3504,face_position,LW1,panel=LW1 face_y_m=137.95
+3504,face_position,LW2,panel=LW2 face_y_m=-342.05
+3513,fault,19,battery_replaced: Node 19 battery replaced (< 3.32V)
+3528,face_position,LW0,panel=LW0 face_y_m=621.95
+3528,face_position,LW1,panel=LW1 face_y_m=141.95
+3528,face_position,LW2,panel=LW2 face_y_m=-338.05
+3535,blast,,q_kg=27.2 x_m=-17.7 y_m=167.0 z_m=-375.0
+3535,fault,,"blast: Development heading blast 27.2 kg at (-17.7, 167.0)"
+3535,fault,14,battery_replaced: Node 14 battery replaced (< 3.32V)
+3552,face_position,LW0,panel=LW0 face_y_m=625.95
+3552,face_position,LW1,panel=LW1 face_y_m=145.95
+3552,face_position,LW2,panel=LW2 face_y_m=-334.05
+3559,blast,,q_kg=45.1 x_m=51.3 y_m=181.2 z_m=-375.0
+3559,fault,,"blast: Development heading blast 45.1 kg at (51.3, 181.3)"
+3576,face_position,LW0,panel=LW0 face_y_m=629.95
+3576,face_position,LW1,panel=LW1 face_y_m=149.95
+3576,face_position,LW2,panel=LW2 face_y_m=-330.05
+3583,blast,,q_kg=31.2 x_m=8.4 y_m=184.5 z_m=-375.0
+3583,fault,,"blast: Development heading blast 31.2 kg at (8.4, 184.5)"
+3600,face_position,LW0,panel=LW0 face_y_m=633.95
+3600,face_position,LW1,panel=LW1 face_y_m=153.95
+3600,face_position,LW2,panel=LW2 face_y_m=-326.05
+3620,fault,6,battery_replaced: Node 6 battery replaced (< 3.32V)
+3624,face_position,LW0,panel=LW0 face_y_m=637.95
+3624,face_position,LW1,panel=LW1 face_y_m=157.95
+3624,face_position,LW2,panel=LW2 face_y_m=-322.05
+3631,blast,,q_kg=57.6 x_m=-23.3 y_m=232.0 z_m=-375.0
+3631,fault,,"blast: Development heading blast 57.7 kg at (-23.3, 232.0)"
+3648,face_position,LW0,panel=LW0 face_y_m=641.95
+3648,face_position,LW1,panel=LW1 face_y_m=161.95
+3648,face_position,LW2,panel=LW2 face_y_m=-318.05
+3655,blast,,q_kg=44.0 x_m=-22.6 y_m=186.0 z_m=-375.0
+3655,fault,,"blast: Development heading blast 44.0 kg at (-22.6, 186.0)"
+3667,fault,30,battery_replaced: Node 30 battery replaced (< 3.32V)
+3672,face_position,LW0,panel=LW0 face_y_m=645.95
+3672,face_position,LW1,panel=LW1 face_y_m=165.95
+3672,face_position,LW2,panel=LW2 face_y_m=-314.05
+3676,fault,18,battery_replaced: Node 18 battery replaced (< 3.32V)
+3679,blast,,q_kg=37.7 x_m=-16.5 y_m=216.7 z_m=-375.0
+3679,fault,,"blast: Development heading blast 37.7 kg at (-16.5, 216.7)"
+3687,fault,26,battery_replaced: Node 26 battery replaced (< 3.32V)
+3691,fault,8,battery_replaced: Node 8 battery replaced (< 3.32V)
+3696,face_position,LW0,panel=LW0 face_y_m=649.95
+3696,face_position,LW1,panel=LW1 face_y_m=169.95
+3696,face_position,LW2,panel=LW2 face_y_m=-310.05
+3697,fault,9,battery_replaced: Node 9 battery replaced (< 3.32V)
+3703,blast,,q_kg=55.7 x_m=30.9 y_m=209.5 z_m=-375.0
+3703,fault,,"blast: Development heading blast 55.7 kg at (30.9, 209.5)"
+3720,face_position,LW0,panel=LW0 face_y_m=653.95
+3720,face_position,LW1,panel=LW1 face_y_m=173.95
+3720,face_position,LW2,panel=LW2 face_y_m=-306.05
+3727,blast,,q_kg=56.9 x_m=-15.8 y_m=215.7 z_m=-375.0
+3727,fault,,"blast: Development heading blast 56.9 kg at (-15.8, 215.7)"
+3744,face_position,LW0,panel=LW0 face_y_m=657.95
+3744,face_position,LW1,panel=LW1 face_y_m=177.95
+3744,face_position,LW2,panel=LW2 face_y_m=-302.05
+3751,blast,,q_kg=26.2 x_m=-28.4 y_m=204.2 z_m=-375.0
+3751,fault,,"blast: Development heading blast 26.2 kg at (-28.4, 204.2)"
+3757,fault,13,battery_replaced: Node 13 battery replaced (< 3.32V)
+3768,face_position,LW0,panel=LW0 face_y_m=661.95
+3768,face_position,LW1,panel=LW1 face_y_m=181.95
+3768,face_position,LW2,panel=LW2 face_y_m=-298.05
+3788,fault,21,battery_replaced: Node 21 battery replaced (< 3.32V)
+3792,face_position,LW0,panel=LW0 face_y_m=665.95
+3792,face_position,LW1,panel=LW1 face_y_m=185.95
+3792,face_position,LW2,panel=LW2 face_y_m=-294.05
+3799,blast,,q_kg=41.4 x_m=42.9 y_m=240.9 z_m=-375.0
+3799,fault,,"blast: Development heading blast 41.4 kg at (42.9, 240.9)"
+3816,face_position,LW0,panel=LW0 face_y_m=669.95
+3816,face_position,LW1,panel=LW1 face_y_m=189.95
+3816,face_position,LW2,panel=LW2 face_y_m=-290.05
+3823,blast,,q_kg=35.9 x_m=-83.6 y_m=221.0 z_m=-375.0
+3823,fault,,"blast: Development heading blast 35.8 kg at (-83.6, 221.0)"
+3840,face_position,LW0,panel=LW0 face_y_m=673.95
+3840,face_position,LW1,panel=LW1 face_y_m=193.95
+3840,face_position,LW2,panel=LW2 face_y_m=-286.05
+3847,blast,,q_kg=40.1 x_m=-10.4 y_m=237.8 z_m=-375.0
+3847,fault,,"blast: Development heading blast 40.1 kg at (-10.4, 237.8)"
+3864,face_position,LW0,panel=LW0 face_y_m=677.95
+3864,face_position,LW1,panel=LW1 face_y_m=197.95
+3864,face_position,LW2,panel=LW2 face_y_m=-282.05
+3871,blast,,q_kg=44.5 x_m=46.7 y_m=257.3 z_m=-375.0
+3871,fault,,"blast: Development heading blast 44.5 kg at (46.7, 257.3)"
+3888,face_position,LW0,panel=LW0 face_y_m=681.95
+3888,face_position,LW1,panel=LW1 face_y_m=201.95
+3888,face_position,LW2,panel=LW2 face_y_m=-278.05
+3895,blast,,q_kg=44.2 x_m=11.6 y_m=235.2 z_m=-375.0
+3895,fault,,"blast: Development heading blast 44.2 kg at (11.6, 235.3)"
+3902,fault,27,battery_replaced: Node 27 battery replaced (< 3.32V)
+3912,face_position,LW0,panel=LW0 face_y_m=685.95
+3912,face_position,LW1,panel=LW1 face_y_m=205.95
+3912,face_position,LW2,panel=LW2 face_y_m=-274.05
+3919,blast,,q_kg=38.1 x_m=-68.3 y_m=270.0 z_m=-375.0
+3919,fault,,"blast: Development heading blast 38.1 kg at (-68.3, 270.0)"
+3926,fault,11,battery_replaced: Node 11 battery replaced (< 3.32V)
+3936,face_position,LW0,panel=LW0 face_y_m=689.95
+3936,face_position,LW1,panel=LW1 face_y_m=209.95
+3936,face_position,LW2,panel=LW2 face_y_m=-270.05
+3950,fault,5,battery_replaced: Node 5 battery replaced (< 3.32V)
+3960,face_position,LW0,panel=LW0 face_y_m=693.95
+3960,face_position,LW1,panel=LW1 face_y_m=213.95
+3960,face_position,LW2,panel=LW2 face_y_m=-266.05
+3967,blast,,q_kg=34.9 x_m=16.3 y_m=287.0 z_m=-375.0
+3967,fault,,"blast: Development heading blast 34.9 kg at (16.3, 287.0)"
+3984,face_position,LW0,panel=LW0 face_y_m=697.95
+3984,face_position,LW1,panel=LW1 face_y_m=217.95
+3984,face_position,LW2,panel=LW2 face_y_m=-262.05
+3991,blast,,q_kg=34.6 x_m=-80.0 y_m=292.7 z_m=-375.0
+3991,fault,,"blast: Development heading blast 34.6 kg at (-80.0, 292.7)"
+4008,face_position,LW0,panel=LW0 face_y_m=701.95
+4008,face_position,LW1,panel=LW1 face_y_m=221.95
+4008,face_position,LW2,panel=LW2 face_y_m=-258.05
+4015,blast,,q_kg=36.8 x_m=-18.7 y_m=261.0 z_m=-375.0
+4015,fault,,"blast: Development heading blast 36.8 kg at (-18.7, 261.0)"
+4015,fault,23,battery_replaced: Node 23 battery replaced (< 3.32V)
+4032,face_position,LW0,panel=LW0 face_y_m=705.95
+4032,face_position,LW1,panel=LW1 face_y_m=225.95
+4032,face_position,LW2,panel=LW2 face_y_m=-254.05
+4039,blast,,q_kg=48.8 x_m=4.2 y_m=297.8 z_m=-375.0
+4039,fault,,"blast: Development heading blast 48.8 kg at (4.2, 297.8)"
+4056,face_position,LW0,panel=LW0 face_y_m=709.95
+4056,face_position,LW1,panel=LW1 face_y_m=229.95
+4056,face_position,LW2,panel=LW2 face_y_m=-250.05
+4063,blast,,q_kg=53.9 x_m=2.7 y_m=297.0 z_m=-375.0
+4063,fault,,"blast: Development heading blast 53.9 kg at (2.7, 297.0)"
+4080,face_position,LW0,panel=LW0 face_y_m=713.95
+4080,face_position,LW1,panel=LW1 face_y_m=233.95
+4080,face_position,LW2,panel=LW2 face_y_m=-246.05
+4080,fault,4,battery_replaced: Node 4 battery replaced (< 3.32V)
+4087,blast,,q_kg=21.7 x_m=-88.4 y_m=290.7 z_m=-375.0
+4087,fault,,"blast: Development heading blast 21.7 kg at (-88.4, 290.7)"
+4104,face_position,LW0,panel=LW0 face_y_m=717.95
+4104,face_position,LW1,panel=LW1 face_y_m=237.95
+4104,face_position,LW2,panel=LW2 face_y_m=-242.05
+4104,fault,1,battery_replaced: Node 1 battery replaced (< 3.32V)
+4128,face_position,LW0,panel=LW0 face_y_m=721.95
+4128,face_position,LW1,panel=LW1 face_y_m=241.95
+4128,face_position,LW2,panel=LW2 face_y_m=-238.05
+4135,blast,,q_kg=51.6 x_m=-38.4 y_m=308.9 z_m=-375.0
+4135,fault,,"blast: Development heading blast 51.7 kg at (-38.4, 308.9)"
+4152,face_position,LW0,panel=LW0 face_y_m=725.95
+4152,face_position,LW1,panel=LW1 face_y_m=245.95
+4152,face_position,LW2,panel=LW2 face_y_m=-234.05
+4159,blast,,q_kg=23.4 x_m=76.8 y_m=297.1 z_m=-375.0
+4159,fault,,"blast: Development heading blast 23.4 kg at (76.8, 297.1)"
+4176,face_position,LW0,panel=LW0 face_y_m=729.95
+4176,face_position,LW1,panel=LW1 face_y_m=249.95
+4176,face_position,LW2,panel=LW2 face_y_m=-230.05
+4183,blast,,q_kg=34.9 x_m=-74.6 y_m=285.9 z_m=-375.0
+4183,fault,,"blast: Development heading blast 34.9 kg at (-74.6, 285.9)"
+4200,face_position,LW0,panel=LW0 face_y_m=733.95
+4200,face_position,LW1,panel=LW1 face_y_m=253.95
+4200,face_position,LW2,panel=LW2 face_y_m=-226.05
+4207,blast,,q_kg=26.5 x_m=5.3 y_m=314.0 z_m=-375.0
+4207,fault,,"blast: Development heading blast 26.5 kg at (5.3, 314.0)"
+4224,face_position,LW0,panel=LW0 face_y_m=737.95
+4224,face_position,LW1,panel=LW1 face_y_m=257.95
+4224,face_position,LW2,panel=LW2 face_y_m=-222.05
+4231,blast,,q_kg=50.2 x_m=-62.2 y_m=289.6 z_m=-375.0
+4231,fault,,"blast: Development heading blast 50.2 kg at (-62.2, 289.6)"
+4248,face_position,LW0,panel=LW0 face_y_m=741.95
+4248,face_position,LW1,panel=LW1 face_y_m=261.95
+4248,face_position,LW2,panel=LW2 face_y_m=-218.05
+4255,blast,,q_kg=37.3 x_m=-39.6 y_m=293.2 z_m=-375.0
+4255,fault,,"blast: Development heading blast 37.3 kg at (-39.6, 293.2)"
+4256,fault,15,battery_replaced: Node 15 battery replaced (< 3.32V)
+4272,face_position,LW0,panel=LW0 face_y_m=745.95
+4272,face_position,LW1,panel=LW1 face_y_m=265.95
+4272,face_position,LW2,panel=LW2 face_y_m=-214.05
+4296,face_position,LW0,panel=LW0 face_y_m=749.95
+4296,face_position,LW1,panel=LW1 face_y_m=269.95
+4296,face_position,LW2,panel=LW2 face_y_m=-210.05
+4303,blast,,q_kg=53.0 x_m=-50.5 y_m=313.4 z_m=-375.0
+4303,fault,,"blast: Development heading blast 53.0 kg at (-50.5, 313.4)"
+4311,fault,22,battery_replaced: Node 22 battery replaced (< 3.32V)
+4313,fault,2,battery_replaced: Node 2 battery replaced (< 3.32V)
+4320,face_position,LW0,panel=LW0 face_y_m=753.95
+4320,face_position,LW1,panel=LW1 face_y_m=273.95
+4320,face_position,LW2,panel=LW2 face_y_m=-206.05
+4327,blast,,q_kg=29.3 x_m=-33.2 y_m=305.7 z_m=-375.0
+4327,fault,,"blast: Development heading blast 29.3 kg at (-33.2, 305.7)"
+4344,face_position,LW0,panel=LW0 face_y_m=757.95
+4344,face_position,LW1,panel=LW1 face_y_m=277.95
+4344,face_position,LW2,panel=LW2 face_y_m=-202.05
+4351,blast,,q_kg=47.9 x_m=-93.1 y_m=353.3 z_m=-375.0
+4351,fault,,"blast: Development heading blast 47.9 kg at (-93.1, 353.3)"
+4368,face_position,LW0,panel=LW0 face_y_m=761.95
+4368,face_position,LW1,panel=LW1 face_y_m=281.95
+4368,face_position,LW2,panel=LW2 face_y_m=-198.05
+4375,blast,,q_kg=30.2 x_m=-7.3 y_m=336.9 z_m=-375.0
+4375,fault,,"blast: Development heading blast 30.2 kg at (-7.3, 336.9)"
+4392,face_position,LW0,panel=LW0 face_y_m=765.95
+4392,face_position,LW1,panel=LW1 face_y_m=285.95
+4392,face_position,LW2,panel=LW2 face_y_m=-194.05
+4399,blast,,q_kg=53.0 x_m=-19.3 y_m=326.4 z_m=-375.0
+4399,fault,,"blast: Development heading blast 53.0 kg at (-19.3, 326.4)"
+4416,face_position,LW0,panel=LW0 face_y_m=769.95
+4416,face_position,LW1,panel=LW1 face_y_m=289.95
+4416,face_position,LW2,panel=LW2 face_y_m=-190.05
+4423,blast,,q_kg=50.5 x_m=48.7 y_m=328.2 z_m=-375.0
+4423,fault,,"blast: Development heading blast 50.5 kg at (48.7, 328.2)"
+4440,face_position,LW0,panel=LW0 face_y_m=773.95
+4440,face_position,LW1,panel=LW1 face_y_m=293.95
+4440,face_position,LW2,panel=LW2 face_y_m=-186.05
+4442,fault,28,battery_replaced: Node 28 battery replaced (< 3.32V)
+4446,fault,3,battery_replaced: Node 3 battery replaced (< 3.32V)
+4457,fault,31,battery_replaced: Node 31 battery replaced (< 3.32V)
+4464,face_position,LW0,panel=LW0 face_y_m=777.95
+4464,face_position,LW1,panel=LW1 face_y_m=297.95
+4464,face_position,LW2,panel=LW2 face_y_m=-182.05
+4471,blast,,q_kg=24.3 x_m=-81.2 y_m=331.4 z_m=-375.0
+4471,fault,,"blast: Development heading blast 24.3 kg at (-81.2, 331.4)"
+4488,face_position,LW0,panel=LW0 face_y_m=781.95
+4488,face_position,LW1,panel=LW1 face_y_m=301.95
+4488,face_position,LW2,panel=LW2 face_y_m=-178.05
+4495,blast,,q_kg=56.0 x_m=-52.4 y_m=336.8 z_m=-375.0
+4495,fault,,"blast: Development heading blast 56.0 kg at (-52.4, 336.8)"
+4512,face_position,LW0,panel=LW0 face_y_m=785.95
+4512,face_position,LW1,panel=LW1 face_y_m=305.95
+4512,face_position,LW2,panel=LW2 face_y_m=-174.05
+4519,blast,,q_kg=24.0 x_m=-34.5 y_m=348.5 z_m=-375.0
+4519,fault,,"blast: Development heading blast 24.0 kg at (-34.5, 348.5)"
+4536,face_position,LW0,panel=LW0 face_y_m=789.95
+4536,face_position,LW1,panel=LW1 face_y_m=309.95
+4536,face_position,LW2,panel=LW2 face_y_m=-170.05
+4543,blast,,q_kg=25.4 x_m=-86.8 y_m=344.4 z_m=-375.0
+4543,fault,,"blast: Development heading blast 25.4 kg at (-86.8, 344.4)"
+4560,face_position,LW0,panel=LW0 face_y_m=793.95
+4560,face_position,LW1,panel=LW1 face_y_m=313.95
+4560,face_position,LW2,panel=LW2 face_y_m=-166.05
+4567,blast,,q_kg=27.1 x_m=-31.1 y_m=346.4 z_m=-375.0
+4567,fault,,"blast: Development heading blast 27.1 kg at (-31.1, 346.4)"
+4584,face_position,LW0,panel=LW0 face_y_m=797.95
+4584,face_position,LW1,panel=LW1 face_y_m=317.95
+4584,face_position,LW2,panel=LW2 face_y_m=-162.05
+4591,blast,,q_kg=20.5 x_m=29.5 y_m=395.7 z_m=-375.0
+4591,fault,,"blast: Development heading blast 20.5 kg at (29.5, 395.7)"
+4608,face_position,LW0,panel=LW0 face_y_m=801.95
+4608,face_position,LW1,panel=LW1 face_y_m=321.95
+4608,face_position,LW2,panel=LW2 face_y_m=-158.05
+4632,face_position,LW0,panel=LW0 face_y_m=805.95
+4632,face_position,LW1,panel=LW1 face_y_m=325.95
+4632,face_position,LW2,panel=LW2 face_y_m=-154.05
+4639,blast,,q_kg=43.4 x_m=41.1 y_m=386.8 z_m=-375.0
+4639,fault,,"blast: Development heading blast 43.4 kg at (41.1, 386.8)"
+4656,face_position,LW0,panel=LW0 face_y_m=809.95
+4656,face_position,LW1,panel=LW1 face_y_m=329.95
+4656,face_position,LW2,panel=LW2 face_y_m=-150.05
+4663,blast,,q_kg=57.1 x_m=38.5 y_m=381.7 z_m=-375.0
+4663,fault,,"blast: Development heading blast 57.1 kg at (38.5, 381.7)"
+4680,face_position,LW0,panel=LW0 face_y_m=813.95
+4680,face_position,LW1,panel=LW1 face_y_m=333.95
+4680,face_position,LW2,panel=LW2 face_y_m=-146.05
+4687,blast,,q_kg=46.1 x_m=-68.4 y_m=383.6 z_m=-375.0
+4687,fault,,"blast: Development heading blast 46.1 kg at (-68.4, 383.6)"
+4704,face_position,LW0,panel=LW0 face_y_m=817.95
+4704,face_position,LW1,panel=LW1 face_y_m=337.95
+4704,face_position,LW2,panel=LW2 face_y_m=-142.05
+4711,blast,,q_kg=59.1 x_m=81.7 y_m=388.4 z_m=-375.0
+4711,fault,,"blast: Development heading blast 59.1 kg at (81.7, 388.4)"
+4728,face_position,LW0,panel=LW0 face_y_m=821.95
+4728,face_position,LW1,panel=LW1 face_y_m=341.95
+4728,face_position,LW2,panel=LW2 face_y_m=-138.05
+4735,blast,,q_kg=52.7 x_m=31.3 y_m=405.1 z_m=-375.0
+4735,fault,,"blast: Development heading blast 52.7 kg at (31.3, 405.2)"
+4752,face_position,LW0,panel=LW0 face_y_m=825.95
+4752,face_position,LW1,panel=LW1 face_y_m=345.95
+4752,face_position,LW2,panel=LW2 face_y_m=-134.05
+4759,blast,,q_kg=50.9 x_m=46.8 y_m=398.6 z_m=-375.0
+4759,fault,,"blast: Development heading blast 50.9 kg at (46.8, 398.6)"
+4776,face_position,LW0,panel=LW0 face_y_m=829.95
+4776,face_position,LW1,panel=LW1 face_y_m=349.95
+4776,face_position,LW2,panel=LW2 face_y_m=-130.05
+4800,face_position,LW0,panel=LW0 face_y_m=833.95
+4800,face_position,LW1,panel=LW1 face_y_m=353.95
+4800,face_position,LW2,panel=LW2 face_y_m=-126.05
+4807,blast,,q_kg=52.9 x_m=-92.8 y_m=431.2 z_m=-375.0
+4807,fault,,"blast: Development heading blast 52.9 kg at (-92.9, 431.2)"
+4824,face_position,LW0,panel=LW0 face_y_m=837.95
+4824,face_position,LW1,panel=LW1 face_y_m=357.95
+4824,face_position,LW2,panel=LW2 face_y_m=-122.05
+4831,blast,,q_kg=31.8 x_m=27.5 y_m=383.3 z_m=-375.0
+4831,fault,,"blast: Development heading blast 31.8 kg at (27.5, 383.3)"
+4848,face_position,LW0,panel=LW0 face_y_m=841.95
+4848,face_position,LW1,panel=LW1 face_y_m=361.95
+4848,face_position,LW2,panel=LW2 face_y_m=-118.05
+4855,blast,,q_kg=46.9 x_m=-49.3 y_m=398.6 z_m=-375.0
+4855,fault,,"blast: Development heading blast 46.9 kg at (-49.3, 398.6)"
+4872,face_position,LW0,panel=LW0 face_y_m=845.95
+4872,face_position,LW1,panel=LW1 face_y_m=365.95
+4872,face_position,LW2,panel=LW2 face_y_m=-114.05
+4879,blast,,q_kg=35.5 x_m=75.2 y_m=428.1 z_m=-375.0
+4879,fault,,"blast: Development heading blast 35.6 kg at (75.2, 428.1)"
+4896,face_position,LW0,panel=LW0 face_y_m=849.95
+4896,face_position,LW1,panel=LW1 face_y_m=369.95
+4896,face_position,LW2,panel=LW2 face_y_m=-110.05
+4903,blast,,q_kg=47.4 x_m=93.8 y_m=442.9 z_m=-375.0
+4903,fault,,"blast: Development heading blast 47.4 kg at (93.8, 443.0)"
+4920,face_position,LW0,panel=LW0 face_y_m=853.95
+4920,face_position,LW1,panel=LW1 face_y_m=373.95
+4920,face_position,LW2,panel=LW2 face_y_m=-106.05
+4927,blast,,q_kg=36.3 x_m=-20.5 y_m=436.2 z_m=-375.0
+4927,fault,,"blast: Development heading blast 36.3 kg at (-20.5, 436.2)"
+4944,face_position,LW0,panel=LW0 face_y_m=857.95
+4944,face_position,LW1,panel=LW1 face_y_m=377.95
+4944,face_position,LW2,panel=LW2 face_y_m=-102.05
+4968,face_position,LW0,panel=LW0 face_y_m=861.95
+4968,face_position,LW1,panel=LW1 face_y_m=381.95
+4968,face_position,LW2,panel=LW2 face_y_m=-98.05
+4975,blast,,q_kg=47.9 x_m=-69.0 y_m=440.3 z_m=-375.0
+4975,fault,,"blast: Development heading blast 47.9 kg at (-69.0, 440.3)"
+4992,face_position,LW0,panel=LW0 face_y_m=865.95
+4992,face_position,LW1,panel=LW1 face_y_m=385.95
+4992,face_position,LW2,panel=LW2 face_y_m=-94.05
+4999,blast,,q_kg=54.2 x_m=-30.1 y_m=463.0 z_m=-375.0
+4999,fault,,"blast: Development heading blast 54.2 kg at (-30.1, 463.0)"
+5016,face_position,LW0,panel=LW0 face_y_m=869.95
+5016,face_position,LW1,panel=LW1 face_y_m=389.95
+5016,face_position,LW2,panel=LW2 face_y_m=-90.05
+5023,blast,,q_kg=20.7 x_m=16.6 y_m=414.8 z_m=-375.0
+5023,fault,,"blast: Development heading blast 20.7 kg at (16.6, 414.8)"
+5040,face_position,LW0,panel=LW0 face_y_m=873.95
+5040,face_position,LW1,panel=LW1 face_y_m=393.95
+5040,face_position,LW2,panel=LW2 face_y_m=-86.05
+5047,blast,,q_kg=40.0 x_m=28.0 y_m=464.0 z_m=-375.0
+5047,fault,,"blast: Development heading blast 40.0 kg at (28.0, 464.0)"
+5064,face_position,LW0,panel=LW0 face_y_m=877.95
+5064,face_position,LW1,panel=LW1 face_y_m=397.95
+5064,face_position,LW2,panel=LW2 face_y_m=-82.05
+5071,blast,,q_kg=28.4 x_m=-95.3 y_m=427.9 z_m=-375.0
+5071,fault,,"blast: Development heading blast 28.4 kg at (-95.3, 427.9)"
+5088,face_position,LW0,panel=LW0 face_y_m=881.95
+5088,face_position,LW1,panel=LW1 face_y_m=401.95
+5088,face_position,LW2,panel=LW2 face_y_m=-78.05
+5095,blast,,q_kg=24.1 x_m=25.6 y_m=452.4 z_m=-375.0
+5095,fault,,"blast: Development heading blast 24.1 kg at (25.6, 452.4)"
+5112,face_position,LW0,panel=LW0 face_y_m=885.95
+5112,face_position,LW1,panel=LW1 face_y_m=405.95
+5112,face_position,LW2,panel=LW2 face_y_m=-74.05
+5136,face_position,LW0,panel=LW0 face_y_m=889.95
+5136,face_position,LW1,panel=LW1 face_y_m=409.95
+5136,face_position,LW2,panel=LW2 face_y_m=-70.05
+5143,blast,,q_kg=37.6 x_m=0.3 y_m=483.4 z_m=-375.0
+5143,fault,,"blast: Development heading blast 37.6 kg at (0.3, 483.4)"
+5160,face_position,LW0,panel=LW0 face_y_m=893.95
+5160,face_position,LW1,panel=LW1 face_y_m=413.95
+5160,face_position,LW2,panel=LW2 face_y_m=-66.05
+5167,blast,,q_kg=57.2 x_m=-70.0 y_m=469.9 z_m=-375.0
+5167,fault,,"blast: Development heading blast 57.2 kg at (-70.0, 469.9)"
+5184,face_position,LW0,panel=LW0 face_y_m=897.95
+5184,face_position,LW1,panel=LW1 face_y_m=417.95
+5184,face_position,LW2,panel=LW2 face_y_m=-62.05
+5191,blast,,q_kg=42.7 x_m=-76.8 y_m=448.6 z_m=-375.0
+5191,fault,,"blast: Development heading blast 42.7 kg at (-76.8, 448.6)"
+5208,face_position,LW0,panel=LW0 face_y_m=901.95
+5208,face_position,LW1,panel=LW1 face_y_m=421.95
+5208,face_position,LW2,panel=LW2 face_y_m=-58.05
+5215,blast,,q_kg=48.5 x_m=-32.0 y_m=496.9 z_m=-375.0
+5215,fault,,"blast: Development heading blast 48.5 kg at (-32.0, 496.9)"
+5232,face_position,LW0,panel=LW0 face_y_m=905.95
+5232,face_position,LW1,panel=LW1 face_y_m=425.95
+5232,face_position,LW2,panel=LW2 face_y_m=-54.05
+5239,blast,,q_kg=45.7 x_m=-70.6 y_m=499.4 z_m=-375.0
+5239,fault,,"blast: Development heading blast 45.7 kg at (-70.6, 499.4)"
+5256,face_position,LW0,panel=LW0 face_y_m=909.95
+5256,face_position,LW1,panel=LW1 face_y_m=429.95
+5256,face_position,LW2,panel=LW2 face_y_m=-50.05
+5263,blast,,q_kg=46.0 x_m=-1.3 y_m=466.6 z_m=-375.0
+5263,fault,,"blast: Development heading blast 46.0 kg at (-1.3, 466.6)"
+5280,face_position,LW0,panel=LW0 face_y_m=913.95
+5280,face_position,LW1,panel=LW1 face_y_m=433.95
+5280,face_position,LW2,panel=LW2 face_y_m=-46.05
+5304,face_position,LW0,panel=LW0 face_y_m=917.95
+5304,face_position,LW1,panel=LW1 face_y_m=437.95
+5304,face_position,LW2,panel=LW2 face_y_m=-42.05
+5311,blast,,q_kg=35.0 x_m=79.7 y_m=461.5 z_m=-375.0
+5311,fault,,"blast: Development heading blast 35.0 kg at (79.7, 461.5)"
+5328,face_position,LW0,panel=LW0 face_y_m=921.95
+5328,face_position,LW1,panel=LW1 face_y_m=441.95
+5328,face_position,LW2,panel=LW2 face_y_m=-38.05
+5335,blast,,q_kg=21.4 x_m=87.1 y_m=486.2 z_m=-375.0
+5335,fault,,"blast: Development heading blast 21.4 kg at (87.1, 486.2)"
+5352,face_position,LW0,panel=LW0 face_y_m=925.95
+5352,face_position,LW1,panel=LW1 face_y_m=445.95
+5352,face_position,LW2,panel=LW2 face_y_m=-34.05
+5359,blast,,q_kg=48.0 x_m=-79.7 y_m=508.6 z_m=-375.0
+5359,fault,,"blast: Development heading blast 48.0 kg at (-79.7, 508.6)"
+5376,face_position,LW0,panel=LW0 face_y_m=929.95
+5376,face_position,LW1,panel=LW1 face_y_m=449.95
+5376,face_position,LW2,panel=LW2 face_y_m=-30.05
+5383,blast,,q_kg=42.5 x_m=-77.0 y_m=484.4 z_m=-375.0
+5383,fault,,"blast: Development heading blast 42.6 kg at (-77.0, 484.4)"
+5400,face_position,LW0,panel=LW0 face_y_m=933.95
+5400,face_position,LW1,panel=LW1 face_y_m=453.95
+5400,face_position,LW2,panel=LW2 face_y_m=-26.05
+5407,blast,,q_kg=38.3 x_m=37.3 y_m=484.6 z_m=-375.0
+5407,fault,,"blast: Development heading blast 38.3 kg at (37.3, 484.6)"
+5424,face_position,LW0,panel=LW0 face_y_m=937.95
+5424,face_position,LW1,panel=LW1 face_y_m=457.95
+5424,face_position,LW2,panel=LW2 face_y_m=-22.05
+5448,face_position,LW0,panel=LW0 face_y_m=941.95
+5448,face_position,LW1,panel=LW1 face_y_m=461.95
+5448,face_position,LW2,panel=LW2 face_y_m=-18.05
+5472,face_position,LW0,panel=LW0 face_y_m=945.95
+5472,face_position,LW1,panel=LW1 face_y_m=465.95
+5472,face_position,LW2,panel=LW2 face_y_m=-14.05
+5479,blast,,q_kg=28.9 x_m=12.4 y_m=490.2 z_m=-375.0
+5479,fault,,"blast: Development heading blast 29.0 kg at (12.4, 490.2)"
+5496,face_position,LW0,panel=LW0 face_y_m=949.95
+5496,face_position,LW1,panel=LW1 face_y_m=469.95
+5496,face_position,LW2,panel=LW2 face_y_m=-10.05
+5503,blast,,q_kg=32.9 x_m=83.8 y_m=544.0 z_m=-375.0
+5503,fault,,"blast: Development heading blast 32.9 kg at (83.8, 544.0)"
+5520,face_position,LW0,panel=LW0 face_y_m=953.95
+5520,face_position,LW1,panel=LW1 face_y_m=473.95
+5520,face_position,LW2,panel=LW2 face_y_m=-6.05
+5520,fault,4,offline_start: Node 4 transceiver failure (5 days in August monsoon)
+5527,blast,,q_kg=59.3 x_m=73.6 y_m=533.1 z_m=-375.0
+5527,fault,,"blast: Development heading blast 59.3 kg at (73.6, 533.2)"
+5544,face_position,LW0,panel=LW0 face_y_m=957.95
+5544,face_position,LW1,panel=LW1 face_y_m=477.95
+5544,face_position,LW2,panel=LW2 face_y_m=-2.05
+5551,blast,,q_kg=38.7 x_m=93.2 y_m=536.2 z_m=-375.0
+5551,fault,,"blast: Development heading blast 38.7 kg at (93.2, 536.2)"
+5568,face_position,LW0,panel=LW0 face_y_m=961.95
+5568,face_position,LW1,panel=LW1 face_y_m=481.95
+5568,face_position,LW2,panel=LW2 face_y_m=1.95
+5575,blast,,q_kg=35.9 x_m=-71.5 y_m=535.0 z_m=-375.0
+5575,fault,,"blast: Development heading blast 35.9 kg at (-71.5, 535.0)"
+5592,face_position,LW0,panel=LW0 face_y_m=965.95
+5592,face_position,LW1,panel=LW1 face_y_m=485.95
+5592,face_position,LW2,panel=LW2 face_y_m=5.95
+5599,blast,,q_kg=53.4 x_m=29.1 y_m=512.6 z_m=-375.0
+5599,fault,,"blast: Development heading blast 53.4 kg at (29.1, 512.6)"
+5608,fault,10,battery_replaced: Node 10 battery replaced (< 3.32V)
+5616,face_position,LW0,panel=LW0 face_y_m=969.95
+5616,face_position,LW1,panel=LW1 face_y_m=489.95
+5616,face_position,LW2,panel=LW2 face_y_m=9.95
+5640,face_position,LW0,panel=LW0 face_y_m=973.95
+5640,face_position,LW1,panel=LW1 face_y_m=493.95
+5640,face_position,LW2,panel=LW2 face_y_m=13.95
+5640,fault,4,offline_end: Node 4 transceiver repaired and back online
+5647,blast,,q_kg=45.3 x_m=93.4 y_m=527.8 z_m=-375.0
+5647,fault,,"blast: Development heading blast 45.3 kg at (93.4, 527.8)"
+5664,face_position,LW0,panel=LW0 face_y_m=977.95
+5664,face_position,LW1,panel=LW1 face_y_m=497.95
+5664,face_position,LW2,panel=LW2 face_y_m=17.95
+5671,blast,,q_kg=57.4 x_m=60.4 y_m=552.5 z_m=-375.0
+5671,fault,,"blast: Development heading blast 57.4 kg at (60.4, 552.5)"
+5688,face_position,LW0,panel=LW0 face_y_m=981.95
+5688,face_position,LW1,panel=LW1 face_y_m=501.95
+5688,face_position,LW2,panel=LW2 face_y_m=21.95
+5695,blast,,q_kg=38.9 x_m=2.4 y_m=539.4 z_m=-375.0
+5695,fault,,"blast: Development heading blast 38.9 kg at (2.4, 539.4)"
+5712,face_position,LW0,panel=LW0 face_y_m=985.95
+5712,face_position,LW1,panel=LW1 face_y_m=505.95
+5712,face_position,LW2,panel=LW2 face_y_m=25.95
+5719,blast,,q_kg=51.5 x_m=-2.4 y_m=542.4 z_m=-375.0
+5719,fault,,"blast: Development heading blast 51.5 kg at (-2.4, 542.4)"
+5736,face_position,LW0,panel=LW0 face_y_m=989.95
+5736,face_position,LW1,panel=LW1 face_y_m=509.95
+5736,face_position,LW2,panel=LW2 face_y_m=29.95
+5743,blast,,q_kg=36.9 x_m=23.6 y_m=553.4 z_m=-375.0
+5743,fault,,"blast: Development heading blast 36.9 kg at (23.5, 553.4)"
+5752,fault,29,battery_replaced: Node 29 battery replaced (< 3.32V)
+5755,fault,7,battery_replaced: Node 7 battery replaced (< 3.32V)
+5760,face_position,LW0,panel=LW0 face_y_m=993.95
+5760,face_position,LW1,panel=LW1 face_y_m=513.95
+5760,face_position,LW2,panel=LW2 face_y_m=33.95
+5767,blast,,q_kg=41.1 x_m=-25.7 y_m=562.1 z_m=-375.0
+5767,fault,,"blast: Development heading blast 41.1 kg at (-25.7, 562.1)"
+5784,face_position,LW0,panel=LW0 face_y_m=997.95
+5784,face_position,LW1,panel=LW1 face_y_m=517.95
+5784,face_position,LW2,panel=LW2 face_y_m=37.95
+5808,face_position,LW0,panel=LW0 face_y_m=1001.95
+5808,face_position,LW1,panel=LW1 face_y_m=521.95
+5808,face_position,LW2,panel=LW2 face_y_m=41.95
+5815,blast,,q_kg=57.1 x_m=-33.8 y_m=592.3 z_m=-375.0
+5815,fault,,"blast: Development heading blast 57.1 kg at (-33.8, 592.3)"
+5832,face_position,LW0,panel=LW0 face_y_m=1005.95
+5832,face_position,LW1,panel=LW1 face_y_m=525.95
+5832,face_position,LW2,panel=LW2 face_y_m=45.95
+5839,blast,,q_kg=57.2 x_m=4.6 y_m=589.9 z_m=-375.0
+5839,fault,,"blast: Development heading blast 57.2 kg at (4.6, 589.9)"
+5856,face_position,LW0,panel=LW0 face_y_m=1009.95
+5856,face_position,LW1,panel=LW1 face_y_m=529.95
+5856,face_position,LW2,panel=LW2 face_y_m=49.95
+5863,blast,,q_kg=22.9 x_m=-61.6 y_m=562.6 z_m=-375.0
+5863,fault,,"blast: Development heading blast 22.9 kg at (-61.6, 562.6)"
+5880,face_position,LW0,panel=LW0 face_y_m=1013.95
+5880,face_position,LW1,panel=LW1 face_y_m=533.95
+5880,face_position,LW2,panel=LW2 face_y_m=53.95
+5887,blast,,q_kg=42.4 x_m=-11.6 y_m=575.1 z_m=-375.0
+5887,fault,,"blast: Development heading blast 42.4 kg at (-11.6, 575.1)"
+5904,face_position,LW0,panel=LW0 face_y_m=1017.95
+5904,face_position,LW1,panel=LW1 face_y_m=537.95
+5904,face_position,LW2,panel=LW2 face_y_m=57.95
+5910,fault,12,battery_replaced: Node 12 battery replaced (< 3.32V)
+5911,blast,,q_kg=35.6 x_m=-9.8 y_m=570.6 z_m=-375.0
+5911,fault,,"blast: Development heading blast 35.6 kg at (-9.8, 570.6)"
+5928,face_position,LW0,panel=LW0 face_y_m=1021.95
+5928,face_position,LW1,panel=LW1 face_y_m=541.95
+5928,face_position,LW2,panel=LW2 face_y_m=61.95
+5935,blast,,q_kg=30.8 x_m=-94.2 y_m=595.4 z_m=-375.0
+5935,fault,,"blast: Development heading blast 30.8 kg at (-94.2, 595.4)"
+5952,face_position,LW0,panel=LW0 face_y_m=1025.95
+5952,face_position,LW1,panel=LW1 face_y_m=545.95
+5952,face_position,LW2,panel=LW2 face_y_m=65.95
+5954,fault,20,battery_replaced: Node 20 battery replaced (< 3.32V)
+5976,face_position,LW0,panel=LW0 face_y_m=1029.95
+5976,face_position,LW1,panel=LW1 face_y_m=549.95
+5976,face_position,LW2,panel=LW2 face_y_m=69.95
+5983,blast,,q_kg=48.6 x_m=-77.5 y_m=575.1 z_m=-375.0
+5983,fault,,"blast: Development heading blast 48.6 kg at (-77.5, 575.2)"
+5990,fault,17,battery_replaced: Node 17 battery replaced (< 3.32V)
+6000,face_position,LW0,panel=LW0 face_y_m=1033.95
+6000,face_position,LW1,panel=LW1 face_y_m=553.95
+6000,face_position,LW2,panel=LW2 face_y_m=73.95
+6007,blast,,q_kg=52.6 x_m=-50.5 y_m=614.7 z_m=-375.0
+6007,fault,,"blast: Development heading blast 52.6 kg at (-50.5, 614.7)"
+6024,face_position,LW0,panel=LW0 face_y_m=1037.95
+6024,face_position,LW1,panel=LW1 face_y_m=557.95
+6024,face_position,LW2,panel=LW2 face_y_m=77.95
+6031,blast,,q_kg=44.6 x_m=-0.0 y_m=587.2 z_m=-375.0
+6031,fault,,"blast: Development heading blast 44.6 kg at (-0.0, 587.2)"
+6048,face_position,LW0,panel=LW0 face_y_m=1041.95
+6048,face_position,LW1,panel=LW1 face_y_m=561.95
+6048,face_position,LW2,panel=LW2 face_y_m=81.95
+6055,blast,,q_kg=50.5 x_m=-85.7 y_m=632.2 z_m=-375.0
+6055,fault,,"blast: Development heading blast 50.5 kg at (-85.7, 632.2)"
+6072,face_position,LW0,panel=LW0 face_y_m=1045.95
+6072,face_position,LW1,panel=LW1 face_y_m=565.95
+6072,face_position,LW2,panel=LW2 face_y_m=85.95
+6079,blast,,q_kg=48.4 x_m=-19.6 y_m=603.3 z_m=-375.0
+6079,fault,,"blast: Development heading blast 48.4 kg at (-19.6, 603.3)"
+6096,face_position,LW0,panel=LW0 face_y_m=1049.95
+6096,face_position,LW1,panel=LW1 face_y_m=569.95
+6096,face_position,LW2,panel=LW2 face_y_m=89.95
+6103,blast,,q_kg=50.4 x_m=13.4 y_m=599.9 z_m=-375.0
+6103,fault,,"blast: Development heading blast 50.4 kg at (13.4, 599.9)"
+6120,face_position,LW0,panel=LW0 face_y_m=1053.95
+6120,face_position,LW1,panel=LW1 face_y_m=573.95
+6120,face_position,LW2,panel=LW2 face_y_m=93.95
+6127,fault,24,battery_replaced: Node 24 battery replaced (< 3.32V)
+6144,face_position,LW0,panel=LW0 face_y_m=1057.95
+6144,face_position,LW1,panel=LW1 face_y_m=577.95
+6144,face_position,LW2,panel=LW2 face_y_m=97.95
+6151,blast,,q_kg=53.2 x_m=-33.2 y_m=652.8 z_m=-375.0
+6151,fault,,"blast: Development heading blast 53.2 kg at (-33.2, 652.8)"
+6168,face_position,LW0,panel=LW0 face_y_m=1061.95
+6168,face_position,LW1,panel=LW1 face_y_m=581.95
+6168,face_position,LW2,panel=LW2 face_y_m=101.95
+6175,blast,,q_kg=35.9 x_m=-44.8 y_m=618.5 z_m=-375.0
+6175,fault,,"blast: Development heading blast 35.9 kg at (-44.8, 618.5)"
+6192,face_position,LW0,panel=LW0 face_y_m=1065.95
+6192,face_position,LW1,panel=LW1 face_y_m=585.95
+6192,face_position,LW2,panel=LW2 face_y_m=105.95
+6199,blast,,q_kg=32.6 x_m=60.9 y_m=615.0 z_m=-375.0
+6199,fault,,"blast: Development heading blast 32.6 kg at (60.9, 615.0)"
+6208,fault,16,battery_replaced: Node 16 battery replaced (< 3.32V)
+6216,face_position,LW0,panel=LW0 face_y_m=1069.95
+6216,face_position,LW1,panel=LW1 face_y_m=589.95
+6216,face_position,LW2,panel=LW2 face_y_m=109.95
+6223,blast,,q_kg=22.2 x_m=31.8 y_m=613.2 z_m=-375.0
+6223,fault,,"blast: Development heading blast 22.2 kg at (31.8, 613.2)"
+6230,fault,25,battery_replaced: Node 25 battery replaced (< 3.32V)
+6240,face_position,LW0,panel=LW0 face_y_m=1073.95
+6240,face_position,LW1,panel=LW1 face_y_m=593.95
+6240,face_position,LW2,panel=LW2 face_y_m=113.95
+6247,blast,,q_kg=42.3 x_m=52.4 y_m=646.5 z_m=-375.0
+6247,fault,,"blast: Development heading blast 42.3 kg at (52.4, 646.5)"
+6264,face_position,LW0,panel=LW0 face_y_m=1077.95
+6264,face_position,LW1,panel=LW1 face_y_m=597.95
+6264,face_position,LW2,panel=LW2 face_y_m=117.95
+6271,blast,,q_kg=41.8 x_m=-50.2 y_m=651.1 z_m=-375.0
+6271,fault,,"blast: Development heading blast 41.8 kg at (-50.2, 651.1)"
+6288,face_position,LW0,panel=LW0 face_y_m=1081.95
+6288,face_position,LW1,panel=LW1 face_y_m=601.95
+6288,face_position,LW2,panel=LW2 face_y_m=121.95
+6312,face_position,LW0,panel=LW0 face_y_m=1085.95
+6312,face_position,LW1,panel=LW1 face_y_m=605.95
+6312,face_position,LW2,panel=LW2 face_y_m=125.95
+6319,blast,,q_kg=22.0 x_m=-17.2 y_m=685.1 z_m=-375.0
+6319,fault,,"blast: Development heading blast 22.0 kg at (-17.2, 685.1)"
+6336,face_position,LW0,panel=LW0 face_y_m=1089.95
+6336,face_position,LW1,panel=LW1 face_y_m=609.95
+6336,face_position,LW2,panel=LW2 face_y_m=129.95
+6343,blast,,q_kg=28.2 x_m=-17.0 y_m=682.6 z_m=-375.0
+6343,fault,,"blast: Development heading blast 28.3 kg at (-17.0, 682.6)"
+6360,face_position,LW0,panel=LW0 face_y_m=1093.95
+6360,face_position,LW1,panel=LW1 face_y_m=613.95
+6360,face_position,LW2,panel=LW2 face_y_m=133.95
+6367,blast,,q_kg=26.3 x_m=87.0 y_m=660.7 z_m=-375.0
+6367,fault,,"blast: Development heading blast 26.3 kg at (87.0, 660.7)"
+6384,face_position,LW0,panel=LW0 face_y_m=1097.95
+6384,face_position,LW1,panel=LW1 face_y_m=617.95
+6384,face_position,LW2,panel=LW2 face_y_m=137.95
+6391,blast,,q_kg=56.8 x_m=-81.4 y_m=658.8 z_m=-375.0
+6391,fault,,"blast: Development heading blast 56.8 kg at (-81.4, 658.8)"
+6408,face_position,LW0,panel=LW0 face_y_m=1101.95
+6408,face_position,LW1,panel=LW1 face_y_m=621.95
+6408,face_position,LW2,panel=LW2 face_y_m=141.95
+6415,blast,,q_kg=24.7 x_m=87.8 y_m=677.0 z_m=-375.0
+6415,fault,,"blast: Development heading blast 24.7 kg at (87.8, 677.0)"
+6432,face_position,LW0,panel=LW0 face_y_m=1105.95
+6432,face_position,LW1,panel=LW1 face_y_m=625.95
+6432,face_position,LW2,panel=LW2 face_y_m=145.95
+6439,blast,,q_kg=29.2 x_m=-8.7 y_m=672.3 z_m=-375.0
+6439,fault,,"blast: Development heading blast 29.2 kg at (-8.7, 672.3)"
+6456,face_position,LW0,panel=LW0 face_y_m=1109.95
+6456,face_position,LW1,panel=LW1 face_y_m=629.95
+6456,face_position,LW2,panel=LW2 face_y_m=149.95
+6480,face_position,LW0,panel=LW0 face_y_m=1113.95
+6480,face_position,LW1,panel=LW1 face_y_m=633.95
+6480,face_position,LW2,panel=LW2 face_y_m=153.95
+6487,blast,,q_kg=34.9 x_m=-84.8 y_m=678.1 z_m=-375.0
+6487,fault,,"blast: Development heading blast 34.9 kg at (-84.8, 678.1)"
+6504,face_position,LW0,panel=LW0 face_y_m=1117.95
+6504,face_position,LW1,panel=LW1 face_y_m=637.95
+6504,face_position,LW2,panel=LW2 face_y_m=157.95
+6511,blast,,q_kg=20.5 x_m=40.8 y_m=682.9 z_m=-375.0
+6511,fault,,"blast: Development heading blast 20.5 kg at (40.8, 682.9)"
+6528,face_position,LW0,panel=LW0 face_y_m=1121.95
+6528,face_position,LW1,panel=LW1 face_y_m=641.95
+6528,face_position,LW2,panel=LW2 face_y_m=161.95
+6535,blast,,q_kg=46.4 x_m=-96.0 y_m=704.5 z_m=-375.0
+6535,fault,,"blast: Development heading blast 46.4 kg at (-96.0, 704.5)"
+6552,face_position,LW0,panel=LW0 face_y_m=1125.95
+6552,face_position,LW1,panel=LW1 face_y_m=645.95
+6552,face_position,LW2,panel=LW2 face_y_m=165.95
+6559,blast,,q_kg=46.5 x_m=-67.9 y_m=719.2 z_m=-375.0
+6559,fault,,"blast: Development heading blast 46.5 kg at (-67.9, 719.2)"
+6576,face_position,LW0,panel=LW0 face_y_m=1129.95
+6576,face_position,LW1,panel=LW1 face_y_m=649.95
+6576,face_position,LW2,panel=LW2 face_y_m=169.95
+6600,face_position,LW0,panel=LW0 face_y_m=1133.95
+6600,face_position,LW1,panel=LW1 face_y_m=653.95
+6600,face_position,LW2,panel=LW2 face_y_m=173.95
+6607,blast,,q_kg=59.0 x_m=-69.2 y_m=692.5 z_m=-375.0
+6607,fault,,"blast: Development heading blast 58.9 kg at (-69.2, 692.5)"
+6624,face_position,LW0,panel=LW0 face_y_m=1137.95
+6624,face_position,LW1,panel=LW1 face_y_m=657.95
+6624,face_position,LW2,panel=LW2 face_y_m=177.95
+6648,face_position,LW0,panel=LW0 face_y_m=1141.95
+6648,face_position,LW1,panel=LW1 face_y_m=661.95
+6648,face_position,LW2,panel=LW2 face_y_m=181.95
+6655,blast,,q_kg=41.0 x_m=-18.4 y_m=697.4 z_m=-375.0
+6655,fault,,"blast: Development heading blast 41.0 kg at (-18.5, 697.4)"
+6672,face_position,LW0,panel=LW0 face_y_m=1145.95
+6672,face_position,LW1,panel=LW1 face_y_m=665.95
+6672,face_position,LW2,panel=LW2 face_y_m=185.95
+6679,blast,,q_kg=51.8 x_m=-58.9 y_m=734.7 z_m=-375.0
+6679,fault,,"blast: Development heading blast 51.8 kg at (-58.9, 734.7)"
+6696,face_position,LW0,panel=LW0 face_y_m=1149.95
+6696,face_position,LW1,panel=LW1 face_y_m=669.95
+6696,face_position,LW2,panel=LW2 face_y_m=189.95
+6703,blast,,q_kg=47.8 x_m=60.2 y_m=728.2 z_m=-375.0
+6703,fault,,"blast: Development heading blast 47.8 kg at (60.2, 728.2)"
+6720,face_position,LW0,panel=LW0 face_y_m=1153.95
+6720,face_position,LW1,panel=LW1 face_y_m=673.95
+6720,face_position,LW2,panel=LW2 face_y_m=193.95
+6727,blast,,q_kg=25.8 x_m=-35.7 y_m=747.9 z_m=-375.0
+6727,fault,,"blast: Development heading blast 25.8 kg at (-35.7, 747.9)"
+6744,face_position,LW0,panel=LW0 face_y_m=1157.95
+6744,face_position,LW1,panel=LW1 face_y_m=677.95
+6744,face_position,LW2,panel=LW2 face_y_m=197.95
+6751,blast,,q_kg=58.4 x_m=-49.1 y_m=758.8 z_m=-375.0
+6751,fault,,"blast: Development heading blast 58.4 kg at (-49.1, 758.8)"
+6768,face_position,LW0,panel=LW0 face_y_m=1161.95
+6768,face_position,LW1,panel=LW1 face_y_m=681.95
+6768,face_position,LW2,panel=LW2 face_y_m=201.95
+6775,blast,,q_kg=24.7 x_m=1.5 y_m=733.1 z_m=-375.0
+6775,fault,,"blast: Development heading blast 24.7 kg at (1.5, 733.1)"
+6792,face_position,LW0,panel=LW0 face_y_m=1165.95
+6792,face_position,LW1,panel=LW1 face_y_m=685.95
+6792,face_position,LW2,panel=LW2 face_y_m=205.95
+6816,face_position,LW0,panel=LW0 face_y_m=1169.95
+6816,face_position,LW1,panel=LW1 face_y_m=689.95
+6816,face_position,LW2,panel=LW2 face_y_m=209.95
+6823,blast,,q_kg=32.6 x_m=31.9 y_m=713.1 z_m=-375.0
+6823,fault,,"blast: Development heading blast 32.6 kg at (31.9, 713.1)"
+6840,face_position,LW0,panel=LW0 face_y_m=1173.95
+6840,face_position,LW1,panel=LW1 face_y_m=693.95
+6840,face_position,LW2,panel=LW2 face_y_m=213.95
+6847,blast,,q_kg=58.7 x_m=-16.3 y_m=768.8 z_m=-375.0
+6847,fault,,"blast: Development heading blast 58.7 kg at (-16.3, 768.8)"
+6864,face_position,LW0,panel=LW0 face_y_m=1177.95
+6864,face_position,LW1,panel=LW1 face_y_m=697.95
+6864,face_position,LW2,panel=LW2 face_y_m=217.95
+6871,blast,,q_kg=31.6 x_m=94.8 y_m=767.1 z_m=-375.0
+6871,fault,,"blast: Development heading blast 31.6 kg at (94.8, 767.1)"
+6888,face_position,LW0,panel=LW0 face_y_m=1181.95
+6888,face_position,LW1,panel=LW1 face_y_m=701.95
+6888,face_position,LW2,panel=LW2 face_y_m=221.95
+6895,blast,,q_kg=31.9 x_m=-90.9 y_m=748.7 z_m=-375.0
+6895,fault,,"blast: Development heading blast 31.9 kg at (-90.9, 748.7)"
+6912,face_position,LW0,panel=LW0 face_y_m=1185.95
+6912,face_position,LW1,panel=LW1 face_y_m=705.95
+6912,face_position,LW2,panel=LW2 face_y_m=225.95
+6919,blast,,q_kg=55.6 x_m=31.0 y_m=749.5 z_m=-375.0
+6919,fault,,"blast: Development heading blast 55.6 kg at (31.0, 749.5)"
+6936,face_position,LW0,panel=LW0 face_y_m=1189.95
+6936,face_position,LW1,panel=LW1 face_y_m=709.95
+6936,face_position,LW2,panel=LW2 face_y_m=229.95
+6943,blast,,q_kg=50.4 x_m=-25.2 y_m=753.9 z_m=-375.0
+6943,fault,,"blast: Development heading blast 50.4 kg at (-25.2, 753.9)"
+6960,face_position,LW0,panel=LW0 face_y_m=1193.95
+6960,face_position,LW1,panel=LW1 face_y_m=713.95
+6960,face_position,LW2,panel=LW2 face_y_m=233.95
+6984,face_position,LW0,panel=LW0 face_y_m=1197.95
+6984,face_position,LW1,panel=LW1 face_y_m=717.95
+6984,face_position,LW2,panel=LW2 face_y_m=237.95
+6991,blast,,q_kg=47.1 x_m=18.0 y_m=754.5 z_m=-375.0
+6991,fault,,"blast: Development heading blast 47.1 kg at (18.0, 754.5)"
+7008,face_position,LW0,panel=LW0 face_y_m=1201.95
+7008,face_position,LW1,panel=LW1 face_y_m=721.95
+7008,face_position,LW2,panel=LW2 face_y_m=241.95
+7026,fault,19,battery_replaced: Node 19 battery replaced (< 3.32V)
+7032,face_position,LW0,panel=LW0 face_y_m=1205.95
+7032,face_position,LW1,panel=LW1 face_y_m=725.95
+7032,face_position,LW2,panel=LW2 face_y_m=245.95
+7039,blast,,q_kg=38.7 x_m=12.6 y_m=753.4 z_m=-375.0
+7039,fault,,"blast: Development heading blast 38.7 kg at (12.6, 753.4)"
+7056,face_position,LW0,panel=LW0 face_y_m=1209.95
+7056,face_position,LW1,panel=LW1 face_y_m=729.95
+7056,face_position,LW2,panel=LW2 face_y_m=249.95
+7063,blast,,q_kg=36.6 x_m=83.7 y_m=763.9 z_m=-375.0
+7063,fault,,"blast: Development heading blast 36.6 kg at (83.7, 763.9)"
+7070,fault,14,battery_replaced: Node 14 battery replaced (< 3.32V)
+7080,face_position,LW0,panel=LW0 face_y_m=1213.95
+7080,face_position,LW1,panel=LW1 face_y_m=733.95
+7080,face_position,LW2,panel=LW2 face_y_m=253.95
+7087,blast,,q_kg=59.0 x_m=-44.8 y_m=787.4 z_m=-375.0
+7087,fault,,"blast: Development heading blast 59.0 kg at (-44.8, 787.4)"
+7104,face_position,LW0,panel=LW0 face_y_m=1217.95
+7104,face_position,LW1,panel=LW1 face_y_m=737.95
+7104,face_position,LW2,panel=LW2 face_y_m=257.95
+7111,blast,,q_kg=53.5 x_m=-38.0 y_m=809.2 z_m=-375.0
+7111,fault,,"blast: Development heading blast 53.5 kg at (-38.0, 809.2)"
+7128,face_position,LW0,panel=LW0 face_y_m=1221.95
+7128,face_position,LW1,panel=LW1 face_y_m=741.95
+7128,face_position,LW2,panel=LW2 face_y_m=261.95
+7152,face_position,LW0,panel=LW0 face_y_m=1225.95
+7152,face_position,LW1,panel=LW1 face_y_m=745.95
+7152,face_position,LW2,panel=LW2 face_y_m=265.95
+7159,blast,,q_kg=59.5 x_m=-48.1 y_m=813.6 z_m=-375.0
+7159,fault,,"blast: Development heading blast 59.5 kg at (-48.1, 813.6)"
+7176,face_position,LW0,panel=LW0 face_y_m=1229.95
+7176,face_position,LW1,panel=LW1 face_y_m=749.95
+7176,face_position,LW2,panel=LW2 face_y_m=269.95
+7183,blast,,q_kg=26.1 x_m=90.8 y_m=807.5 z_m=-375.0
+7183,fault,,"blast: Development heading blast 26.1 kg at (90.8, 807.5)"
+7200,face_position,LW0,panel=LW0 face_y_m=1233.95
+7200,face_position,LW1,panel=LW1 face_y_m=753.95
+7200,face_position,LW2,panel=LW2 face_y_m=273.95
+7207,blast,,q_kg=44.0 x_m=-76.1 y_m=791.2 z_m=-375.0
+7207,fault,,"blast: Development heading blast 44.1 kg at (-76.1, 791.2)"
+7224,face_position,LW0,panel=LW0 face_y_m=1237.95
+7224,face_position,LW1,panel=LW1 face_y_m=757.95
+7224,face_position,LW2,panel=LW2 face_y_m=277.95
+7231,blast,,q_kg=51.5 x_m=-22.8 y_m=821.1 z_m=-375.0
+7231,fault,,"blast: Development heading blast 51.5 kg at (-22.8, 821.1)"
+7239,fault,6,battery_replaced: Node 6 battery replaced (< 3.32V)
+7248,face_position,LW0,panel=LW0 face_y_m=1241.95
+7248,face_position,LW1,panel=LW1 face_y_m=761.95
+7248,face_position,LW2,panel=LW2 face_y_m=281.95
+7255,blast,,q_kg=22.4 x_m=-63.9 y_m=837.5 z_m=-375.0
+7255,fault,,"blast: Development heading blast 22.4 kg at (-63.9, 837.5)"
+7272,face_position,LW0,panel=LW0 face_y_m=1245.95
+7272,face_position,LW1,panel=LW1 face_y_m=765.95
+7272,face_position,LW2,panel=LW2 face_y_m=285.95
+7279,blast,,q_kg=27.4 x_m=-47.0 y_m=836.1 z_m=-375.0
+7279,fault,,"blast: Development heading blast 27.3 kg at (-47.0, 836.1)"
+7296,face_position,LW0,panel=LW0 face_y_m=1249.95
+7296,face_position,LW1,panel=LW1 face_y_m=769.95
+7296,face_position,LW2,panel=LW2 face_y_m=289.95
+7320,face_position,LW0,panel=LW0 face_y_m=1253.95
+7320,face_position,LW1,panel=LW1 face_y_m=773.95
+7320,face_position,LW2,panel=LW2 face_y_m=293.95
+7327,blast,,q_kg=56.5 x_m=-56.0 y_m=853.7 z_m=-375.0
+7327,fault,,"blast: Development heading blast 56.5 kg at (-56.0, 853.7)"
+7334,fault,30,battery_replaced: Node 30 battery replaced (< 3.32V)
+7344,face_position,LW0,panel=LW0 face_y_m=1257.95
+7344,face_position,LW1,panel=LW1 face_y_m=777.95
+7344,face_position,LW2,panel=LW2 face_y_m=297.95
+7351,blast,,q_kg=30.2 x_m=62.5 y_m=809.6 z_m=-375.0
+7351,fault,,"blast: Development heading blast 30.2 kg at (62.6, 809.6)"
+7351,fault,18,battery_replaced: Node 18 battery replaced (< 3.32V)
+7368,face_position,LW0,panel=LW0 face_y_m=1261.95
+7368,face_position,LW1,panel=LW1 face_y_m=781.95
+7368,face_position,LW2,panel=LW2 face_y_m=301.95
+7374,fault,26,battery_replaced: Node 26 battery replaced (< 3.32V)
+7375,blast,,q_kg=58.8 x_m=-53.0 y_m=814.5 z_m=-375.0
+7375,fault,,"blast: Development heading blast 58.8 kg at (-53.0, 814.5)"
+7383,fault,8,battery_replaced: Node 8 battery replaced (< 3.32V)
+7392,face_position,LW0,panel=LW0 face_y_m=1265.95
+7392,face_position,LW1,panel=LW1 face_y_m=785.95
+7392,face_position,LW2,panel=LW2 face_y_m=305.95
+7395,fault,9,battery_replaced: Node 9 battery replaced (< 3.32V)
+7399,blast,,q_kg=22.0 x_m=-66.8 y_m=852.0 z_m=-375.0
+7399,fault,,"blast: Development heading blast 22.0 kg at (-66.8, 852.0)"
+7416,face_position,LW0,panel=LW0 face_y_m=1269.95
+7416,face_position,LW1,panel=LW1 face_y_m=789.95
+7416,face_position,LW2,panel=LW2 face_y_m=309.95
+7423,blast,,q_kg=22.5 x_m=8.8 y_m=815.5 z_m=-375.0
+7423,fault,,"blast: Development heading blast 22.5 kg at (8.8, 815.5)"
+7440,face_position,LW0,panel=LW0 face_y_m=1273.95
+7440,face_position,LW1,panel=LW1 face_y_m=793.95
+7440,face_position,LW2,panel=LW2 face_y_m=313.95
+7447,blast,,q_kg=45.5 x_m=-54.0 y_m=870.7 z_m=-375.0
+7447,fault,,"blast: Development heading blast 45.6 kg at (-54.0, 870.7)"
+7464,face_position,LW0,panel=LW0 face_y_m=1277.95
+7464,face_position,LW1,panel=LW1 face_y_m=797.95
+7464,face_position,LW2,panel=LW2 face_y_m=317.95
+7488,face_position,LW0,panel=LW0 face_y_m=1281.95
+7488,face_position,LW1,panel=LW1 face_y_m=801.95
+7488,face_position,LW2,panel=LW2 face_y_m=321.95
+7495,blast,,q_kg=48.9 x_m=30.3 y_m=841.1 z_m=-375.0
+7495,fault,,"blast: Development heading blast 48.9 kg at (30.3, 841.1)"
+7512,face_position,LW0,panel=LW0 face_y_m=1285.95
+7512,face_position,LW1,panel=LW1 face_y_m=805.95
+7512,face_position,LW2,panel=LW2 face_y_m=325.95
+7514,fault,13,battery_replaced: Node 13 battery replaced (< 3.32V)
+7519,blast,,q_kg=47.3 x_m=36.3 y_m=854.9 z_m=-375.0
+7519,fault,,"blast: Development heading blast 47.3 kg at (36.3, 854.9)"
+7536,face_position,LW0,panel=LW0 face_y_m=1289.95
+7536,face_position,LW1,panel=LW1 face_y_m=809.95
+7536,face_position,LW2,panel=LW2 face_y_m=329.95
+7543,blast,,q_kg=59.9 x_m=73.4 y_m=888.8 z_m=-375.0
+7543,fault,,"blast: Development heading blast 59.9 kg at (73.4, 888.8)"
+7560,face_position,LW0,panel=LW0 face_y_m=1293.95
+7560,face_position,LW1,panel=LW1 face_y_m=813.95
+7560,face_position,LW2,panel=LW2 face_y_m=333.95
+7567,blast,,q_kg=29.2 x_m=-2.3 y_m=837.2 z_m=-375.0
+7567,fault,,"blast: Development heading blast 29.2 kg at (-2.3, 837.2)"
+7576,fault,21,battery_replaced: Node 21 battery replaced (< 3.32V)
+7584,face_position,LW0,panel=LW0 face_y_m=1297.95
+7584,face_position,LW1,panel=LW1 face_y_m=817.95
+7584,face_position,LW2,panel=LW2 face_y_m=337.95
+7591,blast,,q_kg=34.4 x_m=-60.6 y_m=857.2 z_m=-375.0
+7591,fault,,"blast: Development heading blast 34.4 kg at (-60.6, 857.2)"
+7608,face_position,LW0,panel=LW0 face_y_m=1301.95
+7608,face_position,LW1,panel=LW1 face_y_m=821.95
+7608,face_position,LW2,panel=LW2 face_y_m=341.95
+7615,blast,,q_kg=46.0 x_m=33.7 y_m=874.7 z_m=-375.0
+7615,fault,,"blast: Development heading blast 46.0 kg at (33.7, 874.7)"
+7632,face_position,LW0,panel=LW0 face_y_m=1305.95
+7632,face_position,LW1,panel=LW1 face_y_m=825.95
+7632,face_position,LW2,panel=LW2 face_y_m=345.95
+7656,face_position,LW0,panel=LW0 face_y_m=1309.95
+7656,face_position,LW1,panel=LW1 face_y_m=829.95
+7656,face_position,LW2,panel=LW2 face_y_m=349.95
+7663,blast,,q_kg=20.6 x_m=94.4 y_m=854.1 z_m=-375.0
+7663,fault,,"blast: Development heading blast 20.6 kg at (94.4, 854.1)"
+7680,face_position,LW0,panel=LW0 face_y_m=1313.95
+7680,face_position,LW1,panel=LW1 face_y_m=833.95
+7680,face_position,LW2,panel=LW2 face_y_m=353.95
+7687,blast,,q_kg=39.3 x_m=33.1 y_m=888.0 z_m=-375.0
+7687,fault,,"blast: Development heading blast 39.3 kg at (33.1, 888.0)"
+7704,face_position,LW0,panel=LW0 face_y_m=1317.95
+7704,face_position,LW1,panel=LW1 face_y_m=837.95
+7704,face_position,LW2,panel=LW2 face_y_m=357.95
+7711,blast,,q_kg=42.9 x_m=70.7 y_m=868.7 z_m=-375.0
+7711,fault,,"blast: Development heading blast 42.9 kg at (70.7, 868.7)"
+7728,face_position,LW0,panel=LW0 face_y_m=1321.95
+7728,face_position,LW1,panel=LW1 face_y_m=841.95
+7728,face_position,LW2,panel=LW2 face_y_m=361.95
+7735,blast,,q_kg=43.2 x_m=86.4 y_m=890.0 z_m=-375.0
+7735,fault,,"blast: Development heading blast 43.2 kg at (86.4, 890.0)"
+7752,face_position,LW0,panel=LW0 face_y_m=1325.95
+7752,face_position,LW1,panel=LW1 face_y_m=845.95
+7752,face_position,LW2,panel=LW2 face_y_m=365.95
+7759,blast,,q_kg=21.7 x_m=-86.0 y_m=888.1 z_m=-375.0
+7759,fault,,"blast: Development heading blast 21.7 kg at (-86.0, 888.2)"
+7776,face_position,LW0,panel=LW0 face_y_m=1329.95
+7776,face_position,LW1,panel=LW1 face_y_m=849.95
+7776,face_position,LW2,panel=LW2 face_y_m=369.95
+7783,blast,,q_kg=58.0 x_m=14.5 y_m=906.6 z_m=-375.0
+7783,fault,,"blast: Development heading blast 58.0 kg at (14.5, 906.6)"
+7800,face_position,LW0,panel=LW0 face_y_m=1333.95
+7800,face_position,LW1,panel=LW1 face_y_m=853.95
+7800,face_position,LW2,panel=LW2 face_y_m=373.95
+7804,fault,27,battery_replaced: Node 27 battery replaced (< 3.32V)
+7824,face_position,LW0,panel=LW0 face_y_m=1337.95
+7824,face_position,LW1,panel=LW1 face_y_m=857.95
+7824,face_position,LW2,panel=LW2 face_y_m=377.95
+7831,blast,,q_kg=53.3 x_m=27.7 y_m=879.4 z_m=-375.0
+7831,fault,,"blast: Development heading blast 53.3 kg at (27.7, 879.4)"
+7848,face_position,LW0,panel=LW0 face_y_m=1341.95
+7848,face_position,LW1,panel=LW1 face_y_m=861.95
+7848,face_position,LW2,panel=LW2 face_y_m=381.95
+7851,fault,11,battery_replaced: Node 11 battery replaced (< 3.32V)
+7855,blast,,q_kg=30.6 x_m=-34.1 y_m=926.1 z_m=-375.0
+7855,fault,,"blast: Development heading blast 30.6 kg at (-34.1, 926.1)"
+7872,face_position,LW0,panel=LW0 face_y_m=1345.95
+7872,face_position,LW1,panel=LW1 face_y_m=865.95
+7872,face_position,LW2,panel=LW2 face_y_m=385.95
+7879,blast,,q_kg=23.2 x_m=52.0 y_m=942.9 z_m=-375.0
+7879,fault,,"blast: Development heading blast 23.2 kg at (52.0, 942.8)"
+7896,face_position,LW0,panel=LW0 face_y_m=1349.95
+7896,face_position,LW1,panel=LW1 face_y_m=869.95
+7896,face_position,LW2,panel=LW2 face_y_m=389.95
+7899,fault,5,battery_replaced: Node 5 battery replaced (< 3.32V)
+7903,blast,,q_kg=31.5 x_m=8.9 y_m=923.6 z_m=-375.0
+7903,fault,,"blast: Development heading blast 31.5 kg at (8.9, 923.6)"
+7920,face_position,LW0,panel=LW0 face_y_m=1353.95
+7920,face_position,LW1,panel=LW1 face_y_m=873.95
+7920,face_position,LW2,panel=LW2 face_y_m=393.95
+7927,blast,,q_kg=31.7 x_m=-31.7 y_m=935.8 z_m=-375.0
+7927,fault,,"blast: Development heading blast 31.7 kg at (-31.7, 935.8)"
+7944,face_position,LW0,panel=LW0 face_y_m=1357.95
+7944,face_position,LW1,panel=LW1 face_y_m=877.95
+7944,face_position,LW2,panel=LW2 face_y_m=397.95
+7951,blast,,q_kg=45.0 x_m=-93.9 y_m=945.4 z_m=-375.0
+7951,fault,,"blast: Development heading blast 45.0 kg at (-93.9, 945.4)"
+7968,face_position,LW0,panel=LW0 face_y_m=1361.95
+7968,face_position,LW1,panel=LW1 face_y_m=881.95
+7968,face_position,LW2,panel=LW2 face_y_m=401.95
+7992,face_position,LW0,panel=LW0 face_y_m=1365.95
+7992,face_position,LW1,panel=LW1 face_y_m=885.95
+7992,face_position,LW2,panel=LW2 face_y_m=405.95
+7999,blast,,q_kg=55.9 x_m=-49.9 y_m=964.9 z_m=-375.0
+7999,fault,,"blast: Development heading blast 55.9 kg at (-49.9, 964.9)"
+8016,face_position,LW0,panel=LW0 face_y_m=1369.95
+8016,face_position,LW1,panel=LW1 face_y_m=889.95
+8016,face_position,LW2,panel=LW2 face_y_m=409.95
+8023,blast,,q_kg=29.4 x_m=92.9 y_m=941.9 z_m=-375.0
+8023,fault,,"blast: Development heading blast 29.4 kg at (92.9, 941.9)"
+8029,fault,23,battery_replaced: Node 23 battery replaced (< 3.32V)
+8040,face_position,LW0,panel=LW0 face_y_m=1373.95
+8040,face_position,LW1,panel=LW1 face_y_m=893.95
+8040,face_position,LW2,panel=LW2 face_y_m=413.95
+8047,blast,,q_kg=55.6 x_m=-65.2 y_m=972.1 z_m=-375.0
+8047,fault,,"blast: Development heading blast 55.6 kg at (-65.2, 972.1)"
+8064,face_position,LW0,panel=LW0 face_y_m=1377.95
+8064,face_position,LW1,panel=LW1 face_y_m=897.95
+8064,face_position,LW2,panel=LW2 face_y_m=417.95
+8071,blast,,q_kg=35.4 x_m=48.2 y_m=949.8 z_m=-375.0
+8071,fault,,"blast: Development heading blast 35.4 kg at (48.2, 949.8)"
+8088,face_position,LW0,panel=LW0 face_y_m=1381.95
+8088,face_position,LW1,panel=LW1 face_y_m=901.95
+8088,face_position,LW2,panel=LW2 face_y_m=421.95
+8095,blast,,q_kg=41.0 x_m=40.7 y_m=923.8 z_m=-375.0
+8095,fault,,"blast: Development heading blast 41.0 kg at (40.7, 923.8)"
+8112,face_position,LW0,panel=LW0 face_y_m=1385.95
+8112,face_position,LW1,panel=LW1 face_y_m=905.95
+8112,face_position,LW2,panel=LW2 face_y_m=425.95
+8119,blast,,q_kg=38.0 x_m=35.7 y_m=972.4 z_m=-375.0
+8119,fault,,"blast: Development heading blast 38.0 kg at (35.7, 972.4)"
+8136,face_position,LW0,panel=LW0 face_y_m=1389.95
+8136,face_position,LW1,panel=LW1 face_y_m=909.95
+8136,face_position,LW2,panel=LW2 face_y_m=429.95
+8160,face_position,LW0,panel=LW0 face_y_m=1393.95
+8160,face_position,LW1,panel=LW1 face_y_m=913.95
+8160,face_position,LW2,panel=LW2 face_y_m=433.95
+8160,fault,4,battery_replaced: Node 4 battery replaced (< 3.32V)
+8167,blast,,q_kg=29.3 x_m=49.0 y_m=941.0 z_m=-375.0
+8167,fault,,"blast: Development heading blast 29.3 kg at (49.0, 940.9)"
+8184,face_position,LW0,panel=LW0 face_y_m=1397.95
+8184,face_position,LW1,panel=LW1 face_y_m=917.95
+8184,face_position,LW2,panel=LW2 face_y_m=437.95
+8191,blast,,q_kg=33.8 x_m=-71.1 y_m=959.6 z_m=-375.0
+8191,fault,,"blast: Development heading blast 33.8 kg at (-71.1, 959.6)"
+8208,face_position,LW0,panel=LW0 face_y_m=1401.95
+8208,face_position,LW1,panel=LW1 face_y_m=921.95
+8208,face_position,LW2,panel=LW2 face_y_m=441.95
+8208,fault,1,battery_replaced: Node 1 battery replaced (< 3.32V)
+8215,blast,,q_kg=37.5 x_m=-25.2 y_m=971.1 z_m=-375.0
+8215,fault,,"blast: Development heading blast 37.5 kg at (-25.2, 971.1)"
+8232,face_position,LW0,panel=LW0 face_y_m=1405.95
+8232,face_position,LW1,panel=LW1 face_y_m=925.95
+8232,face_position,LW2,panel=LW2 face_y_m=445.95
+8239,blast,,q_kg=25.7 x_m=-1.9 y_m=992.4 z_m=-375.0
+8239,fault,,"blast: Development heading blast 25.7 kg at (-1.9, 992.4)"
+8256,face_position,LW0,panel=LW0 face_y_m=1409.95
+8256,face_position,LW1,panel=LW1 face_y_m=929.95
+8256,face_position,LW2,panel=LW2 face_y_m=449.95
+8263,blast,,q_kg=21.1 x_m=-29.9 y_m=951.2 z_m=-375.0
+8263,fault,,"blast: Development heading blast 21.1 kg at (-29.9, 951.2)"
+8280,face_position,LW0,panel=LW0 face_y_m=1413.95
+8280,face_position,LW1,panel=LW1 face_y_m=933.95
+8280,face_position,LW2,panel=LW2 face_y_m=453.95
+8287,blast,,q_kg=32.2 x_m=21.3 y_m=1007.8 z_m=-375.0
+8287,fault,,"blast: Development heading blast 32.2 kg at (21.3, 1007.8)"
+8304,face_position,LW0,panel=LW0 face_y_m=1417.95
+8304,face_position,LW1,panel=LW1 face_y_m=937.95
+8304,face_position,LW2,panel=LW2 face_y_m=457.95
+8328,face_position,LW0,panel=LW0 face_y_m=1421.95
+8328,face_position,LW1,panel=LW1 face_y_m=941.95
+8328,face_position,LW2,panel=LW2 face_y_m=461.95
+8335,blast,,q_kg=25.7 x_m=-19.6 y_m=975.8 z_m=-375.0
+8335,fault,,"blast: Development heading blast 25.7 kg at (-19.6, 975.8)"
+8352,face_position,LW0,panel=LW0 face_y_m=1425.95
+8352,face_position,LW1,panel=LW1 face_y_m=945.95
+8352,face_position,LW2,panel=LW2 face_y_m=465.95
+8359,blast,,q_kg=48.2 x_m=76.8 y_m=1001.5 z_m=-375.0
+8359,fault,,"blast: Development heading blast 48.2 kg at (76.8, 1001.5)"
+8376,face_position,LW0,panel=LW0 face_y_m=1429.95
+8376,face_position,LW1,panel=LW1 face_y_m=949.95
+8376,face_position,LW2,panel=LW2 face_y_m=469.95
+8383,blast,,q_kg=27.2 x_m=76.4 y_m=1006.5 z_m=-375.0
+8383,fault,,"blast: Development heading blast 27.2 kg at (76.4, 1006.5)"
+8400,face_position,LW0,panel=LW0 face_y_m=1433.95
+8400,face_position,LW1,panel=LW1 face_y_m=953.95
+8400,face_position,LW2,panel=LW2 face_y_m=473.95
+8407,blast,,q_kg=36.6 x_m=42.7 y_m=1020.1 z_m=-375.0
+8407,fault,,"blast: Development heading blast 36.6 kg at (42.7, 1020.1)"
+8412,fault,10,battery_replaced: Node 10 battery replaced (< 3.32V)
+8424,face_position,LW0,panel=LW0 face_y_m=1437.95
+8424,face_position,LW1,panel=LW1 face_y_m=957.95
+8424,face_position,LW2,panel=LW2 face_y_m=477.95
+8431,blast,,q_kg=33.3 x_m=23.4 y_m=1008.3 z_m=-375.0
+8431,fault,,"blast: Development heading blast 33.3 kg at (23.4, 1008.3)"
+8448,face_position,LW0,panel=LW0 face_y_m=1441.95
+8448,face_position,LW1,panel=LW1 face_y_m=961.95
+8448,face_position,LW2,panel=LW2 face_y_m=481.95
+8455,blast,,q_kg=33.1 x_m=34.5 y_m=998.0 z_m=-375.0
+8455,fault,,"blast: Development heading blast 33.1 kg at (34.5, 998.0)"
+8472,face_position,LW0,panel=LW0 face_y_m=1445.95
+8472,face_position,LW1,panel=LW1 face_y_m=965.95
+8472,face_position,LW2,panel=LW2 face_y_m=485.95
+8496,face_position,LW0,panel=LW0 face_y_m=1449.95
+8496,face_position,LW1,panel=LW1 face_y_m=969.95
+8496,face_position,LW2,panel=LW2 face_y_m=489.95
+8503,blast,,q_kg=54.1 x_m=-18.9 y_m=1028.1 z_m=-375.0
+8503,fault,,"blast: Development heading blast 54.1 kg at (-18.9, 1028.1)"
+8512,fault,15,battery_replaced: Node 15 battery replaced (< 3.32V)
+8520,face_position,LW0,panel=LW0 face_y_m=1453.95
+8520,face_position,LW1,panel=LW1 face_y_m=973.95
+8520,face_position,LW2,panel=LW2 face_y_m=493.95
+8527,blast,,q_kg=31.7 x_m=23.0 y_m=1038.8 z_m=-375.0
+8527,fault,,"blast: Development heading blast 31.7 kg at (23.0, 1038.8)"
+8544,face_position,LW0,panel=LW0 face_y_m=1457.95
+8544,face_position,LW1,panel=LW1 face_y_m=977.95
+8544,face_position,LW2,panel=LW2 face_y_m=497.95
+8551,blast,,q_kg=38.5 x_m=17.5 y_m=1005.4 z_m=-375.0
+8551,fault,,"blast: Development heading blast 38.5 kg at (17.5, 1005.4)"
+8568,face_position,LW0,panel=LW0 face_y_m=1461.95
+8568,face_position,LW1,panel=LW1 face_y_m=981.95
+8568,face_position,LW2,panel=LW2 face_y_m=501.95
+8575,blast,,q_kg=56.1 x_m=38.0 y_m=1014.0 z_m=-375.0
+8575,fault,,"blast: Development heading blast 56.1 kg at (38.0, 1014.0)"
+8592,face_position,LW0,panel=LW0 face_y_m=1465.95
+8592,face_position,LW1,panel=LW1 face_y_m=985.95
+8592,face_position,LW2,panel=LW2 face_y_m=505.95
+8616,face_position,LW0,panel=LW0 face_y_m=1469.95
+8616,face_position,LW1,panel=LW1 face_y_m=989.95
+8616,face_position,LW2,panel=LW2 face_y_m=509.95
+8622,fault,22,battery_replaced: Node 22 battery replaced (< 3.32V)
+8623,blast,,q_kg=38.8 x_m=-16.6 y_m=1051.5 z_m=-375.0
+8623,fault,,"blast: Development heading blast 38.8 kg at (-16.6, 1051.5)"
+8626,fault,2,battery_replaced: Node 2 battery replaced (< 3.32V)
+8628,fault,29,battery_replaced: Node 29 battery replaced (< 3.32V)
+8632,fault,7,battery_replaced: Node 7 battery replaced (< 3.32V)
+8640,face_position,LW0,panel=LW0 face_y_m=1473.95
+8640,face_position,LW1,panel=LW1 face_y_m=993.95
+8640,face_position,LW2,panel=LW2 face_y_m=513.95
+8664,face_position,LW0,panel=LW0 face_y_m=1477.95
+8664,face_position,LW1,panel=LW1 face_y_m=997.95
+8664,face_position,LW2,panel=LW2 face_y_m=517.95
+8671,blast,,q_kg=24.9 x_m=46.5 y_m=1054.3 z_m=-375.0
+8671,fault,,"blast: Development heading blast 24.9 kg at (46.5, 1054.3)"
+8688,face_position,LW0,panel=LW0 face_y_m=1481.95
+8688,face_position,LW1,panel=LW1 face_y_m=1001.95
+8688,face_position,LW2,panel=LW2 face_y_m=521.95
+8695,blast,,q_kg=38.9 x_m=84.9 y_m=1062.8 z_m=-375.0
+8695,fault,,"blast: Development heading blast 38.9 kg at (84.9, 1062.8)"
+8712,face_position,LW0,panel=LW0 face_y_m=1485.95
+8712,face_position,LW1,panel=LW1 face_y_m=1005.95
+8712,face_position,LW2,panel=LW2 face_y_m=525.95
+8719,blast,,q_kg=50.8 x_m=35.3 y_m=1042.8 z_m=-375.0
+8719,fault,,"blast: Development heading blast 50.8 kg at (35.3, 1042.9)"
+8736,face_position,LW0,panel=LW0 face_y_m=1489.95
+8736,face_position,LW1,panel=LW1 face_y_m=1009.95
+8736,face_position,LW2,panel=LW2 face_y_m=529.95
+8743,blast,,q_kg=31.0 x_m=-17.8 y_m=1079.5 z_m=-375.0
+8743,fault,,"blast: Development heading blast 31.0 kg at (-17.8, 1079.5)"
