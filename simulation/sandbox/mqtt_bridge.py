@@ -328,12 +328,18 @@ class MqttBridge:
                 "centroid": {"lat": round(lat, 6), "lng": round(lon, 6)},
                 "affected_nodes": affected_nodes,
                 "max_strain_ue": _clean(float(getattr(z, "last_strain", 0.0))),
-                "trough_fit_r2": 0.94 if level >= 2 else 0.88,
+                # M3 (DATA-365 plan): no trough-fit or forecast model exists
+                # in this codebase to back these numbers, so they were a
+                # fixed 0.94/0.88 and 0.92 confidence regardless of the
+                # zone's actual fit or trend — null until a real model
+                # (the finale's GP forecaster, per the plan's
+                # recommendations) is wired in.
+                "trough_fit_r2": None,
                 "confidence_zone": "high_confidence" if level >= 2 else "medium_warning",
                 "blast_correlated": False,
                 "projection": {
-                    "days_to_level_3": 0 if level >= 3 else 3.5,
-                    "confidence": 0.92,
+                    "days_to_level_3": 0 if level >= 3 else None,
+                    "confidence": None,
                 },
                 "explanation": f"Zone {zone_id} entered {state}.",
             }
@@ -422,12 +428,14 @@ class MqttBridge:
                 "centroid": {"lat": round(lat, 6), "lng": round(lon, 6)},
                 "affected_nodes": [node_id_str],
                 "max_strain_ue": _clean(float(strain_ue if strain_ue is not None else 0.0)),
-                "trough_fit_r2": 0.95 if level == 3 else 0.88,
+                # M3: see publish_zone_alarms — same "no real fit/forecast
+                # model" reasoning.
+                "trough_fit_r2": None,
                 "confidence_zone": "high_confidence" if level == 3 else "medium_warning",
                 "blast_correlated": False,
                 "projection": {
-                    "days_to_level_3": 0 if level == 3 else 3.0,
-                    "confidence": 0.92,
+                    "days_to_level_3": 0 if level == 3 else None,
+                    "confidence": None,
                 },
                 "explanation": (
                     f"Sensor node {node_id_str} triggered Level {level} alarm "

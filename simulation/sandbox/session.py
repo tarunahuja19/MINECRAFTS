@@ -300,11 +300,25 @@ class SimulationSession:
             self.on_packet_finalized.append(callback)
 
     def _verify_boot_snr(self) -> float:
-        """Evaluate SNR detectability margin at boot. Refuses to start if < 3.0."""
+        """Evaluate SNR detectability margin at boot. Refuses to start if < 3.0.
+
+        M3 (DATA-365 plan) fixed a unit mismatch: `sigma` is
+        `SensorNoiseConfig.sigma_strain_ue`, in MICROSTRAIN, but
+        `strain_peak_compressive` is this sandbox's measured peak in MM/M
+        (gates.snr_margin's own docstring), and the two were combined
+        directly with no conversion — comparing a microstrain noise budget
+        against a mm/m signal trend, 1000x apart. Converting the peak to
+        microstrain before combining is what "consistent units" means here;
+        it changes the printed number but not the boot decision, since a
+        40-sample Knothe trend swamps the noise floor either way (the gate
+        is only ever marginal at n=20, which nothing here uses — see
+        gates.snr_margin's docstring).
+        """
         n_samples = 40
         c_knothe = 0.01414
-        strain_peak_compressive = 9.006
-        delta_signal = c_knothe * strain_peak_compressive * n_samples
+        strain_peak_compressive_mm_per_m = 9.006
+        strain_peak_compressive_ue = strain_peak_compressive_mm_per_m * 1000.0
+        delta_signal = c_knothe * strain_peak_compressive_ue * n_samples
 
         margin = gates.snr_margin(
             sigma=self.config.noise_config.sigma_strain_ue,
@@ -489,27 +503,17 @@ class SimulationSession:
         # board green - that is what makes a red node mean something.
         node_states = self._assign_node_states(active_colls, t_sim_days)
 
-        for n in self.sensor_array.nodes:
-            st = node_states.get(_node_topic_id(n.node_id), "ACTIVE")
-            if st == "CRITICAL":
-                n.crack_latched = max(n.crack_latched, 1)
-            else:
-                n.crack_latched = 0
-
+        # M3 (DATA-365 plan) removed two fabrications that used to live
+        # here: forcing strain_ue to a floor of 6500/4200 ue by node_state
+        # (a value the physics never produced, on tiers with no strain
+        # gauge at all), and resetting sensor_array's own crack_latched to
+        # 0 every tick a node wasn't CRITICAL — a real crack does not heal
+        # just because the zone manager's state dropped. `r.crack_flags` is
+        # left exactly as sensors.py's own strain-threshold latch set it
+        # (see SensorArray.sample_tick); `node_state` remains the single
+        # source of truth for node colour, independent of crack_flags.
         for r in readings:
-            state = node_states.get(_node_topic_id(r.node_id), "ACTIVE")
-            r.node_state = state
-
-            if state == "CRITICAL":
-                r.crack_flags = max(getattr(r, "crack_flags", 0) or 0, 1)
-                if isinstance(getattr(r, "channels", None), dict):
-                    r.channels["strain_ue"] = max(r.channels.get("strain_ue") or 0, 6500)
-            elif state == "WARNING":
-                r.crack_flags = 0
-                if isinstance(getattr(r, "channels", None), dict):
-                    r.channels["strain_ue"] = max(r.channels.get("strain_ue") or 0, 4200)
-            else:
-                r.crack_flags = 0
+            r.node_state = node_states.get(_node_topic_id(r.node_id), "ACTIVE")
 
         # 8. Write one row per node to nodes.csv
         if self._nodes_file:

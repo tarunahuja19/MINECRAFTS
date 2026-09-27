@@ -45,10 +45,15 @@ def test_t48_boot_refusal_on_high_noise(tmp_path):
     session = SimulationSession(valid_cfg)
     assert session.snr_margin >= 3.0
 
-    # Inflated noise drives margin below 3.0 -> raises RuntimeError
+    # Inflated noise drives margin below 3.0 -> raises RuntimeError. M3
+    # (DATA-365 plan) fixed a mm/m-vs-microstrain unit mismatch in
+    # _verify_boot_snr that used to make the margin ~1000x smaller than
+    # its two (now consistent) operands actually support, so it now takes
+    # a far larger noise budget to bring the margin back under 3.0 than
+    # the old, dimensionally-wrong 25.0 did.
     invalid_cfg = SessionConfig(
         out_dir=tmp_path / "invalid_run",
-        noise_config=SensorNoiseConfig(sigma_strain_ue=25.0),
+        noise_config=SensorNoiseConfig(sigma_strain_ue=5000.0),
     )
     with pytest.raises(RuntimeError, match=r"Gate T48 Boot Refusal: SNR margin .* is below required threshold 3.0"):
         SimulationSession(invalid_cfg)
