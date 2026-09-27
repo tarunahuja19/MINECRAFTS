@@ -44,10 +44,13 @@ var forgeMap = (function () {
       attributionControl: false
     });
 
-    // Same tile sources as mapView.init; only :8085 is ever contacted.
-    L.tileLayer('http://127.0.0.1:8085/tiles/satellite/{z}/{x}/{y}.png',
+    var tileSources = (typeof window !== 'undefined' && window.TILE_SOURCES) || {
+      satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      labels: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
+    };
+    L.tileLayer(tileSources.satellite,
       { minZoom: 12, maxZoom: 19, maxNativeZoom: 19 }).addTo(map);
-    L.tileLayer('http://127.0.0.1:8085/tiles/labels/{z}/{x}/{y}.png',
+    L.tileLayer(tileSources.labels,
       { minZoom: 12, maxZoom: 19, opacity: 0.85 }).addTo(map);
 
     // Own layer: mapLayers.loadPanelOutline keeps a single module-level layer

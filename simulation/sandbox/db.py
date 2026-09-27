@@ -51,7 +51,11 @@ PGPORT = int(os.getenv("PGPORT", "5432"))
 PGUSER = os.getenv("PGUSER", "postgres")
 PGPASSWORD = os.getenv("PGPASSWORD", "labpass123")
 PGDATABASE = os.getenv("PGDATABASE", "mine_subsidence")
-BACKEND_HTTP_URL = os.getenv("BACKEND_HTTP_URL", "http://localhost:8080")
+BACKEND_HTTP_URL = (
+    os.getenv("BACKEND_HTTP_URL")
+    or (os.getenv("DATABASE_URL") and "supabase" in os.getenv("DATABASE_URL") and "https://minecrafts-backend.onrender.com")
+    or "http://localhost:8080"
+).rstrip("/")
 
 CREATE_PACKETS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS simulation_packets (

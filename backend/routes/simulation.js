@@ -137,54 +137,45 @@ router.post('/packets', async (req, res) => {
 });
 
 // GET /simulation/status - Query simulation server health and return running/stopped state
-router.get('/status', async (req, res) => {
-  let responded = false;
-  function sendJson(payload) {
-    if (responded || res.headersSent) return;
-    responded = true;
-    res.json(payload);
+function getSimBase() {
+  if (process.env.SIMULATION_URL) {
+    return process.env.SIMULATION_URL.replace(/\/+$/, '');
   }
+  if (process.env.NODE_ENV === 'production' || (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase'))) {
+    return 'https://minecrafts-simulation.onrender.com';
+  }
+  return 'http://127.0.0.1:8000';
+}
 
+// GET /simulation/status - Forward status from physics simulation engine
+router.get('/status', async (req, res) => {
   try {
-    const http = require('http');
-    const healthUrl = (process.env.SIMULATION_URL || 'http://127.0.0.1:8000') + '/health';
-    const simReq = http.get(healthUrl, (simRes) => {
-      let data = '';
-      simRes.on('data', chunk => { data += chunk; });
-      simRes.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const isRunning = Boolean(json.is_running);
-          const isPaused = Boolean(json.is_paused);
-          const state = isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED';
-          sendJson({
-            is_running: isRunning,
-            is_paused: isPaused,
-            state: state,
-            t_sim_seconds: json.t_sim_seconds || 0,
-            tick_index: json.tick_index || 0
-          });
-        } catch (e) {
-          sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
-        }
-      });
-    });
-    simReq.on('error', () => {
-      sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
-    });
-    simReq.setTimeout(800, () => {
-      simReq.destroy();
-      sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
+    const healthUrl = getSimBase() + '/health';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const simRes = await fetch(healthUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!simRes.ok) throw new Error('HTTP ' + simRes.status);
+    const json = await simRes.json();
+    const isRunning = Boolean(json.is_running);
+    const isPaused = Boolean(json.is_paused);
+    const state = isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'STOPPED';
+    res.json({
+      is_running: isRunning,
+      is_paused: isPaused,
+      state: state,
+      t_sim_seconds: json.t_sim_seconds || 0,
+      tick_index: json.tick_index || 0
     });
   } catch (err) {
-    sendJson({ is_running: false, is_paused: false, state: 'STOPPED' });
+    res.json({ is_running: false, is_paused: false, state: 'STOPPED' });
   }
 });
 
 // POST /simulation/control - Forward simulation control commands to engine
 router.post('/control', async (req, res) => {
   try {
-    const simUrl = (process.env.SIMULATION_URL || 'http://127.0.0.1:8000') + '/control';
+    const simUrl = getSimBase() + '/control';
     const response = await fetch(simUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

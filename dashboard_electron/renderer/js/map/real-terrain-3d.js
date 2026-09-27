@@ -174,12 +174,11 @@ var realTerrain3D = (function () {
   var isTerrainActive = true;
   var areSensorsActive = true;
 
-  // Tiles come from the dashboard's same-origin proxy (serve.js)
-  var TILE_BASE = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:')) 
-    ? (window.location.origin + '/tiles')
-    : 'http://127.0.0.1:8085/tiles';
-  var DEM_URL = TILE_BASE + '/dem/{z}/{x}/{y}.png';
-  var SATELLITE_URL = TILE_BASE + '/satellite/{z}/{x}/{y}.png';
+  // Tiles come from direct CDN or local proxy (defined in config.js)
+  var SATELLITE_URL = (typeof window !== 'undefined' && window.TILE_SOURCES && window.TILE_SOURCES.satellite) 
+    || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  var DEM_URL = (typeof window !== 'undefined' && window.TILE_SOURCES && window.TILE_SOURCES.dem)
+    || 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
   function getInstance(containerId) {
     var id = containerId || primaryContainerId;
