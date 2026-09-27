@@ -73,6 +73,8 @@ export interface InitPayload {
   base_bowl_mesh: number[][];
   /** Static x factor of the moving bowl (metres, 121 points); drop = bowl_px[ix] * bowl_py[iy]. */
   bowl_px?: number[];
+  /** Static x factors for the multi-panel district ground (3x121 points). */
+  bowl_terms_px?: number[][];
   nodes: NodeDef[];
   zones: ZoneDef[];
   dem_source?: string;
@@ -177,6 +179,10 @@ export interface TickPayload {
   /** y factor of the moving bowl (121 points) and the longwall face position, metres. */
   bowl_py?: number[];
   face_y_m?: number;
+  /** y factor per panel for the multi-panel district ground (3x121 points). */
+  bowl_terms_py?: number[][];
+  /** Mining face position along strike (metres) for each panel; null if not yet started. */
+  face_positions?: (number | null)[];
   speed_multiplier: number;
   vibration_active?: boolean;
   vibration_ppv?: number;

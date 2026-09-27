@@ -472,6 +472,8 @@ export class LiveGeomechanicsEngine {
    */
   private bowlPx: number[] | null = null;
   private bowlPy: number[] | null = null;
+  private bowlTermsPx: number[][] | null = null;
+  private bowlTermsPy: number[][] | null = null;
   private bowlWindowM = 600.0;
 
   public setBowlPx(px: number[] | null, windowM?: number) {
@@ -481,6 +483,15 @@ export class LiveGeomechanicsEngine {
 
   public setBowlPy(py: number[] | null) {
     this.bowlPy = py && py.length > 1 ? py : null;
+  }
+
+  public setBowlTermsPx(terms: number[][] | null, windowM?: number) {
+    this.bowlTermsPx = terms && terms.length > 0 ? terms : null;
+    if (windowM !== undefined && Number.isFinite(windowM) && windowM > 0) this.bowlWindowM = windowM;
+  }
+
+  public setBowlTermsPy(terms: number[][] | null) {
+    this.bowlTermsPy = terms && terms.length > 0 ? terms : null;
   }
 
   /** Linear sample of a 1-D profile spanning the window at panel-frame `c`. */
@@ -628,7 +639,12 @@ export class LiveGeomechanicsEngine {
     let interventionSlopeX = 0.0;
     let interventionSlopeY = 0.0;
 
-    if (this.bowlPx && this.bowlPy) {
+    if (this.bowlTermsPx && this.bowlTermsPy) {
+      const n = Math.min(this.bowlTermsPx.length, this.bowlTermsPy.length);
+      for (let k = 0; k < n; k++) {
+        totalDropM += this.sampleProfile(this.bowlTermsPx[k], x) * this.sampleProfile(this.bowlTermsPy[k], y);
+      }
+    } else if (this.bowlPx && this.bowlPy) {
       totalDropM += this.sampleProfile(this.bowlPx, x) * this.sampleProfile(this.bowlPy, y);
     }
 

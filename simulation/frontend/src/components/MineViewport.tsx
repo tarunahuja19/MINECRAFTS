@@ -49,6 +49,7 @@ interface MineViewportProps {
   timeScalar: number;
   /** y factor of the moving bowl; a change redraws the terrain (the profile is in globalGeomechanics). */
   bowlPy?: number[] | null;
+  bowlTermsPy?: number[][] | null;
   perturbations: Perturbation[];
   latestPacket?: SimulationPacket | null;
   nodes: NodeDef[];
@@ -220,6 +221,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   elevMaxM,
   timeScalar,
   bowlPy,
+  bowlTermsPy,
   perturbations,
   latestPacket,
   nodes,
@@ -252,7 +254,10 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
   // Whatever else moves the ground besides `perturbations` (the bowl profile,
   // the clock, an in-flight event); overlays that ride the surface re-sample
   // when it changes.
-  const groundTick = `${timeScalar}|${animMs}|${bowlPy ? bowlPy.length : 0}|${bowlPy ? bowlPy[Math.floor(bowlPy.length / 2)] : 0}`;
+  const bowlSig = bowlTermsPy
+    ? `terms:${bowlTermsPy.length}:${bowlTermsPy.map((p) => p[Math.floor(p.length / 2)]).join(",")}`
+    : `single:${bowlPy ? bowlPy.length : 0}:${bowlPy ? bowlPy[Math.floor(bowlPy.length / 2)] : 0}`;
+  const groundTick = `${timeScalar}|${animMs}|${bowlSig}`;
 
   const focusOnBounds = (b: EmbedClipBounds) => {
     if (!controlsRef.current) return;
@@ -418,6 +423,7 @@ export const MineViewport = forwardRef<MineViewportHandle, MineViewportProps>(({
             elevMaxM={elevMaxM}
             timeScalar={timeScalar}
             bowlPy={bowlPy}
+            bowlTermsPy={bowlTermsPy}
             perturbations={perturbations}
             latestPacket={latestPacket}
             exaggeration={exaggeration}

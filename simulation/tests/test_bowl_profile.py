@@ -11,29 +11,44 @@ X, Y = surface.grid()
 
 
 def test_config_carries_bowl_px():
-    with TestClient(app) as client:
-        px = client.get("/config").json()["bowl_px"]
-    assert len(px) == 121
-    assert px == surface.bowl_px_wire()
+    session = get_session()
+    prev = session.config.ground
+    session.config.ground = "surface"
+    session._resolve_ground()
+    try:
+        with TestClient(app) as client:
+            px = client.get("/config").json()["bowl_px"]
+        assert len(px) == 121
+        assert px == surface.bowl_px_wire()
+    finally:
+        session.config.ground = prev
+        session._resolve_ground()
 
 
 def test_ws_init_and_tick_carry_bowl_profiles():
     session = get_session()
+    prev = session.config.ground
+    session.config.ground = "surface"
+    session._resolve_ground()
     session.stop()
     session.pillar_failures.clear()
-    with TestClient(app) as client:
-        with client.websocket_connect("/ws") as ws:
-            init = ws.receive_json()
-            assert len(init["bowl_px"]) == 121
-            ws.send_json({"action": "start"})
-            tick = ws.receive_json()
-            assert len(tick["bowl_py"]) == 121
-            assert isinstance(tick["face_y_m"], float)
-            # Rebuilt bowl equals the downsampled truth at the tick's own day.
-            s = surface.channels(X, Y, tick["t_days"])["s"][::2, ::2]
-            rebuilt = np.outer(tick["bowl_py"], init["bowl_px"])
-            np.testing.assert_allclose(rebuilt, s, atol=5e-4)
-            ws.send_json({"action": "stop"})
+    try:
+        with TestClient(app) as client:
+            with client.websocket_connect("/ws") as ws:
+                init = ws.receive_json()
+                assert len(init["bowl_px"]) == 121
+                ws.send_json({"action": "start"})
+                tick = ws.receive_json()
+                assert len(tick["bowl_py"]) == 121
+                assert isinstance(tick["face_y_m"], float)
+                # Rebuilt bowl equals the downsampled truth at the tick's own day.
+                s = surface.channels(X, Y, tick["t_days"])["s"][::2, ::2]
+                rebuilt = np.outer(tick["bowl_py"], init["bowl_px"])
+                np.testing.assert_allclose(rebuilt, s, atol=5e-4)
+                ws.send_json({"action": "stop"})
+    finally:
+        session.config.ground = prev
+        session._resolve_ground()
 
 
 def test_wire_profiles_follow_the_face():

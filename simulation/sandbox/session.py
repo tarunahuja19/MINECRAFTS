@@ -23,7 +23,7 @@ from typing import Any, Callable, Iterable
 
 import numpy as np
 
-from sandbox import collapse, constants, events as event_maths, gates, layout, segments, surface
+from sandbox import collapse, constants, events as event_maths, gates, ground, layout, segments, surface
 from sandbox.collapse import PillarFailure
 from sandbox.constants import (
     COLLAPSE_SNAP_SPEED_MULTIPLIER,
@@ -154,6 +154,10 @@ class SessionConfig:
     """Configuration for a simulation run."""
 
     out_dir: Path = field(default_factory=lambda: Path("out"))
+    # "district": the real Adriyala fit, 3-panel superposition (G1/`district.py`).
+    # The default -- "surface" (the ASSUMED single-panel ground) exists only
+    # for tests pinned to numbers computed against it (`sandbox.ground.resolve`).
+    ground: str = "district"
     t_start_seconds: float = 0.0
     tick_duration_sim_s: float = TICK_SIM_SECONDS
     default_speed: float = DEFAULT_SPEED_MULTIPLIER
@@ -194,6 +198,7 @@ class SimulationSession:
 
         # Coordinates and state
         self.X, self.Y = surface.grid()
+        self._resolve_ground()
         self.t_sim_seconds: float = self.config.t_start_seconds
         self.tick_index: int = 0
         self.speed_multiplier: float = self.config.default_speed
@@ -252,6 +257,22 @@ class SimulationSession:
             broker_port=int(os.environ.get("R4_BROKER_PORT", "1883")),
             enabled=os.environ.get("R4_MQTT_ENABLED", "1") != "0",
         )
+
+    def _resolve_ground(self) -> None:
+        """Pick this session's ground module and freeze its day-0 channels.
+
+        `self._install_ch` is what every sensor reading is zeroed against
+        (`tick()` passes `total - install`, "since install on day 0", the way
+        a real instrument is zeroed at commissioning): for `district`, the
+        two SYNTHETIC neighbour panels started mining 120 days before this
+        window's day 0, so their day-0 channels are already non-zero, and
+        subtracting them out is what keeps a fresh install from reporting a
+        pre-existing bowl as if it just moved. Called from `__init__` and
+        again from `_reset_state()`, since a script or a test may replace
+        `self.config.ground` between runs.
+        """
+        self._ground = ground.resolve(self.config.ground)
+        self._install_ch = self._ground.channels(self.X, self.Y, 0.0)
 
     def _noise_config(self) -> SensorNoiseConfig:
         """Noise budget with its seed taken from `SessionConfig.seed`.
@@ -380,7 +401,7 @@ class SimulationSession:
         self._fire_due_script_events(t_sim_days)
 
         # 1. Evaluate base Knothe ground truth
-        base_ch = surface.channels(self.X, self.Y, t_sim_days)
+        base_ch = self._ground.channels(self.X, self.Y, t_sim_days)
 
         # 2. Evaluate additive discontinuous collapse deltas
         deltas = collapse.collapse_deltas(self.X, self.Y, t_sim_days, self.pillar_failures)
@@ -424,12 +445,18 @@ class SimulationSession:
         # 6. Check vibration transient
         current_vib = self.vibration_transient if self.t_sim_seconds < self.active_vibration_end_t else 0.0
 
-        # 7. Sample sensor array and corrupt telemetry
+        # 7. Sample sensor array and corrupt telemetry. Sensors read change
+        # SINCE INSTALL on day 0, the way a real instrument is zeroed at
+        # commissioning -- never the absolute field (that stays the zone
+        # manager's, above). See `_resolve_ground`'s docstring for why this
+        # matters for `district`: its two synthetic neighbour panels have
+        # already been mining for 120 days by day 0.
+        since_install = {k: total_channels[k] - self._install_ch[k] for k in total_channels}
         readings = self.sensor_array.sample_tick(
             t_sim_days=t_sim_days,
             t_sim_seconds=self.t_sim_seconds,
             iso_timestamp=iso_ts,
-            truth_channels=total_channels,
+            truth_channels=since_install,
             vibration_transient=current_vib,
         )
 
@@ -605,8 +632,7 @@ class SimulationSession:
             "t_sim": int(self.t_sim_seconds),
             "t_days": round(float(t_sim_days), 4),
             "time_scalar": round(time_scalar, 5),
-            "bowl_py": surface.bowl_py_wire(t_sim_days),
-            "face_y_m": round(surface.face_y(t_sim_days), 1),
+            **ground.wire_fields(self._ground, t_sim_days),
             "speed_multiplier": float(self.speed_multiplier),
             "vibration_active": current_vib > 0.0,
             "vibration_ppv": float(current_vib),
@@ -829,6 +855,7 @@ class SimulationSession:
         """
         self.stop()
 
+        self._resolve_ground()
         self.t_sim_seconds = self.config.t_start_seconds
         self.tick_index = 0
         self.speed_multiplier = self.config.default_speed

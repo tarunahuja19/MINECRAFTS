@@ -17,7 +17,7 @@ import numpy as np
 from pydantic import BaseModel, Field
 
 from forge import states
-from sandbox import collapse, constants, events as event_maths, surface
+from sandbox import collapse, constants, events as event_maths, ground, surface
 from sandbox.collapse import PillarFailure
 from sandbox.mqtt_bridge import _node_topic_id
 from sandbox.sensors import SensorArray, SensorNoiseConfig
@@ -37,6 +37,13 @@ app.add_middleware(
 _X, _Y = surface.grid()
 _noise_cfg = SensorNoiseConfig(enable_noise=False)
 _sensor_array = SensorArray(_noise_cfg)
+_INSTALL_CH: dict[Any, dict[str, np.ndarray]] = {}
+
+
+def _get_install_ch(g_mod):
+    if g_mod not in _INSTALL_CH:
+        _INSTALL_CH[g_mod] = g_mod.channels(_X, _Y, 0.0)
+    return _INSTALL_CH[g_mod]
 
 
 class CaveInEvent(BaseModel):
@@ -111,6 +118,7 @@ class ForgeFrameRequest(BaseModel):
     day: float = 0.0
     events: list[ForgeEvent] = Field(default_factory=list)
     include_grids: bool = False
+    ground: str = "district"
 
 
 class ForgeRangeRequest(BaseModel):
@@ -141,7 +149,8 @@ async def forge_frame(req: ForgeFrameRequest):
     )
 
     # 1. Base Knothe ground truth
-    base_ch = surface.channels(_X, _Y, req.day)
+    g_mod = ground.resolve(req.ground)
+    base_ch = g_mod.channels(_X, _Y, req.day)
 
     # 2. Additive discontinuous collapse deltas
     deltas = collapse.collapse_deltas(_X, _Y, req.day, failures)
@@ -182,16 +191,18 @@ async def forge_frame(req: ForgeFrameRequest):
             )
 
     # 6. Sample truth telemetry across sensor array
+    install_ch = _get_install_ch(g_mod)
+    since_install = {k: total_channels[k] - install_ch[k] for k in total_channels}
     nodes_data = []
     for node in _sensor_array.nodes:
         ix, iy = node.grid_ix, node.grid_iy
         nid_topic = _node_topic_id(node.node_id)
         st = node_states.get(nid_topic, "ACTIVE")
 
-        tx = float(total_channels["tilt_x"][iy, ix])
-        ty = float(total_channels["tilt_y"][iy, ix])
-        sx = float(total_channels["strain_x"][iy, ix])
-        disp = float(total_channels["displacement_x"][iy, ix])
+        tx = float(since_install["tilt_x"][iy, ix])
+        ty = float(since_install["tilt_y"][iy, ix])
+        sx = float(since_install["strain_x"][iy, ix])
+        disp = float(since_install["displacement_x"][iy, ix])
 
         tilt_x_urad = int(np.clip(round(tx * 1e6), -32768, 32767)) if node.carries("tilt_x_urad") else None
         tilt_y_urad = int(np.clip(round(ty * 1e6), -32768, 32767)) if node.carries("tilt_x_urad") else None
@@ -216,7 +227,7 @@ async def forge_frame(req: ForgeFrameRequest):
                 "strain": strain_ue,
                 "displacement": disp_mm,
                 # Vertical ground drop at the node (bowl + cave-ins), for the FORGE node card.
-                "subsidence_mm": round(float(total_channels["s"][iy, ix]) * 1000.0, 1),
+                "subsidence_mm": round(float(since_install["s"][iy, ix]) * 1000.0, 1),
                 "vib_rms": round(vib_mm_s, 2),
                 "vib_peak": round(vib_mm_s * 1.45, 2),
                 "vib_fdom": 0.0,
@@ -248,8 +259,7 @@ async def forge_frame(req: ForgeFrameRequest):
         "t_sim": int(req.day * 86400.0),
         "t_days": round(float(req.day), 4),
         "time_scalar": round(time_scalar, 5),
-        "bowl_py": surface.bowl_py_wire(req.day),
-        "face_y_m": round(surface.face_y(req.day), 1),
+        **ground.wire_fields(g_mod, req.day),
         "speed_multiplier": 1.0,
         "perturbations": perturbations,
         "terrain": {

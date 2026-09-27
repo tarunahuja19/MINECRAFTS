@@ -78,6 +78,8 @@ export type EmbedParentCommand =
         time_scalar?: number;
         bowl_py?: number[];
         face_y_m?: number;
+        bowl_terms_py?: number[][];
+        face_positions?: (number | null)[];
         speed_multiplier?: number;
         perturbations?: Array<{ cx: number; cy: number; radius_m: number; amp: number; yield?: number }>;
         nodes?: Array<{ id: number; node_id?: number; node_state?: string; [key: string]: any }>;

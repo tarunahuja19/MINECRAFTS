@@ -138,15 +138,26 @@ export const App: React.FC = () => {
   // profile itself lives in globalGeomechanics (so every ground sampler sees
   // it); this state only makes the viewport redraw when it changes.
   const [bowlPy, setBowlPy] = useState<number[] | null>(null);
+  const [bowlTermsPy, setBowlTermsPy] = useState<number[][] | null>(null);
   const [faceYM, setFaceYM] = useState<number | null>(null);
+  const [facePositions, setFacePositions] = useState<(number | null)[] | null>(null);
   // Written before the setState so the viewport's redraw already sees the new
-  // bowl. Without `bowl_py` (an older server) the ground is drawn without a
+  // bowl. Without `bowl_py` / `bowl_terms_py` the ground is drawn without a
   // baseline bowl, as before.
-  const applyBowl = (py: number[] | undefined, faceY: number | undefined) => {
-    const next = py && py.length > 1 ? py : null;
-    globalGeomechanics.setBowlPy(next);
-    setBowlPy(next);
-    setFaceYM(faceY !== undefined && Number.isFinite(faceY) ? faceY : null);
+  const applyBowl = (
+    py: number[] | undefined | null,
+    faceY: number | undefined | null,
+    termsPy?: number[][] | undefined | null,
+    faces?: (number | null)[] | undefined | null,
+  ) => {
+    const nextPy = py && py.length > 1 ? py : null;
+    const nextTermsPy = termsPy && termsPy.length > 0 ? termsPy : null;
+    globalGeomechanics.setBowlPy(nextPy);
+    globalGeomechanics.setBowlTermsPy(nextTermsPy);
+    setBowlPy(nextPy);
+    setBowlTermsPy(nextTermsPy);
+    setFaceYM(faceY !== undefined && faceY !== null && Number.isFinite(faceY) ? faceY : null);
+    setFacePositions(faces || null);
   };
   // The sim CLOCK is fixed (see FIXED_SPEED_MULTIPLIER); what the operator
   // picks is how fast a triggered EVENT plays out — 1x is 60 real seconds,
@@ -462,7 +473,9 @@ export const App: React.FC = () => {
             setGeoOrigin(init.dem_lat, init.dem_lon, init.panel_bearing_deg);
             setZ0Mesh(init.z0_mesh);
             setBaseBowlMesh(init.base_bowl_mesh);
-            if (init.bowl_px) {
+            if (init.bowl_terms_px) {
+              globalGeomechanics.setBowlTermsPx(init.bowl_terms_px, init.window_size_m);
+            } else if (init.bowl_px) {
               globalGeomechanics.setBowlPx(init.bowl_px, init.window_size_m);
             }
             setNodes(init.nodes);
@@ -478,7 +491,7 @@ export const App: React.FC = () => {
             setTSimSeconds(tick.t_sim);
             setTDays(tick.t_days);
             setTimeScalar(tick.time_scalar);
-            applyBowl(tick.bowl_py, tick.face_y_m);
+            applyBowl(tick.bowl_py, tick.face_y_m, tick.bowl_terms_py, tick.face_positions);
             setPerturbations(tick.perturbations || []);
             setNodeTelemetry(tick.nodes || []);
             setTickCount((prev) => prev + 1);
@@ -990,7 +1003,7 @@ export const App: React.FC = () => {
           if (frame.t_sim !== undefined) setTSimSeconds(frame.t_sim);
           if (frame.t_days !== undefined) setTDays(frame.t_days);
           if (frame.time_scalar !== undefined) setTimeScalar(frame.time_scalar);
-          applyBowl(frame.bowl_py, frame.face_y_m);
+          applyBowl(frame.bowl_py, frame.face_y_m, frame.bowl_terms_py, frame.face_positions);
           const perts = frame.perturbations || [];
           setPerturbations(perts);
           if (frame.nodes) setNodeTelemetry(frame.nodes as NodeTelemetry[]);
@@ -1131,8 +1144,9 @@ export const App: React.FC = () => {
       tDays,
       nodes: nodes.length > 0 ? nodes.length : FALLBACK_NODES.length,
       ...(faceYM !== null ? { faceYM } : {}),
+      ...(facePositions !== null ? { facePositions } : {}),
     });
-  }, [isEmbed, isConnected, isRunning, tDays, nodes.length, faceYM]);
+  }, [isEmbed, isConnected, isRunning, tDays, nodes.length, faceYM, facePositions]);
 
   // Camera Presets
   const handleResetCamera = () => {
@@ -1300,6 +1314,7 @@ export const App: React.FC = () => {
             elevMaxM={elevMaxM}
             timeScalar={timeScalar}
             bowlPy={bowlPy}
+            bowlTermsPy={bowlTermsPy}
             perturbations={perturbations}
             latestPacket={latestPacket}
             nodes={nodes}
@@ -1385,6 +1400,7 @@ export const App: React.FC = () => {
               elevMaxM={elevMaxM}
               timeScalar={timeScalar}
               bowlPy={bowlPy}
+              bowlTermsPy={bowlTermsPy}
               perturbations={perturbations}
               latestPacket={latestPacket}
               nodes={nodes}

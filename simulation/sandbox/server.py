@@ -34,7 +34,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from sandbox import constants, dem, geo, hypsometry, layout, mesh, segments, surface
+from sandbox import constants, dem, geo, ground, hypsometry, layout, mesh, segments, surface
 from sandbox.constants import DEFAULT_SPEED_MULTIPLIER
 from sandbox.db import db_manager
 from sandbox.script import ScriptError, load_script
@@ -340,7 +340,7 @@ async def get_config():
     # for why the two are kept separate.
     z0_full = dem.panel_dem()
     z0_sub = np.round(z0_full[::2, ::2], 4).tolist()
-    bowl_sub = np.round(surface._BASE_S[::2, ::2], 4).tolist()
+    bowl_fields = ground.static_bowl_fields(session._ground)
 
     return {
         "window_size_m": constants.WINDOW_SIZE_M,
@@ -350,8 +350,9 @@ async def get_config():
         "r_infl": constants.R_INFL,
         "c_knothe": constants.C_KNOTHE,
         "z0_mesh": z0_sub,
-        "base_bowl_mesh": bowl_sub,
-        "bowl_px": surface.bowl_px_wire(),
+        "base_bowl_mesh": bowl_fields["base_bowl_mesh"],
+        "bowl_px": bowl_fields["bowl_px"],
+        "bowl_terms_px": bowl_fields["bowl_terms_px"],
         "dem_source": "adriyala_regional_z12",
         "dem_lat": geo.ORIGIN_LAT,
         "dem_lon": geo.ORIGIN_LON,
@@ -589,7 +590,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
         z0_full = dem.panel_dem()
         z0_sub = np.round(z0_full[::2, ::2], 4).tolist()
-        bowl_sub = np.round(surface._BASE_S[::2, ::2], 4).tolist()
+        bowl_fields = ground.static_bowl_fields(session._ground)
 
         init_payload = {
             "type": "init",
@@ -599,8 +600,9 @@ async def websocket_endpoint(websocket: WebSocket):
             "base_peak_subsidence": 1.9971,
             "speed_multiplier": session.speed_multiplier,
             "z0_mesh": z0_sub,
-            "base_bowl_mesh": bowl_sub,
-            "bowl_px": surface.bowl_px_wire(),
+            "base_bowl_mesh": bowl_fields["base_bowl_mesh"],
+            "bowl_px": bowl_fields["bowl_px"],
+            "bowl_terms_px": bowl_fields["bowl_terms_px"],
             "dem_source": "adriyala_regional_z12",
             # Read from `sandbox.geo`, never re-typed. These literals used to be
             # written out here and in `_static_init()`, so the two payloads and

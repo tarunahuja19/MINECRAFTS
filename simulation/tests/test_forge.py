@@ -25,7 +25,7 @@ def client():
 
 def test_frame_day_zero_subsidence_zero(client):
     """Frame at day 0: subsidence is zero everywhere."""
-    res = client.post("/forge/frame", json={"day": 0.0, "events": [], "include_grids": True})
+    res = client.post("/forge/frame", json={"day": 0.0, "events": [], "include_grids": True, "ground": "surface"})
     assert res.status_code == 200
     data = res.json()
 
@@ -37,7 +37,7 @@ def test_frame_day_zero_subsidence_zero(client):
 
 def test_frame_day_30_no_events_matches_surface_channels(client):
     """Frame at day 30 with no events matches surface.channels(X, Y, 30) exactly."""
-    res = client.post("/forge/frame", json={"day": 30.0, "events": [], "include_grids": True})
+    res = client.post("/forge/frame", json={"day": 30.0, "events": [], "include_grids": True, "ground": "surface"})
     assert res.status_code == 200
     data = res.json()
 
@@ -458,8 +458,8 @@ def test_vibration_window(client):
 def test_frame_carries_moving_bowl(client):
     """The frame streams the y factor of the bowl and the face position, and
     the 3D views rebuild the drop as bowl_px[ix] * bowl_py[iy]."""
-    early = client.post("/forge/frame", json={"day": 40.0, "events": []}).json()
-    late = client.post("/forge/frame", json={"day": 200.0, "events": []}).json()
+    early = client.post("/forge/frame", json={"day": 40.0, "events": [], "ground": "surface"}).json()
+    late = client.post("/forge/frame", json={"day": 200.0, "events": [], "ground": "surface"}).json()
     assert len(early["bowl_py"]) == len(late["bowl_py"]) == 121
     assert early["face_y_m"] == round(surface.face_y(40.0), 1)
     assert late["face_y_m"] > early["face_y_m"]
@@ -468,7 +468,7 @@ def test_frame_carries_moving_bowl(client):
     centroid = lambda py: float(np.dot(axis, py) / np.sum(py))
     assert centroid(late["bowl_py"]) > centroid(early["bowl_py"])
     # Reconstruction against the grids (the y axis is the row index).
-    full = client.post("/forge/frame", json={"day": 200.0, "events": [], "include_grids": True}).json()
+    full = client.post("/forge/frame", json={"day": 200.0, "events": [], "include_grids": True, "ground": "surface"}).json()
     px = np.array(surface.bowl_px_wire())
     np.testing.assert_allclose(
         np.outer(late["bowl_py"], px), np.array(full["channels"]["s"])[::2, ::2], atol=5e-4
