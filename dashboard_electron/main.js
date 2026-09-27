@@ -1,6 +1,25 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 
+// Prevent crashes when stdout/stderr pipes are broken (e.g. parent process closed pipe)
+if (process.stdout && typeof process.stdout.on === 'function') {
+  process.stdout.on('error', (err) => {
+    if (err && err.code === 'EPIPE') return;
+  });
+}
+if (process.stderr && typeof process.stderr.on === 'function') {
+  process.stderr.on('error', (err) => {
+    if (err && err.code === 'EPIPE') return;
+  });
+}
+
+process.on('uncaughtException', (err) => {
+  if (err && (err.code === 'EPIPE' || (err.message && err.message.includes('EPIPE')))) {
+    return;
+  }
+  console.error('[main] Uncaught exception:', err);
+});
+
 // KNOWN ISSUE - 3D terrain renders flat (handed off, not fixed here).
 //
 // The 3D window shows correct satellite imagery but no elevation relief.
@@ -102,7 +121,9 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
-    console.log('[RENDERER]', level, message, sourceId, line);
+    try {
+      console.log('[RENDERER]', level, message, sourceId, line);
+    } catch (_) {}
   });
 
   const menu = Menu.buildFromTemplate([
