@@ -298,8 +298,13 @@ var nodeSensors = (function () {
   // ---------------------------------------------------------------------
 
   function calcStrainValues(t, nd) {
+    var tier = (nd && nd.tier) || (t && t.tier) || '';
+    var isDead = !nd || nd.state === 'dead';
+
     if (!t) {
-      return { strain: null, pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+      var fallbackText = isDead ? 'OFFLINE' : (tier && tier !== '1B' ? 'TIER 1B ONLY' : 'AWAITING');
+      var fallbackClass = isDead ? 'dead' : 'nominal';
+      return { strain: null, pct: 0, statusClass: fallbackClass, statusText: fallbackText, barColor: '#5A6A72' };
     }
 
     var strain = (t.strain_ustrain != null) ? t.strain_ustrain :
@@ -308,7 +313,9 @@ var nodeSensors = (function () {
                  (t.channels && t.channels.strain_ue != null) ? t.channels.strain_ue : null;
 
     if (strain == null || !isFinite(strain)) {
-      return { strain: null, pct: 0, statusClass: 'dead', statusText: 'OFFLINE', barColor: '#5A6A72' };
+      var noStrainText = isDead ? 'OFFLINE' : (tier && tier !== '1B' ? 'TIER 1B ONLY' : 'AWAITING');
+      var noStrainClass = isDead ? 'dead' : 'nominal';
+      return { strain: null, pct: 0, statusClass: noStrainClass, statusText: noStrainText, barColor: '#5A6A72' };
     }
 
     strain = Math.round(strain);
@@ -333,9 +340,10 @@ var nodeSensors = (function () {
 
   function buildStrainCard(t, nd) {
     var d = calcStrainValues(t, nd);
+    var tier = (nd && nd.tier) || (t && t.tier) || '';
     var isLive = (d.strain !== null);
-    var valStr = isLive ? String(d.strain) : '--';
-    var subStr = isLive ? (d.pct.toFixed(0) + '% rupture limit') : '--';
+    var valStr = isLive ? String(d.strain) : (tier && tier !== '1B' ? 'N/A' : '--');
+    var subStr = isLive ? (d.pct.toFixed(0) + '% rupture limit') : (tier && tier !== '1B' ? 'Equipped on Tier 1B nodes only' : '--');
 
     return '<div class="glass-card">' +
              '<div class="glass-metric-header">' +
@@ -358,8 +366,10 @@ var nodeSensors = (function () {
 
   function updateStrainDOM(t, nd) {
     var d = calcStrainValues(t, nd);
+    var tier = (nd && nd.tier) || (t && t.tier) || '';
     var isLive = (d.strain !== null);
-    var valStr = isLive ? String(d.strain) : '--';
+    var valStr = isLive ? String(d.strain) : (tier && tier !== '1B' ? 'N/A' : '--');
+    var subStr = isLive ? (d.pct.toFixed(0) + '% rupture limit') : (tier && tier !== '1B' ? 'Equipped on Tier 1B nodes only' : '--');
 
     var strainEl = document.getElementById('strain-val');
     if (strainEl && strainEl.textContent !== valStr) {
@@ -369,7 +379,7 @@ var nodeSensors = (function () {
 
     var subEl = document.getElementById('strain-sub-val');
     if (subEl) {
-      subEl.textContent = isLive ? (d.pct.toFixed(0) + '% rupture limit') : '--';
+      subEl.textContent = subStr;
     }
 
     var badge = document.getElementById('strain-status-badge');

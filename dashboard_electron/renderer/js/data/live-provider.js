@@ -81,6 +81,35 @@ var liveProvider = (function () {
 
     // 3. Start background simulation status monitoring
     startSimHealthPoll();
+
+    // 4. Start periodic live readings sync from backend database
+    startReadingsPoll();
+  }
+
+  var readingsPollTimer = null;
+
+  function fetchLatestReadings() {
+    if (!active) return;
+    fetch(API_BASE + '/api/readings/latest', { cache: 'no-store' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (readings) {
+        if (Array.isArray(readings) && readings.length > 0) {
+          window.__SIM_PLAYING__ = true;
+          readings.forEach(function (r) {
+            handleTelemetry(r);
+            if (r.state) {
+              bus.emit('node-status-change', { node_id: r.node_id, state: r.state });
+            }
+          });
+        }
+      })
+      .catch(function () {});
+  }
+
+  function startReadingsPoll() {
+    if (readingsPollTimer) return;
+    fetchLatestReadings();
+    readingsPollTimer = setInterval(fetchLatestReadings, 4000);
   }
 
   function connectWebSocket() {
@@ -104,6 +133,18 @@ var liveProvider = (function () {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
+      // Immediately load the latest readings and simulation packet on connect
+      fetchLatestReadings();
+      fetch(API_BASE + '/simulation/packets/latest')
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (packet) {
+          if (packet && packet.nodes) {
+            console.log('[live-provider] Loaded latest simulation packet on connect:', packet.packet_id);
+            window.__SIM_PLAYING__ = true;
+            applySimulationPacket(packet);
+          }
+        })
+        .catch(function () {});
     };
 
     ws.onmessage = function (event) {
@@ -142,13 +183,10 @@ var liveProvider = (function () {
 
     // React automatically to Phase 6 notification
     if (msg.type === 'packet_available') {
-      if (!window.__SIM_PLAYING__) {
-        return;
-      }
+      window.__SIM_PLAYING__ = true;
       console.log('[live-provider] New simulation packet available (# ' + msg.packet_id + '), fetching...');
       fetchSimulationPacket(msg.packet_id);
     } else if (msg.type === 'telemetry') {
-      if (!window.__SIM_PLAYING__) return;
       handleTelemetry(msg);
     } else if (msg.type === 'alarm') {
       // The backend wraps the alarm: { type:'alarm', alarm:{...} }. Emitting
@@ -215,7 +253,6 @@ var liveProvider = (function () {
   }
 
   function fetchSimulationPacket(packetId) {
-    if (!window.__SIM_PLAYING__) return;
     var url = API_BASE + '/simulation/packets/' + packetId;
     fetch(url)
       .then(function (res) {
@@ -223,7 +260,7 @@ var liveProvider = (function () {
         return res.json();
       })
       .then(function (packet) {
-        if (!window.__SIM_PLAYING__) return;
+        window.__SIM_PLAYING__ = true;
         applySimulationPacket(packet);
       })
       .catch(function (err) {
@@ -232,7 +269,7 @@ var liveProvider = (function () {
   }
 
   function applySimulationPacket(packet) {
-    if (!window.__SIM_PLAYING__) return;
+    if (!packet) return;
     console.log('[live-provider] Applying simulation packet #' + packet.packet_id, packet);
     bus.emit('simulation-packet', packet);
 
@@ -253,34 +290,69 @@ var liveProvider = (function () {
         // Map integer id (1..33) to N01..N33 if in standard format
         var formattedId = nid.startsWith('N') ? nid : ('N' + (parseInt(nid, 10) < 10 ? '0' : '') + nid);
         var aggs = n.aggregates || {};
+        var lr = n.last_reading || {};
 
-        var strain = aggs.max_strain != null ? aggs.max_strain : null;
-        var tiltX = aggs.max_tilt_x != null ? aggs.max_tilt_x : null;
-        var tiltY = aggs.max_tilt_y != null ? aggs.max_tilt_y : null;
+        var strain = (aggs.max_strain != null) ? aggs.max_strain : (lr.strain_ue != null ? lr.strain_ue : null);
+        var tiltX = (aggs.max_tilt_x != null) ? aggs.max_tilt_x : (lr.tilt_x_urad != null ? lr.tilt_x_urad : null);
+        var tiltY = (aggs.max_tilt_y != null) ? aggs.max_tilt_y : (lr.tilt_y_urad != null ? lr.tilt_y_urad : null);
 
-        // The simulation is the single source of node health state. It assigns
-        // each node's state by carve geometry (session.py:_assign_node_states)
-        // and ships it as `aggregates.node_state`. The UI only paints what the
-        // server sent - it must never re-derive state from strain/tilt.
+        var vibMmS = null;
+        if (lr.vib_rms_mm_s != null) {
+          vibMmS = lr.vib_rms_mm_s;
+        } else if (lr.vib_rms_x100 != null) {
+          vibMmS = Number((lr.vib_rms_x100 / 100).toFixed(2));
+        } else if (aggs.max_vib_rms != null) {
+          vibMmS = Number((aggs.max_vib_rms / 100).toFixed(2));
+        }
+
+        var vibPeak = null;
+        if (lr.vib_peak_mm_s != null) {
+          vibPeak = lr.vib_peak_mm_s;
+        } else if (lr.vib_peak_x100 != null) {
+          vibPeak = Number((lr.vib_peak_x100 / 100).toFixed(2));
+        } else if (aggs.max_vib_peak != null) {
+          vibPeak = Number((aggs.max_vib_peak / 100).toFixed(2));
+        }
+
+        // The simulation is the single source of node health state.
         var status = 'active';
-        if (currentSimState !== 'STOPPED' && aggs.node_state) {
-          status = String(aggs.node_state).toLowerCase();
+        if (currentSimState !== 'STOPPED' && (aggs.node_state || lr.node_state)) {
+          status = String(aggs.node_state || lr.node_state).toLowerCase();
         }
 
         var telemetryRow = {
           node_id: formattedId,
           _node_id: formattedId,
           raw_id: nid,
-          tier: n.tier || '1A',
+          tier: n.tier || lr.tier || '1A',
           t_epoch_s: packetEpochS,
           strain_ustrain: strain != null ? Math.round(strain) : null,
+          strain_ue: strain != null ? strain : null,
           tilt_x_mdeg: tiltX != null ? Math.round(tiltX / 17.4533) : null,
           tilt_y_mdeg: tiltY != null ? Math.round(tiltY / 17.4533) : null,
-          temp_c_x10: aggs.max_temperature != null ? Math.round(aggs.max_temperature * 10) : null,
-          vib_rms: aggs.max_vib_rms != null ? Math.round(aggs.max_vib_rms / 10) : null,
-          vbat_mv: aggs.min_battery != null ? aggs.min_battery : null,
+          tilt_x_urad: tiltX,
+          tilt_y_urad: tiltY,
+          temp_c_x10: (lr.die_temp_dc != null) ? lr.die_temp_dc : (aggs.max_temperature != null ? Math.round(aggs.max_temperature * 10) : null),
+          die_temp_c: (lr.die_temp_dc != null) ? Number((lr.die_temp_dc / 10).toFixed(1)) : (aggs.max_temperature != null ? Number(aggs.max_temperature.toFixed(1)) : null),
+          vib_rms: vibMmS != null ? vibMmS : (aggs.max_vib_rms != null ? aggs.max_vib_rms : null),
+          vib_rms_mm_s: vibMmS,
+          vib_peak_mm_s: vibPeak,
+          vib_fdom_hz: lr.vib_fdom_hz != null ? lr.vib_fdom_hz : null,
+          vbat_mv: (lr.vbat_mv != null) ? lr.vbat_mv : (aggs.min_battery != null ? aggs.min_battery : null),
+          fissure_mm: lr.fissure_mm != null ? lr.fissure_mm : null,
+          moisture_pct: lr.moisture_pct != null ? lr.moisture_pct : null,
+          ext_delta_mm: (lr.ext_delta_10um != null) ? (lr.ext_delta_10um * 0.01) : (lr.ext_delta_mm != null ? lr.ext_delta_mm : null),
+          pore_pressure_kpa: lr.pore_pressure_kpa != null ? lr.pore_pressure_kpa : null,
+          borehole_tilt_d1_urad: lr.borehole_tilt_d1 != null ? lr.borehole_tilt_d1 : null,
+          borehole_tilt_d2_urad: lr.borehole_tilt_d2 != null ? lr.borehole_tilt_d2 : null,
+          borehole_tilt_d3_urad: lr.borehole_tilt_d3 != null ? lr.borehole_tilt_d3 : null,
+          borehole_tilt_d4_urad: lr.borehole_tilt_d4 != null ? lr.borehole_tilt_d4 : null,
+          gps_dx_mm: lr.gps_dx_mm != null ? lr.gps_dx_mm : null,
+          gps_dy_mm: lr.gps_dy_mm != null ? lr.gps_dy_mm : null,
+          gps_dz_mm: lr.gps_dz_mm != null ? lr.gps_dz_mm : null,
           state: status,
-          flags: 0
+          node_state: status.toUpperCase(),
+          flags: lr.crack_flags || 0
         };
 
         handleTelemetry(telemetryRow);
@@ -302,7 +374,7 @@ var liveProvider = (function () {
   }
 
   function handleTelemetry(data) {
-    if (!window.__SIM_PLAYING__) return;
+    if (!data) return;
 
     // MQTT telemetry frames carry `t_utc` (the *simulated* wall clock, which
     // races ahead of real time) but no `t_epoch_s` - the field the charts and
@@ -371,6 +443,10 @@ var liveProvider = (function () {
     if (simPollTimer) {
       clearInterval(simPollTimer);
       simPollTimer = null;
+    }
+    if (readingsPollTimer) {
+      clearInterval(readingsPollTimer);
+      readingsPollTimer = null;
     }
     Object.keys(heartbeatTimers).forEach(function (id) {
       clearTimeout(heartbeatTimers[id]);
