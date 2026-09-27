@@ -399,11 +399,17 @@
   letter-spacing: 0.05em;
 }
 
-/* Greyed look for live tabs when simulation is STOPPED or PAUSED */
-body.sim-paused #tab-map,
+/* Greyed look for live tabs when simulation is STOPPED or PAUSED.
+   #tab-map is excluded here: the basemap/marker panes below are greyed
+   individually so the heatmap overlay and its legend keep their colour. */
 body.sim-paused #tab-sim,
 body.sim-paused #tab-nodes,
 body.sim-paused #tab-alarms {
+  filter: grayscale(1);
+}
+
+body.sim-paused #tab-map .leaflet-tile-pane,
+body.sim-paused #tab-map .leaflet-marker-pane {
   filter: grayscale(1);
 }
 

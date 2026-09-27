@@ -330,31 +330,61 @@
                       <!-- Top-Right Basemap Switcher & 3D Area Selection -->
                       <div id="map-hud-controls" class="map-hud-controls">
                         <div class="map-btn-group">
-                          <button class="hud-btn active" id="btn-basemap-sat" title="High-Resolution Aerial Orthophoto">AERIAL</button>
-                          <button class="hud-btn" id="btn-basemap-topo" title="Topographic contours — read the surface relief under the panel">TOPO</button>
+                          <button class="hud-btn active" id="btn-basemap-sat" data-tip="Satellite photo basemap — see the real ground, pits and roads.">AERIAL</button>
+                          <button class="hud-btn" id="btn-basemap-topo" data-tip="Contour basemap — read slope and relief of the surface.">TOPO</button>
                         </div>
                         <div class="map-btn-group">
-                          <button class="hud-btn tool-btn" id="btn-cursor-mode" title="3D Area Selection Tool (ON: Click & drag to select 3D area, OFF: Navigate 2D map)">
+                          <button class="hud-btn tool-btn" id="btn-cursor-mode" data-tip="Drag a box on the map to open that area in 3D. Click again to go back to panning.">
                             <span class="hud-btn-label">3D</span>
                           </button>
 
                         </div>
                         <!-- Grid controls (toggleable 8x8 sector grid and labels) -->
                         <div class="map-btn-group" id="grid-controls-group">
-                          <button class="hud-btn" id="btn-grid-toggle" title="Show or hide the 8x8 sector grid">GRID</button>
-                          <button class="hud-btn" id="btn-grid-labels" title="Show or hide the sector labels (A1..H8)">LABELS</button>
-                          <button class="hud-btn" id="btn-grid-surface" title="Shade each sector by its subsidence surface value, independent of the grid line colour">SURFACE</button>
+                          <button class="hud-btn" id="btn-grid-toggle" data-tip="Show the 8x8 sector grid used to name areas (A1..H8).">GRID</button>
+                          <button class="hud-btn" id="btn-grid-labels" data-tip="Show sector names on the grid.">LABELS</button>
+                          <button class="hud-btn" id="btn-grid-surface" data-tip="Tint each sector by how much it has sunk — green stable, amber subsiding, red trough.">SURFACE</button>
                         </div>
-                        <!-- Heatmap mode selector -->
-                        <div class="map-btn-group" id="heatmap-controls-group">
-                          <button class="hud-btn heatmap-mode-btn active" data-mode="none">OFF</button>
-                          <button class="hud-btn heatmap-mode-btn" data-mode="depth">DEPTH</button>
-                          <button class="hud-btn heatmap-mode-btn" data-mode="tilt">TILT</button>
-                          <button class="hud-btn heatmap-mode-btn" data-mode="strain">STRAIN</button>
-                          <button class="hud-btn heatmap-mode-btn" data-mode="curvature">CURV</button>
-                          <button class="hud-btn heatmap-mode-btn" data-mode="ppv">PPV</button>
-                          <button class="hud-btn heatmap-mode-btn" data-mode="rssi">RSSI</button>
-                          <button class="hud-btn heatmap-mode-btn" data-mode="risk">RISK</button>
+                        <!-- Heatmap mode selector: single dropdown trigger + menu (was 8 separate buttons,
+                             which pushed AERIAL under the Leaflet zoom control at narrow widths) -->
+                        <div class="map-btn-group heatmap-btn-group" id="heatmap-controls-group">
+                          <button class="hud-btn heatmap-trigger" id="heatmap-trigger" data-tip="Colour the ground by one measured quantity. Pick which from the list.">
+                            <span id="heatmap-trigger-label">HEATMAP: OFF</span> <span class="heatmap-trigger-caret">&#9662;</span>
+                          </button>
+                          <div class="heatmap-dropdown-menu" id="heatmap-dropdown-menu">
+                            <div class="heatmap-dropdown-item heatmap-mode-btn active" data-mode="none" data-tip="No heatmap.">
+                              <span class="heatmap-item-name">OFF</span>
+                              <span class="heatmap-item-desc">No heatmap</span>
+                            </div>
+                            <div class="heatmap-dropdown-item heatmap-mode-btn" data-mode="depth" data-tip="How far the ground has sunk (m). Deeper = more collapse risk.">
+                              <span class="heatmap-item-name">DEPTH</span>
+                              <span class="heatmap-item-desc">Ground sink depth (m)</span>
+                            </div>
+                            <div class="heatmap-dropdown-item heatmap-mode-btn" data-mode="tilt" data-tip="How steeply the ground is tilting (mm per m). Tilt shows the edge of a sinking zone.">
+                              <span class="heatmap-item-name">TILT</span>
+                              <span class="heatmap-item-desc">Ground tilt (mm/m)</span>
+                            </div>
+                            <div class="heatmap-dropdown-item heatmap-mode-btn" data-mode="strain" data-tip="How much the ground is being stretched (mm per m). High strain cracks surfaces and structures.">
+                              <span class="heatmap-item-name">STRAIN</span>
+                              <span class="heatmap-item-desc">Ground stretch (mm/m)</span>
+                            </div>
+                            <div class="heatmap-dropdown-item heatmap-mode-btn" data-mode="curvature" data-tip="How sharply the surface bends. Sharp bends crack buildings and roads.">
+                              <span class="heatmap-item-name">CURVATURE</span>
+                              <span class="heatmap-item-desc">Surface bend sharpness</span>
+                            </div>
+                            <div class="heatmap-dropdown-item heatmap-mode-btn" data-mode="ppv" data-tip="Ground shaking speed from blasts or collapse (mm/s). Above ~10 mm/s can damage structures.">
+                              <span class="heatmap-item-name">PPV</span>
+                              <span class="heatmap-item-desc">Blast / collapse shake speed</span>
+                            </div>
+                            <div class="heatmap-dropdown-item heatmap-mode-btn" data-mode="rssi" data-tip="Radio signal strength to the gateway (dBm). Red = node may drop off the network.">
+                              <span class="heatmap-item-name">RSSI</span>
+                              <span class="heatmap-item-desc">Radio signal strength (dBm)</span>
+                            </div>
+                            <div class="heatmap-dropdown-item heatmap-mode-btn" data-mode="risk" data-tip="Combined score from tilt, strain and depth (0–1). Red = act first here.">
+                              <span class="heatmap-item-name">RISK</span>
+                              <span class="heatmap-item-desc">Combined risk score (0-1)</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -1846,6 +1876,7 @@
   <script src="js/map/send-to-sim.js"></script>
   <script src="js/map/sim-select.js"></script>
   <script src="js/map/heatmap-overlay.js"></script>
+  <script src="js/map/hud-tooltips.js"></script>
   <script src="js/map/confidence-badge.js"></script>
   <script src="js/map/lastgasp-marker.js"></script>
   <script src="js/map/ring-fallback.js"></script>

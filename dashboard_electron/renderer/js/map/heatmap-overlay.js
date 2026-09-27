@@ -53,6 +53,14 @@ var heatmapOverlay = (function () {
   var HEATMAP_MAX_CURVATURE = 0.005; // Curvature ceiling (1/m)
   var HEATMAP_MAX_PPV = 25.0;        // PPV vibration ceiling (mm/s)
 
+  // Log-scale floors: below these, a channel reads as 0. Real telemetry sits close
+  // to these floors, so a log map (see logChannel()) is what makes it visible at all.
+  var HEATMAP_MIN_DEPTH = 0.001;      // 1 mm
+  var HEATMAP_MIN_TILT = 0.05;        // mm/m
+  var HEATMAP_MIN_STRAIN = 0.01;      // mm/m
+  var HEATMAP_MIN_CURVATURE = 1e-6;   // 1/m
+  var HEATMAP_MIN_PPV = 0.05;         // mm/s
+
   // Wave vibration parameters
   var WAVE_SPEED_MPS = 1800.0;
   var DAMPING_ZETA = 0.08;
@@ -61,44 +69,47 @@ var heatmapOverlay = (function () {
   // ---- Luminous Modern Geospatial Colour Ramps ----
   // High-contrast cyber-geotechnical palettes designed for instant visibility against aerial satellite terrain
 
+  // High-contrast ramps: bright cyan/lime at the low end (reads on both colour and
+  // grey aerial imagery — dark blue/purple disappears on dark terrain) through
+  // yellow/orange to red at the top of the log scale.
   var DEPTH_STOPS = [
-    [0.00, '#06b6d4'], // electric cyan (subtle depression: ~0.2m, distinct from green grass)
-    [0.25, '#3b82f6'], // vibrant royal blue (~0.6m)
-    [0.50, '#8b5cf6'], // rich purple (~1.25m)
-    [0.75, '#d946ef'], // bright magenta (~1.9m)
-    [1.00, '#ff0055']  // electric neon rose (deep trough: >= 2.5m)
+    [0.00, '#22d3ee'], // cyan
+    [0.25, '#a3e635'], // lime
+    [0.50, '#facc15'], // yellow
+    [0.75, '#f97316'], // orange
+    [1.00, '#ef4444']  // red
   ];
 
   var TILT_STOPS = [
-    [0.00, '#00e5ff'], // luminous cyan (subtle tilt)
-    [0.25, '#10b981'], // emerald green
-    [0.50, '#facc15'], // warm amber / gold (moderate tilt)
-    [0.75, '#fb923c'], // electric orange (elevated hazard)
-    [1.00, '#ef4444']  // critical ruby red (severe slope / active inflection)
+    [0.00, '#2dd4bf'], // teal-cyan
+    [0.25, '#a3e635'], // lime
+    [0.50, '#fde047'], // yellow
+    [0.75, '#fb923c'], // orange
+    [1.00, '#dc2626']  // red
   ];
 
   var STRAIN_STOPS = [
-    [0.00, '#38bdf8'], // sky blue
-    [0.25, '#6366f1'], // indigo
-    [0.50, '#a855f7'], // electric violet
-    [0.75, '#ec4899'], // neon magenta
-    [1.00, '#f43f5e']  // coral red
+    [0.00, '#38bdf8'], // sky cyan
+    [0.25, '#84cc16'], // lime green
+    [0.50, '#facc15'], // yellow
+    [0.75, '#f97316'], // orange
+    [1.00, '#e11d48']  // rose red
   ];
 
   var CURVATURE_STOPS = [
-    [0.00, '#06b6d4'], // cyan (convex)
-    [0.35, '#3b82f6'], // royal blue
-    [0.60, '#a855f7'], // purple
-    [0.80, '#f43f5e'], // magenta red (concave)
-    [1.00, '#fbbf24']  // amber peak
+    [0.00, '#06b6d4'], // cyan
+    [0.25, '#a3e635'], // lime
+    [0.50, '#fbbf24'], // amber
+    [0.75, '#fb7185'], // coral
+    [1.00, '#ef4444']  // red
   ];
 
   var PPV_STOPS = [
-    [0.00, '#38bdf8'], // electric sky blue
-    [0.25, '#818cf8'], // periwinkle
-    [0.50, '#f472b6'], // neon magenta
+    [0.00, '#22d3ee'], // cyan
+    [0.25, '#a3e635'], // lime
+    [0.50, '#facc15'], // yellow
     [0.75, '#fb7185'], // coral
-    [1.00, '#ef4444']  // vivid red
+    [1.00, '#ef4444']  // red
   ];
 
   var RSSI_STOPS = [
@@ -126,14 +137,63 @@ var heatmapOverlay = (function () {
     risk: RISK_STOPS
   };
 
+  // Log-scale legends: each tick is a real value placed at its true log position
+  // (see tickPositionPct()), not evenly spaced — matches channelValue()'s log map.
   var LEGEND_CONFIG = {
-    depth:     { label: 'DEPTH',          ticks: ['0', '0.6', '1.25', '1.9', '2.5 m'],         note: 'Ground subsidence depth, m.' },
-    tilt:      { label: 'TILT',           ticks: ['0', '8.75', '17.5', '26.25', '35 mm/m'],    note: 'Ground tilt, mm per m.' },
-    strain:    { label: 'TENSILE STRAIN', ticks: ['0', '6.0', '12.0', '18.0', '24.0 mm/m'],     note: 'Horizontal tensile strain, mm per m.' },
-    curvature: { label: 'CURVATURE',      ticks: ['0', '0.001', '0.003', '0.005 1/m'],         note: 'Surface curvature magnitude. Cyan=convex, magenta=concave.' },
-    ppv:       { label: 'PPV',            ticks: ['0', '6.25', '12.5', '18.75', '25 mm/s'],    note: 'Peak particle velocity from ground vibration.' },
-    rssi:      { label: 'RSSI',           ticks: ['-120', '-90', '-60', '-30 dBm'],             note: 'Received signal strength. Red=weak, cyan=strong.' },
-    risk:      { label: 'RISK INDEX',     ticks: ['0.0', '0.25', '0.50', '0.75', '1.0'],       note: 'Composite risk: 35% tilt + 35% strain + 30% depth.' }
+    depth: {
+      label: 'DEPTH', log: true, min: HEATMAP_MIN_DEPTH, max: HEATMAP_MAX_DEPTH,
+      ticks: [
+        { v: 0.001, label: '1 mm' },
+        { v: 0.01, label: '1 cm' },
+        { v: 0.1, label: '10 cm' },
+        { v: 1.0, label: '1 m' },
+        { v: 2.5, label: '2.5 m' }
+      ],
+      note: 'Ground subsidence depth, m — log scale.'
+    },
+    tilt: {
+      label: 'TILT', log: true, min: HEATMAP_MIN_TILT, max: HEATMAP_MAX_TILT,
+      ticks: [
+        { v: 0.05, label: '0.05' },
+        { v: 0.5, label: '0.5' },
+        { v: 5, label: '5' },
+        { v: 35, label: '35 mm/m' }
+      ],
+      note: 'Ground tilt, mm per m — log scale.'
+    },
+    strain: {
+      label: 'TENSILE STRAIN', log: true, min: HEATMAP_MIN_STRAIN, max: HEATMAP_MAX_STRAIN,
+      ticks: [
+        { v: 0.01, label: '0.01' },
+        { v: 0.1, label: '0.1' },
+        { v: 1.0, label: '1.0' },
+        { v: 24.0, label: '24.0 mm/m' }
+      ],
+      note: 'Horizontal tensile strain, mm per m — log scale.'
+    },
+    curvature: {
+      label: 'CURVATURE', log: true, min: HEATMAP_MIN_CURVATURE, max: HEATMAP_MAX_CURVATURE,
+      ticks: [
+        { v: 1e-6, label: '1e-6' },
+        { v: 1e-5, label: '1e-5' },
+        { v: 1e-4, label: '1e-4' },
+        { v: 1e-3, label: '1e-3' },
+        { v: 0.005, label: '0.005 1/m' }
+      ],
+      note: 'Surface curvature magnitude — log scale.'
+    },
+    ppv: {
+      label: 'PPV', log: true, min: HEATMAP_MIN_PPV, max: HEATMAP_MAX_PPV,
+      ticks: [
+        { v: 0.05, label: '0.05' },
+        { v: 0.5, label: '0.5' },
+        { v: 5, label: '5' },
+        { v: 25, label: '25 mm/s' }
+      ],
+      note: 'Peak particle velocity from ground vibration — log scale.'
+    },
+    rssi: { label: 'RSSI',       log: false, ticks: ['-120', '-90', '-60', '-30 dBm'], note: 'Received signal strength. Red=weak, cyan=strong.' },
+    risk: { label: 'RISK INDEX', log: false, ticks: ['0.0', '0.25', '0.50', '0.75', '1.0'], note: 'Composite risk: 35% tilt + 35% strain + 30% depth.' }
   };
 
   function timeFactor(dtSeconds, inter) {
@@ -181,8 +241,9 @@ var heatmapOverlay = (function () {
 
           var riskVal = isCritical ? 0.95 : (n.state === 'warning' ? 0.65 : 0.0);
 
-          // Only nodes that exhibit elevated readings or alarm status radiate an anomaly
-          if (tiltVal > 3.0 || strainVal > 0.30 || vibVal > 1.8 || nodeDepthM > 0.12 || isAlarmed) {
+          // Any non-zero reading radiates an anomaly — real telemetry is centimetre/mm
+          // scale, so the old thresholds (tilt>3, strain>0.30, ...) never fired.
+          if (tiltVal > 0.05 || strainVal > 0.005 || vibVal > 0.05 || nodeDepthM > 0.0005 || isAlarmed) {
             var sigma = isCritical ? 34.0 : (isAlarmed ? 26.0 : 20.0);
             list.push({
               x: nxy[0],
@@ -362,18 +423,28 @@ var heatmapOverlay = (function () {
 
   // ---- Channel Mappers: Physical State -> Normalised [0, 1] ----
 
+  // Log-scale map: v <= minV reads as 0 (nothing below the floor is drawn), v >= maxV
+  // saturates at 1. Physical channels (depth, tilt, strain, curvature, ppv) live across
+  // several orders of magnitude in real telemetry, so a linear map against a large
+  // ceiling left everything below ~5% transparent; log spreads the visible range out.
+  function logChannel(v, minV, maxV) {
+    if (!(v > minV)) return 0;
+    var t = Math.log(v / minV) / Math.log(maxV / minV);
+    return Math.max(0.0, Math.min(1.0, t));
+  }
+
   function channelValue(mode, pt) {
     switch (mode) {
       case 'depth':
-        return pt.dropDistanceM / HEATMAP_MAX_DEPTH;
+        return logChannel(pt.dropDistanceM, HEATMAP_MIN_DEPTH, HEATMAP_MAX_DEPTH);
       case 'tilt':
-        return pt.tiltMmPerM / HEATMAP_MAX_TILT;
+        return logChannel(pt.tiltMmPerM, HEATMAP_MIN_TILT, HEATMAP_MAX_TILT);
       case 'strain':
-        return pt.tensileStrainMmPerM / HEATMAP_MAX_STRAIN;
+        return logChannel(pt.tensileStrainMmPerM, HEATMAP_MIN_STRAIN, HEATMAP_MAX_STRAIN);
       case 'curvature':
-        return Math.abs(pt.curvaturePerM) / HEATMAP_MAX_CURVATURE;
+        return logChannel(Math.abs(pt.curvaturePerM), HEATMAP_MIN_CURVATURE, HEATMAP_MAX_CURVATURE);
       case 'ppv':
-        return Math.abs(pt.vibrationDisplacementM) * 1000.0 * 2.0 * Math.PI / HEATMAP_MAX_PPV;
+        return logChannel(Math.abs(pt.vibrationDisplacementM) * 1000.0 * 2.0 * Math.PI, HEATMAP_MIN_PPV, HEATMAP_MAX_PPV);
       case 'rssi':
         var d = Math.hypot(pt._x || 0, pt._y || 0);
         return Math.max(0, 1.0 - d / HALF_M);
@@ -410,17 +481,18 @@ var heatmapOverlay = (function () {
         var idx = (row * RES + col) * 4;
 
         // Background transparency threshold: clean satellite imagery underneath
-        if (t < 0.04) {
+        if (t < 0.01) {
           data[idx] = 0;
           data[idx + 1] = 0;
           data[idx + 2] = 0;
           data[idx + 3] = 0;
         } else {
           var rgb = sampleRamp255(t, stops);
-          var normT = (t - 0.04) / 0.96;
+          var normT = (t - 0.01) / 0.99;
 
-          // Calibrated bold & clear alpha (30% to 85% opacity) ensuring immediate high-contrast visibility
-          var alpha = Math.min(215, Math.round(75 + 140 * Math.pow(normT, 0.85)));
+          // Alpha floor raised so the faintest visible cell (just above the cutoff)
+          // is still clearly visible over aerial imagery, not a near-invisible sliver.
+          var alpha = Math.min(230, Math.round(120 + 110 * Math.pow(normT, 0.7)));
 
           // Perimeter vignette: feather smoothly to 0 at canvas boundaries to eliminate flat cut lines
           var edgeDist = Math.min(HALF_M - Math.abs(x), HALF_M - Math.abs(y));
@@ -565,8 +637,18 @@ var heatmapOverlay = (function () {
 
     var ticksHtml = '';
     for (var j = 0; j < cfg.ticks.length; j++) {
-      var pct = (j / (cfg.ticks.length - 1)) * 100;
-      ticksHtml += '<span class="heatmap-legend-tick" style="left:' + pct + '%">' + cfg.ticks[j] + '</span>';
+      var tick = cfg.ticks[j];
+      var pct, label;
+      if (cfg.log) {
+        // Position each tick at its true log location so it lines up with the
+        // colour it actually maps to in channelValue(), not an even 1/N spacing.
+        pct = logChannel(tick.v, cfg.min, cfg.max) * 100;
+        label = tick.label;
+      } else {
+        pct = (j / (cfg.ticks.length - 1)) * 100;
+        label = tick;
+      }
+      ticksHtml += '<span class="heatmap-legend-tick" style="left:' + pct + '%">' + label + '</span>';
     }
 
     legendEl.innerHTML =
@@ -611,23 +693,51 @@ var heatmapOverlay = (function () {
         btn.classList.remove('active');
       }
     }
+
+    // Dropdown trigger reflects the active mode: label text + accent when != none.
+    var trigger = document.getElementById('heatmap-trigger');
+    var triggerLabel = document.getElementById('heatmap-trigger-label');
+    if (trigger && triggerLabel) {
+      triggerLabel.textContent = 'HEATMAP: ' + (currentMode === 'none' ? 'OFF' : currentMode.toUpperCase());
+      if (currentMode === 'none') {
+        trigger.classList.remove('active');
+      } else {
+        trigger.classList.add('active');
+      }
+    }
   }
 
   function setupToggleUI() {
     var container = document.getElementById('heatmap-controls-group');
-    if (!container) return;
+    var trigger = document.getElementById('heatmap-trigger');
+    var menu = document.getElementById('heatmap-dropdown-menu');
+    if (!container || !trigger || !menu) return;
 
-    var btns = container.querySelectorAll('.heatmap-mode-btn');
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].addEventListener('click', function () {
-        var mode = this.dataset.mode;
-        if (mode === currentMode) {
-          setMode('none');
-        } else {
-          setMode(mode);
-        }
+    function closeMenu() {
+      menu.classList.remove('open');
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      menu.classList.toggle('open');
+    });
+
+    var items = menu.querySelectorAll('.heatmap-mode-btn');
+    for (var i = 0; i < items.length; i++) {
+      items[i].addEventListener('click', function () {
+        // An explicit "Off" item now exists, so clicking the already-active
+        // mode just closes the menu instead of toggling the heatmap off.
+        setMode(this.dataset.mode);
+        closeMenu();
       });
     }
+
+    document.addEventListener('click', function (e) {
+      if (!container.contains(e.target)) closeMenu();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMenu();
+    });
   }
 
   // ---- Bus Integration & Intervention Management ----

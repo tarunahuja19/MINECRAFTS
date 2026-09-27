@@ -1197,7 +1197,12 @@ html, body {
   z-index: 1000;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+  /* Leaves room for the Leaflet zoom +/- control at the left so this row
+     never slides under it, even in narrow split-view panes. */
+  max-width: calc(100% - 70px);
   pointer-events: auto;
 }
 
@@ -1235,6 +1240,80 @@ html, body {
   background: #00E676;
   color: #061A12;
   border-color: #00E676;
+}
+
+/* Heatmap mode dropdown: single trigger button + menu, replacing the 8-button
+   row that used to push AERIAL under the Leaflet zoom control. */
+.heatmap-btn-group {
+  position: relative;
+}
+
+.heatmap-trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.heatmap-trigger-caret {
+  font-size: 8px;
+  opacity: 0.8;
+}
+
+.heatmap-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1001;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(10, 18, 24, 0.96);
+  border: 1px solid #1E333C;
+  border-radius: 3px;
+  padding: 4px;
+  min-width: 210px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+}
+
+.heatmap-dropdown-menu.open {
+  display: flex;
+}
+
+.heatmap-dropdown-item {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: 'Courier New', Courier, monospace;
+  transition: background 0.15s ease;
+}
+
+.heatmap-dropdown-item:hover {
+  background: #1C303B;
+}
+
+.heatmap-dropdown-item.active {
+  background: #00E676;
+}
+
+.heatmap-item-name {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  color: #C5D6DC;
+}
+
+.heatmap-item-desc {
+  font-size: 9px;
+  color: #5A7080;
+  margin-top: 1px;
+}
+
+.heatmap-dropdown-item.active .heatmap-item-name,
+.heatmap-dropdown-item.active .heatmap-item-desc {
+  color: #061A12;
 }
 
 /* Leaflet Scale Bar Styling */
@@ -2413,6 +2492,24 @@ html, body {
   color: #5A7080;
   margin-top: 4px;
   line-height: 1.3;
+}
+
+/* Shared custom tooltip for HUD controls (js/map/hud-tooltips.js). Positioned
+   in JS via top/left against #map-container, which is this element's parent. */
+.hud-tooltip {
+  position: absolute;
+  z-index: 1200;
+  max-width: 220px;
+  background: #14222A;
+  border: 1px solid #233842;
+  border-radius: 3px;
+  padding: 5px 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #C5D6DC;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
 }
 
 /* ==========================================================================
