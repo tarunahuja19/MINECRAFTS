@@ -660,6 +660,14 @@ class SimulationSession:
 
         return payload
 
+    @property
+    def script_done(self) -> bool:
+        """True once a loaded script's clock has reached its duration."""
+        return (
+            self.script is not None
+            and self.t_sim_seconds >= self.script.duration_days * 86400.0
+        )
+
     def _log_node_alarms(self, alarms: list[dict[str, Any]], iso_ts: str) -> None:
         """One events.csv row per node alarm, so a run's alarms live beside its telemetry."""
         if not alarms or not self._events_file:

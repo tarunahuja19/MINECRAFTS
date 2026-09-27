@@ -19,6 +19,7 @@
     "verify": "node scripts/verify_data_loop.js",
     "qa": "node scripts/qa.js",
     "db:reset": "bash scripts/reset_demo_state.sh",
+    "demo:scripted": "node scripts/run_scripted_demo.js",
     "checklist:audit": "bash scripts/audit_demo_readiness.sh",
     "stress:1000": "simulation/.venv/bin/python simulation/scripts/run_1000_stress_trials.py 2>/dev/null || python3 simulation/scripts/run_1000_stress_trials.py",
     "stress:geo": "simulation/.venv/bin/python simulation/scripts/deep_geomechanics_chaos.py 2>/dev/null || python3 simulation/scripts/deep_geomechanics_chaos.py",

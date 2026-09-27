@@ -115,6 +115,13 @@ async def simulation_loop():
                     for dead in dead_clients:
                         _connected_clients.discard(dead)
 
+                # A scripted run ends at its duration: stop, so the files close and
+                # every client sees STOPPED instead of a year-and-a-day of drift.
+                if session.script_done:
+                    session.stop()
+                    await broadcast_simulation_status(session)
+                    print(f"[SERVER] script {session.script.name!r} complete at day {session.t_sim_seconds / 86400.0:.1f}")
+
                 # If a 60-sim-second packet was finalized: save to DB and notify clients (§Phase 5)
                 if payload.get("packet_available") and session.last_finalized_packet:
                     pkt = session.last_finalized_packet
@@ -232,6 +239,15 @@ async def health():
         "speed_multiplier": session.speed_multiplier,
         "is_running": session.is_running,
         "is_paused": session.is_paused,
+        "script": (
+            {
+                "name": session.script.name,
+                "duration_days": session.script.duration_days,
+                "done": session.script_done,
+            }
+            if session.script is not None
+            else None
+        ),
     }
 
 
@@ -673,8 +689,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     # multiplier used to slam the session to 2000x and
                     # reintroduce the runaway telemetry rate the default
                     # exists to prevent.
-                    mult = float(data.get("multiplier", DEFAULT_SPEED_MULTIPLIER))
-                    session.set_speed(mult)
+                    #
+                    # A loaded script owns the clock speed. The 3D client sends
+                    # its fixed 10x on every connect, and would otherwise throttle
+                    # a scripted year to a crawl the moment a dashboard attaches.
+                    # `POST /control` (the demo runner's route) is not affected.
+                    if session.script is None:
+                        mult = float(data.get("multiplier", DEFAULT_SPEED_MULTIPLIER))
+                        session.set_speed(mult)
                     await broadcast_simulation_status(session)
                 elif action in ("collapse", "apply_collapse"):
                     cx = float(data.get("cx", 0.0))

@@ -200,3 +200,47 @@ def test_interventions_and_forge_seed_show_events_not_pieces(live, monkeypatch):
         "/forge/frame", json={"day": 130.0, "events": seeded["events"]}
     )
     assert frame.status_code == 200
+
+
+def test_script_done_once_the_clock_reaches_the_duration(tmp_path):
+    raw = json.loads((SCENARIO_DIR / "default_demo.json").read_text())
+    raw.update(name="one_day", duration_days=1, tick_seconds=43200, events=[])
+    script = parse_script(raw)
+    s = SimulationSession(SessionConfig(out_dir=tmp_path, save_packet_json=False))
+    s.mqtt_bridge.enabled = False
+    assert not s.script_done
+    s.load_script(script)
+    s.start()
+    s.tick()
+    assert not s.script_done
+    s.tick()
+    assert s.script_done and script.n_ticks == 2
+    s.stop()
+    assert s.script_done  # still true after stop: /health reports it
+
+
+def test_ws_set_speed_is_ignored_while_a_script_is_loaded(live):
+    """The 3D client sends its fixed 10x on every connect; a script's speed must survive it."""
+    client, session = live
+    body = client.post("/script/run", json={"name": "default_demo"}).json()
+    with client.websocket_connect("/ws") as ws:
+        assert ws.receive_json()["type"] == "init"
+        ws.send_json({"action": "set_speed", "multiplier": 10})
+        ws.send_json({"action": "set_speed", "multiplier": 10})
+        # a round trip after the two set_speed frames proves they were processed
+        ws.send_json({"action": "nonsense"})
+        while ws.receive_json().get("type") != "error":
+            pass
+    assert session.speed_multiplier == pytest.approx(body["speed"])
+    # HTTP /control, the demo runner's route, still sets it
+    assert client.post("/control", json={"action": "set_speed", "multiplier": 5000}).status_code == 200
+    assert session.speed_multiplier == 5000
+    # and without a script the WS still steers the clock
+    session.reset()
+    with client.websocket_connect("/ws") as ws:
+        ws.receive_json()
+        ws.send_json({"action": "set_speed", "multiplier": 25})
+        ws.send_json({"action": "nonsense"})
+        while ws.receive_json().get("type") != "error":
+            pass
+    assert session.speed_multiplier == 25
