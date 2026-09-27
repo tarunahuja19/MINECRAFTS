@@ -166,7 +166,12 @@ class SessionConfig:
     noise_config: SensorNoiseConfig = field(default_factory=SensorNoiseConfig)
     scenario_name: str = "adriyala_sandbox"
     seed: int = 42
-    save_packet_json: bool = True
+    # Off by default: a live run writes one JSON file per 60s packet, and left
+    # running that filled simulation/out/simulation_packets/ to 17 GB / ~341k
+    # files. Set SIH_SAVE_PACKETS=1 to get the debug dump back.
+    save_packet_json: bool = field(
+        default_factory=lambda: os.environ.get("SIH_SAVE_PACKETS") == "1"
+    )
     # A zone going CRITICAL drops the run to COLLAPSE_SNAP_SPEED_MULTIPLIER
     # (§2.1). A scripted run turns this off: its speed is the operator's.
     auto_snap_speed: bool = True

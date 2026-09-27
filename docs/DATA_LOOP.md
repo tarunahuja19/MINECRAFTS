@@ -269,4 +269,12 @@ The launcher ran `uvicorn` with block-buffered stdout, so `[POSTGRES WRITE]` /
 - **`npm run verify`** re-runs the proof any time against a running stack.
 - **Remote Postgres:** `ensure_postgres.sh` will not try to start a non-local
   host; bring that database up yourself.
+- **Packet JSON dump is off by default.** `session.py`'s `debug_writer` used to
+  write one JSON file per 60s packet into `simulation/out/simulation_packets/`
+  on every run; left running that grew to 17 GB / ~341k files. It is now gated
+  by `SessionConfig.save_packet_json`, which defaults to `False` unless the
+  environment variable `SIH_SAVE_PACKETS=1` is set before starting the sim.
+  The existing 17 GB folder was **not** deleted by this change — remove it by
+  hand (`rm -rf simulation/out/simulation_packets`) once you've confirmed you
+  don't need those files.
 ```
