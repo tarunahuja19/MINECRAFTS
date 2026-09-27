@@ -324,19 +324,45 @@ async def forge_seed():
                 seeded.add(str(owner))
                 events.append({**script_events[str(owner)], "source": "live"})
             continue
-        events.append(
-            {
-                "type": "cave_in",
-                "x": float(pf["cx"]),
-                "y": float(pf["cy"]),
-                "radius_m": float(pf["radius_m"]),
-                "depth_m": float(pf["magnitude_m"]),
-                "day": float(pf["t_init_days"]),
-                "duration_h": round(float(pf["duration_days"]) * 24.0, 4),
-                "warning_hours": round(
-                    (float(pf["t_collapse_days"]) - float(pf["t_init_days"])) * 24.0, 4
-                ),
-                "source": "live",
-            }
+        warning_hours = round(
+            (float(pf["t_collapse_days"]) - float(pf["t_init_days"])) * 24.0, 4
         )
+        if pf.get("ring", True):
+            # A cave-in, or one link of a crack chain fired outside a script
+            # (today, :8000/control has no crack action, so this is always a
+            # genuine cave-in).
+            events.append(
+                {
+                    "type": "cave_in",
+                    "x": float(pf["cx"]),
+                    "y": float(pf["cy"]),
+                    "radius_m": float(pf["radius_m"]),
+                    "depth_m": float(pf["magnitude_m"]),
+                    "day": float(pf["t_init_days"]),
+                    "duration_h": round(float(pf["duration_days"]) * 24.0, 4),
+                    "warning_hours": warning_hours,
+                    "source": "live",
+                }
+            )
+        else:
+            # A tilt bowl (ring=False). Its own centre sits one radius off the
+            # true target along a bearing the failure itself does not carry,
+            # so the centre is read back as the target and the bearing as due
+            # north (0 deg) — the rate and radius are exact, the direction is
+            # only a best effort.
+            events.append(
+                {
+                    "type": "tilt",
+                    "x": float(pf["cx"]),
+                    "y": float(pf["cy"]),
+                    "radius_m": float(pf["radius_m"]),
+                    "rate_mm_per_m": event_maths.tilt_rate_mm_per_m(
+                        float(pf["radius_m"]), float(pf["magnitude_m"])
+                    ),
+                    "direction_deg": 0.0,
+                    "over_days": float(pf["duration_days"]),
+                    "day": float(pf["t_init_days"]),
+                    "source": "live",
+                }
+            )
     return {"day": day, "events": events}

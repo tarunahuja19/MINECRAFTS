@@ -272,6 +272,7 @@ async def get_interventions():
             "t_collapse_days": pf.t_collapse_days,
             "duration_days": pf.duration_days,
             "magnitude_m": pf.magnitude_m,
+            "ring": pf.ring,
             "script_event": owner.get(id(pf)),
         }
         for pf in session.pillar_failures

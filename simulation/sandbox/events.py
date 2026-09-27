@@ -81,6 +81,14 @@ def _tilt_per_metre_of_depth(radius_m: float) -> float:
     return float(math.hypot(d["delta_tilt_x"][0, 0], d["delta_tilt_y"][0, 0]))
 
 
+def tilt_rate_mm_per_m(radius_m: float, depth_m: float) -> float:
+    """The settled tilt (mm/m) a tilt bowl of this radius and depth delivers
+    at its target, one radius from its centre — the inverse of the depth
+    solved in ``to_failures``'s ``tilt`` branch. Used to describe a tilt
+    ``PillarFailure`` read back with only its radius and magnitude known."""
+    return depth_m * _tilt_per_metre_of_depth(radius_m) * 1000.0
+
+
 def _crack_points(length_m: float, width_m: float) -> np.ndarray:
     """Positions along a segment of the given length, at most width_m / 2 apart, ends included."""
     n = max(2, int(math.ceil(length_m / (width_m / 2.0))) + 1)

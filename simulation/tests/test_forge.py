@@ -265,6 +265,49 @@ def test_forge_seed_mocked_and_down(client):
         assert "unavailable" in res_down.json()["detail"].lower()
 
 
+def test_forge_seed_labels_a_tilt_bowl_as_tilt_not_cave_in(client):
+    """A live (unscripted) failure with ring=False is a tilt bowl, not a
+    cave-in: /forge/seed must not hardcode "cave_in" for it (FORGE v3 fix)."""
+    from sandbox import events as event_maths
+
+    radius_m, depth_m = 80.0, 0.6
+    mock_live_payload = {
+        "t_sim_seconds": 0.0,
+        "pillar_failures": [
+            {
+                "cx": 40.0,
+                "cy": -20.0,
+                "radius_m": radius_m,
+                "t_init_days": 3.0,
+                "t_collapse_days": 3.0 + 1.0 / 24.0,
+                "duration_days": 5.0,
+                "magnitude_m": depth_m,
+                "ring": False,
+            }
+        ],
+    }
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = json.dumps(mock_live_payload).encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        res = client.get("/forge/seed")
+        assert res.status_code == 200
+        ev = res.json()["events"][0]
+        assert ev["type"] == "tilt"
+        assert ev["x"] == 40.0
+        assert ev["y"] == -20.0
+        assert ev["radius_m"] == radius_m
+        assert ev["over_days"] == 5.0
+        expected_rate = event_maths.tilt_rate_mm_per_m(radius_m, depth_m)
+        assert ev["rate_mm_per_m"] == pytest.approx(expected_rate)
+
+    # Feeding it straight back into /forge/frame must be accepted as a TiltEvent.
+    res_frame = client.post("/forge/frame", json={"day": 3.0, "events": [ev]})
+    assert res_frame.status_code == 200
+
+
 def test_frame_grids_opt_in(client):
     """Default frame has no channels/deltas keys; include_grids=True includes both."""
     # 1. Default (include_grids omitted or False) -> no channels, no deltas
