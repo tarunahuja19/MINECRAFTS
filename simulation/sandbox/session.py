@@ -23,7 +23,7 @@ from typing import Any, Callable, Iterable
 
 import numpy as np
 
-from sandbox import collapse, constants, events as event_maths, gates, ground, layout, segments, surface
+from sandbox import collapse, constants, environment, events as event_maths, gates, ground, layout, segments, surface
 from sandbox.collapse import PillarFailure
 from sandbox.constants import (
     COLLAPSE_SNAP_SPEED_MULTIPLIER,
@@ -273,6 +273,12 @@ class SimulationSession:
         """
         self._ground = ground.resolve(self.config.ground)
         self._install_ch = self._ground.channels(self.X, self.Y, 0.0)
+        # M2 (DATA-365 plan): the seeded environment year that sensors.py's
+        # pore_pressure_kpa/moisture_pct channels read, instead of the old
+        # fake linear-in-S formulas. Built here (not __init__ alone) so a
+        # script's own seed, set after construction, still gets its own
+        # environment rather than the constructor default's.
+        self._environment = environment.build_year(self.config.seed)
 
     def _noise_config(self) -> SensorNoiseConfig:
         """Noise budget with its seed taken from `SessionConfig.seed`.
@@ -452,12 +458,23 @@ class SimulationSession:
         # matters for `district`: its two synthetic neighbour panels have
         # already been mining for 120 days by day 0.
         since_install = {k: total_channels[k] - self._install_ch[k] for k in total_channels}
+        # Clamped, not wrapped: a run past day 365 keeps reading the
+        # environment's last hour rather than jumping back to day 0's
+        # weather, which would look like an instantaneous season change.
+        hour_index = min(
+            int(t_sim_days * 24.0), self._environment.pore_pressure_kpa.shape[1] - 1
+        )
         readings = self.sensor_array.sample_tick(
             t_sim_days=t_sim_days,
             t_sim_seconds=self.t_sim_seconds,
             iso_timestamp=iso_ts,
             truth_channels=since_install,
             vibration_transient=current_vib,
+            dt_seconds=self.config.tick_duration_sim_s,
+            environment_channels={
+                "pore_pressure_kpa": self._environment.pore_pressure_kpa[:, hour_index],
+                "moisture_pct": self._environment.moisture_pct[:, hour_index],
+            },
         )
 
         # Check active collapse interventions and compute 1.2x Alert Radius

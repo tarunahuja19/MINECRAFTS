@@ -4,7 +4,7 @@ import numpy as np
 from starlette.testclient import TestClient
 
 from forge.server import app as forge_app
-from sandbox import district
+from sandbox import constants, district
 from sandbox.sensors import SensorNoiseConfig
 from sandbox.server import app as sandbox_app
 from sandbox.session import SessionConfig, SimulationSession
@@ -43,12 +43,24 @@ def test_total_minus_install_equals_zero_at_t0():
         truth_channels={k: ch_0[k] - session._install_ch[k] for k in ch_0},
         vibration_transient=0.0,
     )
+    # Tilt is not exactly zero even with zero ground movement: M2's thermal
+    # tilt drift (sandbox/sensors.py) is a real instrument bias against a
+    # 25 degC reference, independent of the ground. At t_sim_days=0 the
+    # ambient cycle is at its 28 degC start, so every node's drift is
+    # 5 urad/degC * (28 + its own personality offset - 25).
+    ambient_temp_c = 28.0
+    drift_by_node = {
+        n.node_id: constants.THERMAL_TILT_DRIFT_URAD_PER_C
+        * (ambient_temp_c + n.temp_offset_c - constants.TILT_DRIFT_REFERENCE_C)
+        for n in session.sensor_array.nodes
+    }
     for r in readings:
         if r.alive:
+            expected_drift = round(drift_by_node[r.node_id])
             if r.get("tilt_x_urad") is not None:
-                assert r.get("tilt_x_urad") == 0
+                assert r.get("tilt_x_urad") == expected_drift
             if r.get("tilt_y_urad") is not None:
-                assert r.get("tilt_y_urad") == 0
+                assert r.get("tilt_y_urad") == expected_drift
             if r.get("strain_ue") is not None:
                 assert r.get("strain_ue") == 0
 

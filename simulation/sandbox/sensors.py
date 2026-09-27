@@ -45,16 +45,26 @@ Corruption Chain Order:
 """
 
 from dataclasses import dataclass
+import math
 import numpy as np
 
 from sandbox.constants import (
+    CRACK_PARTIAL_CLOSURE_FRACTION,
+    CRACK_SPACING_M,
+    CRACK_TENSILE_THRESHOLD_UE,
     GRID_N,
     SIGMA_EXT_10UM,
     SIGMA_STRAIN_UE,
     SIGMA_TEMP_DC,
     SIGMA_VBAT_MV,
+    THERMAL_TILT_DRIFT_URAD_PER_C,
+    TICK_SIM_SECONDS,
+    TILT_DRIFT_REFERENCE_C,
+    VIBRATION_REFERENCE_DISTANCE_M,
+    WANDER_PHI_PER_TICK,
     WINDOW_SIZE_M,
 )
+from sandbox.environment import BLAST_USBM_BETA, MOISTURE_BASE_PCT, PORE_PRESSURE_BASE_KPA
 from sandbox.layout import (
     TIER_1A,
     TIER_1B,
@@ -153,6 +163,33 @@ FDOM_CONVEYOR_HZ = (49, 51)
 FDOM_BLAST_HZ = (40, 80)
 FDOM_MICROSEISMIC_HZ = (100, 250)
 
+# ---------------------------------------------------------------------------
+# OU wander: a continuous-time correlation constant derived once from the
+# historical phi=0.88-per-60s calibration (M2, DATA-365 plan), so a wander
+# step can be re-discretized for any tick length dt_seconds and still reach
+# the SAME stationary std regardless of how long a tick actually is.
+# ---------------------------------------------------------------------------
+_WANDER_TAU_S = -TICK_SIM_SECONDS / math.log(WANDER_PHI_PER_TICK)
+
+
+def _ou_step(current: float, target_std: float, dt_seconds: float, draw: float) -> float:
+    """One re-discretized Ornstein-Uhlenbeck step with stationary std `target_std`.
+
+    `draw` is a standard-normal sample from the caller's own rng (kept
+    external so every wander channel still draws from the same stream in
+    the same order run to run, matching the rest of this module's
+    reproducibility). `phi = exp(-dt/tau)` and `step_std =
+    target_std*sqrt(1-phi^2)` are the discretization that keeps a
+    zero-mean OU process's stationary variance equal to `target_std^2` for
+    ANY dt — the previous fixed `0.88` per call silently assumed dt was
+    always the interactive 60 s tick, so a scripted run's 3600 s ticks
+    still only decayed by 0.88, overstating the wander's real-world
+    persistence by 60x.
+    """
+    phi = math.exp(-dt_seconds / _WANDER_TAU_S)
+    step_std = target_std * math.sqrt(max(0.0, 1.0 - phi * phi))
+    return phi * current + step_std * draw
+
 
 @dataclass
 class NodePersonality:
@@ -164,6 +201,7 @@ class NodePersonality:
     y_m: float
     grid_ix: int
     grid_iy: int
+    array_idx: int
     temp_offset_c: float
     sigma_tilt_urad: float
     hops: int
@@ -174,6 +212,7 @@ class NodePersonality:
     base_snr_db: float = 12.0
     alive: int = 1
     crack_latched: int = 0
+    max_fissure_mm: float = 0.0
     wander_strain: float = 0.0
     wander_tilt_x: float = 0.0
     wander_tilt_y: float = 0.0
@@ -296,7 +335,7 @@ class SensorArray:
         mesh_by_id = {l.node_id: l for l in build_mesh()}
 
         self.nodes: list[NodePersonality] = []
-        for n_id, (x, y), tier in zip(ids, positions, tiers):
+        for array_idx, (n_id, (x, y), tier) in enumerate(zip(ids, positions, tiers)):
             link = mesh_by_id[int(n_id)]
 
             # Frozen pseudo-random personality offset per node.
@@ -311,6 +350,7 @@ class SensorArray:
                     x_m=float(x),
                     y_m=float(y),
                     grid_ix=_coord_to_grid_index(x),
+                    array_idx=array_idx,
                     grid_iy=_coord_to_grid_index(y),
                     temp_offset_c=temp_offset,
                     sigma_tilt_urad=(
@@ -351,6 +391,9 @@ class SensorArray:
         iso_timestamp: str,
         truth_channels: dict[str, np.ndarray],
         vibration_transient: float = 0.0,
+        dt_seconds: float = TICK_SIM_SECONDS,
+        vibration_source_xy: tuple[float, float] = (0.0, 0.0),
+        environment_channels: dict[str, np.ndarray] | None = None,
     ) -> list[SensorReading]:
         """Sample and corrupt telemetry for every node at the current tick.
 
@@ -367,9 +410,28 @@ class SensorArray:
         iso_timestamp : str
             Formatted ISO UTC timestamp of packet arrival.
         truth_channels : dict[str, np.ndarray]
-            Truth arrays: 'tilt_x', 'tilt_y', 'strain_x', 'displacement_x', 's'.
+            Truth arrays: 'tilt_x', 'tilt_y', 'strain_x', 'strain_y',
+            'displacement_x', 's'.
         vibration_transient : float
-            Transient vibration PPV in mm/s (e.g. blast or truck disturbance).
+            PPV (mm/s) at VIBRATION_REFERENCE_DISTANCE_M from
+            `vibration_source_xy` — the reference a live transient
+            (`Session.apply_vibration`) is calibrated at. Each node's own
+            reading then attenuates from this reference by its own distance
+            (USBM exponent), rather than every node receiving the same
+            value regardless of position.
+        dt_seconds : float
+            Real elapsed sim-time since the last call, for the OU wander's
+            per-second discretization (M2). Defaults to the interactive
+            tick length; callers on a different cadence (e.g. a 3600 s
+            scripted tick) must pass their own.
+        vibration_source_xy : tuple[float, float]
+            (x, y) of the transient's source, panel-centre by default.
+        environment_channels : dict[str, np.ndarray] | None
+            This tick's per-node environment arrays, indexed in the same
+            node order as `self.nodes`: 'pore_pressure_kpa', 'moisture_pct'
+            (NaN off-tier, same convention as E1). `None` (a caller with no
+            environment attached) falls back to each channel's E1 day-0
+            baseline constant — never a function of ground movement S.
 
         Returns
         -------
@@ -378,7 +440,7 @@ class SensorArray:
         tilt_x_grid = truth_channels["tilt_x"]
         tilt_y_grid = truth_channels["tilt_y"]
         strain_x_grid = truth_channels["strain_x"]
-        s_grid = truth_channels.get("s", np.zeros_like(tilt_x_grid))
+        strain_y_grid = truth_channels.get("strain_y", np.zeros_like(strain_x_grid))
 
         readings: list[SensorReading] = []
         cfg = self.noise_config
@@ -412,56 +474,76 @@ class SensorArray:
             node.seq += 1
             ix, iy = node.grid_ix, node.grid_iy
 
-            # 1. True ground values at this node's coordinate.
+            # 1. True ground values at this node's coordinate. Principal
+            # strain (M2) takes the more tensile of the two axis-aligned
+            # components: this reduced engine has no shear cross-term, so
+            # with the axes already aligned to district's along/across-
+            # strike directions, the larger signed value IS the major
+            # principal strain — ignoring strain_y silently missed every
+            # node where the across-strike component was the tensile one.
             true_tilt_x = float(tilt_x_grid[iy, ix])
             true_tilt_y = float(tilt_y_grid[iy, ix])
             true_strain_x = float(strain_x_grid[iy, ix])
-            true_s = float(s_grid[iy, ix])
+            true_strain_y = float(strain_y_grid[iy, ix])
+            true_strain_p = max(true_strain_x, true_strain_y)
+            temp_c = float(ambient_temp_c + node.temp_offset_c)
 
             def noise(sigma: float) -> float:
                 return self.rng.normal(0.0, sigma) if cfg.enable_noise else 0.0
 
-            # 2. Continuous mean-reverting physical baseline wander (Ornstein-Uhlenbeck drift)
-            # Produces authentic live variation on idle sensors so the UI ticks continuously
+            # 2. Continuous mean-reverting physical baseline wander
+            # (Ornstein-Uhlenbeck drift), re-discretized per dt_seconds
+            # (M2) so its stationary std stays pinned to a named noise
+            # budget regardless of tick length. Produces authentic live
+            # variation on idle sensors so the UI ticks continuously.
             if cfg.enable_noise:
-                node.wander_strain = float(np.clip(
-                    0.88 * node.wander_strain + self.rng.normal(0.0, 4.5),
-                    -25.0, 25.0
-                ))
-                max_tilt_w = 20.0 if node.tier == TIER_2A else 120.0
-                sigma_w = 3.0 if node.tier == TIER_2A else 18.0
-                node.wander_tilt_x = float(np.clip(
-                    0.88 * node.wander_tilt_x + self.rng.normal(0.0, sigma_w),
-                    -max_tilt_w, max_tilt_w
-                ))
-                node.wander_tilt_y = float(np.clip(
-                    0.88 * node.wander_tilt_y + self.rng.normal(0.0, sigma_w),
-                    -max_tilt_w, max_tilt_w
-                ))
+                node.wander_strain = _ou_step(
+                    node.wander_strain, cfg.sigma_strain_ue, dt_seconds, self.rng.normal()
+                )
+                node.wander_tilt_x = _ou_step(
+                    node.wander_tilt_x, node.sigma_tilt_urad, dt_seconds, self.rng.normal()
+                )
+                node.wander_tilt_y = _ou_step(
+                    node.wander_tilt_y, node.sigma_tilt_urad, dt_seconds, self.rng.normal()
+                )
+                # Vibration and battery wander keep their own small,
+                # ASSUMED budgets (no site-instrument spec for either) but
+                # are still re-discretized the same way for dt-independence.
                 node.wander_vib_rms = float(np.clip(
-                    0.85 * node.wander_vib_rms + 0.15 * 0.08 + self.rng.normal(0.0, 0.015),
+                    0.08 + _ou_step(node.wander_vib_rms - 0.08, 0.02, dt_seconds, self.rng.normal()),
                     0.05, 0.16
                 ))
-                node.wander_vbat = float(np.clip(
-                    0.88 * node.wander_vbat + self.rng.normal(0.0, 3.5),
-                    -20.0, 20.0
-                ))
+                node.wander_vbat = _ou_step(
+                    node.wander_vbat, cfg.sigma_vbat_mv, dt_seconds, self.rng.normal()
+                )
 
             ch: dict[str, float | int] = {}
 
             # 2-5. Per-channel conversion, noise and quantisation — each
             # written only if this node's tier actually carries it.
             if node.carries("tilt_x_urad"):
+                # Thermal tilt drift (M2, VERIFY): a MEMS package's own
+                # thermal expansion biases its zero point away from a
+                # 25 degC calibration, independent of and additive to the
+                # ground's own tilt. Applied equally to both axes — no
+                # per-axis thermal model is specified.
+                tilt_drift_urad = THERMAL_TILT_DRIFT_URAD_PER_C * (temp_c - TILT_DRIFT_REFERENCE_C)
                 ch["tilt_x_urad"] = int(
                     np.clip(
-                        round(true_tilt_x * 1e6 + node.wander_tilt_x + noise(node.sigma_tilt_urad)),
+                        round(
+                            true_tilt_x * 1e6 + tilt_drift_urad
+                            + node.wander_tilt_x + noise(node.sigma_tilt_urad)
+                        ),
                         -32768,
                         32767,
                     )
                 )
                 ch["tilt_y_urad"] = int(
                     np.clip(
-                        round(true_tilt_y * 1e6 + node.wander_tilt_y + noise(node.sigma_tilt_urad)),
+                        round(
+                            true_tilt_y * 1e6 + tilt_drift_urad
+                            + node.wander_tilt_y + noise(node.sigma_tilt_urad)
+                        ),
                         -32768,
                         32767,
                     )
@@ -483,51 +565,98 @@ class SensorArray:
                 ch["gyro_z_mdps"] = int(np.clip(round(noise(35.0)), -32768, 32767))
 
             if node.carries("vib_rms_x100"):
+                # PPV kept separate from RMS (M2): vibration_transient is a
+                # transient PEAK velocity from a discrete event (a blast),
+                # calibrated at VIBRATION_REFERENCE_DISTANCE_M and
+                # attenuated to this node's own distance by the USBM
+                # exponent — not added into the continuous baseline RMS,
+                # which the old code did uniformly for every node
+                # regardless of position. The baseline RMS is ambient
+                # machinery noise only; a firing blast instead lifts the
+                # PEAK channel, which is what it actually is.
                 base_rms_mms = node.wander_vib_rms + 0.02 * self.rng.random()
-                total_rms_mms = base_rms_mms + vibration_transient
-                ch["vib_rms_x100"] = int(np.clip(round(total_rms_mms * 100.0), 0, 65535))
+                base_peak_mms = base_rms_mms * 1.45
+                if vibration_transient > 0.0:
+                    dist_m = max(1.0, float(np.hypot(
+                        node.x_m - vibration_source_xy[0], node.y_m - vibration_source_xy[1]
+                    )))
+                    node_ppv_mms = vibration_transient * (
+                        VIBRATION_REFERENCE_DISTANCE_M / dist_m
+                    ) ** BLAST_USBM_BETA
+                else:
+                    node_ppv_mms = 0.0
+                ch["vib_rms_x100"] = int(np.clip(round(base_rms_mms * 100.0), 0, 65535))
                 ch["vib_peak_x100"] = int(
-                    np.clip(round(total_rms_mms * 1.45 * 100.0), 0, 65535)
+                    np.clip(round(max(base_peak_mms, node_ppv_mms) * 100.0), 0, 65535)
                 )
-                ch["vib_fdom_hz"] = self._vib_fdom(vibration_transient)
+                ch["vib_fdom_hz"] = self._vib_fdom(node_ppv_mms)
 
             if node.carries("strain_ue"):
-                ch["strain_ue"] = int(
-                    np.clip(
-                        round(true_strain_x * 1e6 + node.wander_strain + noise(cfg.sigma_strain_ue)),
-                        -32768,
-                        32767,
-                    )
-                )
+                strain_p_ue = true_strain_p * 1e6 + node.wander_strain + noise(cfg.sigma_strain_ue)
+                ch["strain_ue"] = int(np.clip(round(strain_p_ue), -32768, 32767))
 
             if node.carries("fissure_mm"):
-                # A crack opens only in tension, and does not close again —
-                # the latch is what makes it a fissure rather than strain.
-                opening = max(0.0, true_strain_x) * 1000.0 * 2.0
-                ch["fissure_mm"] = round(float(max(0.0, opening + noise(0.05))), 2)
+                # Ground cracking (M2): the finale's own opening_mm relation
+                # (principal tensile strain over a threshold, times a gauge
+                # spacing) replaces this sandbox's undocumented bare
+                # `* 1000.0 * 2.0` (an unstated 2 m spacing, no threshold).
+                # A crack opens only in tension and does not fully close —
+                # `max_fissure_mm` is the latch: once opened, width floors
+                # at CRACK_PARTIAL_CLOSURE_FRACTION of its own recorded
+                # maximum rather than returning to zero as the tensile zone
+                # passes and the ground goes into compression behind it.
+                strain_p_ue_true = true_strain_p * 1e6
+                w_now = max(
+                    0.0,
+                    (strain_p_ue_true - CRACK_TENSILE_THRESHOLD_UE) * 1e-6 * CRACK_SPACING_M * 1000.0,
+                )
+                node.max_fissure_mm = max(node.max_fissure_mm, w_now)
+                floor = (
+                    CRACK_PARTIAL_CLOSURE_FRACTION * node.max_fissure_mm
+                    if node.max_fissure_mm > 0.0
+                    else 0.0
+                )
+                width = max(w_now, floor)
+                ch["fissure_mm"] = round(float(max(0.0, width + noise(0.05))), 2)
 
             if node.carries("moisture_pct"):
-                # Water collects where the bowl is deepest, so moisture
-                # tracks subsidence depth off a dry-ground baseline.
+                # From the E1 environment model (M2), not a fake linear
+                # function of subsidence: real soil moisture responds to
+                # rainfall infiltration, not to how deep the ground has
+                # sunk. No environment attached (e.g. a bare-kernel test)
+                # falls back to E1's own dry-season day-0 baseline, never
+                # to a function of S.
+                if environment_channels is not None:
+                    base_moisture = float(environment_channels["moisture_pct"][node.array_idx])
+                else:
+                    base_moisture = MOISTURE_BASE_PCT
                 ch["moisture_pct"] = round(
-                    float(np.clip(12.0 + true_s * 9.0 + noise(0.4), 0.0, 100.0)), 2
+                    float(np.clip(base_moisture + noise(0.4), 0.0, 100.0)), 2
                 )
 
             if node.carries("ext_delta_10um"):
-                # 10 m anchor wire: strain * 10 m expressed in 10 µm units.
+                # 10 m anchor wire: principal strain * 10 m in 10 µm units.
                 ch["ext_delta_10um"] = int(
                     np.clip(
-                        round((true_strain_x * 10.0) / 1e-5 + noise(cfg.sigma_ext_10um)),
+                        round((true_strain_p * 10.0) / 1e-5 + noise(cfg.sigma_ext_10um)),
                         -32768,
                         32767,
                     )
                 )
 
             if node.carries("pore_pressure_kpa"):
-                # Subsidence drains the strata above the goaf, so pore
-                # pressure falls as the bowl deepens off a hydrostatic base.
+                # From the E1 environment model (M2), not a fake linear
+                # function of subsidence: real piezometer pressure responds
+                # to the aquifer's own recharge/drainage, not directly to
+                # how deep the ground above it has sunk. Falls back to E1's
+                # own hydrostatic day-0 baseline when no environment is
+                # attached.
+                if environment_channels is not None:
+                    base_pp = float(environment_channels["pore_pressure_kpa"][node.array_idx])
+                else:
+                    base_pp = PORE_PRESSURE_BASE_KPA
                 ch["pore_pressure_kpa"] = round(
-                    float(max(0.0, 180.0 - true_s * 45.0 + noise(1.5))), 2
+                    float(max(0.0, base_pp + noise(1.5))), 2
                 )
 
             if node.carries("borehole_tilt_d1"):

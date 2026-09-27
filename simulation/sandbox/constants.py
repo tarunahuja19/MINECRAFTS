@@ -138,6 +138,37 @@ SIGMA_TEMP_DC = 2.0                     # 0.1 °C units
 SIGMA_VBAT_MV = 5.0                     # mV
 
 # ---------------------------------------------------------------------------
+# Sensor honesty (M2, DATA-365 plan) — physically sourced sensor-model
+# parameters, replacing invented linear-in-S formulas and an unbudgeted
+# noise-wander magnitude in sandbox/sensors.py.
+# ---------------------------------------------------------------------------
+# Ground cracking: reused verbatim from the finale's own crack model
+# (sih-26-finale/mine-sim/config/assumptions.yaml `cracks:` block), which
+# replaced this sandbox's own undocumented `* 1000.0 * 2.0` (a bare 2 m
+# spacing, no threshold at all).
+CRACK_TENSILE_THRESHOLD_UE = 3000.0     # OPEN — VERIFY (finale assumptions.yaml)
+CRACK_SPACING_M = 8.0                   # OPEN — VERIFY (finale assumptions.yaml)
+CRACK_PARTIAL_CLOSURE_FRACTION = 0.35   # OPEN — VERIFY (finale assumptions.yaml)
+
+THERMAL_TILT_DRIFT_URAD_PER_C = 5.0     # VERIFY, per DATA-365 plan M2 spec
+TILT_DRIFT_REFERENCE_C = 25.0           # ASSUMED: typical MEMS calibration temperature
+
+# `Session.apply_vibration(magnitude_ppv=...)` is calibrated as the PPV at
+# this reference distance from the (optional) source location; every node's
+# own PPV then attenuates from it via the USBM exponent (BLAST_USBM_BETA,
+# sandbox/environment.py), instead of the same value being added to every
+# node regardless of distance.
+VIBRATION_REFERENCE_DISTANCE_M = 100.0  # ASSUMED
+
+# OU wander (sandbox/sensors.py) historically decayed at a fixed phi=0.88
+# per call, silently assuming every call is TICK_SIM_SECONDS (60 s) apart —
+# wrong for the 3600 s/tick scripted runs. WANDER_PHI_PER_TICK anchors the
+# same phi at that same 60 s reference; sensors.py derives a continuous-time
+# correlation constant from it and re-discretizes for the tick's own
+# dt_seconds, so the stationary std stops depending on tick length.
+WANDER_PHI_PER_TICK = 0.88
+
+# ---------------------------------------------------------------------------
 # ADRIYALA_FIT — the team's own fit to 283 digitised Adriyala LW1 survey
 # points (Ramalingeswarudu et al. 2022, DOI 10.18311/jmmf/2022/32099; RMS
 # 52.1 mm, R^2 0.985, peak 1201.7 mm vs measured 1267 mm --
