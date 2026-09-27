@@ -2,6 +2,8 @@
 
 Purpose: one end-to-end picture combining **hardware (field) + software (tech)** so the PPT team can place it next to the hardware slides. Mine-independent (Adriyala is just the example input). Two versions below: **compact (1 slide)** and **full-depth (2–3 slides or appendix)**.
 
+> 📘 **FULL MASTER DOSSIER & SLIDE BLUEPRINT:** For the complete 12-slide presentation script, full hardware BOM (₹97,200), Knothe physics derivations, LoRa airtimes, and judge defense cheat-sheet, see [docs/SIH26-PPT-MASTER-DOSSIER.md](docs/SIH26-PPT-MASTER-DOSSIER.md) or in the Obsidian Second Brain at `sih-26-finale-brain/docs/sih26-ppt-master-dossier.md`.
+
 ---
 
 ## VERSION A — Compact (one PPT slide)

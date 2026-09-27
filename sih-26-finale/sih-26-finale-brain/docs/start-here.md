@@ -18,6 +18,7 @@ Everything needed to start development on the **SIH 2025/26 Mine Subsidence Earl
 
 > [!TIP]
 > **Explainer Guides for Humans & Judges:**
+> - 📊 **[[docs/sih26-ppt-master-dossier|SIH 26 Master PPT Dossier & Presentation Blueprint]]**: The definitive slide-by-slide presentation blueprint, hardware BOM, radio budgets, physics derivations, and judge defense cheat-sheet.
 > - 📘 **[[docs/master-process-explainer|Master Process Explainer]]**: The big-picture overview, 4-stage simulator pipeline, and file-by-file guide with simple analogies.
 > - 🔬 **[[docs/wp0-data-pinning-guide|WP0 Field Data Guide]]**: The Adriyala mine 3x error, Ramalingeswarudu (2022) data extraction, and fitting workflow.
 > - ⚖️ **[[docs/architectural-decisions-and-analogies|Architectural Decisions & Analogies]]**: Why no PINNs, why integer millimeters, dedup keys, and collision-free emergency slots.

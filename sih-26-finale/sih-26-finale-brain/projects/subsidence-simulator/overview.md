@@ -57,6 +57,7 @@ flowchart LR
 
 ## 4. Master Documentation Links
 
+- **SIH 26 Master PPT Dossier:** [[docs/sih26-ppt-master-dossier]]
 - **Governance Charter:** [[RULES]]
 - **Interface Contracts:** [[docs/interface-contracts]]
 - **Agent Rules & Invariants:** [[docs/agents-invariants]]
@@ -67,10 +68,11 @@ flowchart LR
 
 ---
 
-## 5. Scope Update — Consequence Renderer and Team Checklists (Claude Code, 2026-09-14, proposed)
+## 5. Scope Update — Consequence Renderer and Master Dossier Synthesis
 
-The team's PS 26025 build now has four sub-teams. Their checklists live outside the vault as working documents in `files/`: `HARDWARE-CHECKLIST.md`, `SOFTWARE-CHECKLIST.md`, `RECOMMENDATIONS.md`, and this segment's `SIMULATOR-CHECKLIST.md`.
+The team's PS 26025 hardware specifications, software contracts, and subsystem briefs have been consolidated into the canonical [[docs/sih26-ppt-master-dossier|SIH 26 Master PPT Dossier]].
 
-- **Proposed addition to Part 1:** [[work-packages/WP8-consequence-renderer|WP8 Consequence Renderer]]. It draws simulator terrain and ML forecasts at panel scale under explicit `SIMULATED` / `LIVE (MEASURED)` / `FORECAST (PREDICTED)` / `SCENARIO (HYPOTHETICAL)` labels. It is a pure consumer with no alarm path. Pending DEC-5.
-- **New boundary interface:** [[docs/interface-ml-to-renderer]] (draft), covering forecast format, uncertainty, missing regions and the sign convention.
-- **Corrections to §2 above:** "deploying 30 Scouts" is the pre-WP0 figure. Real counts come from `size_network` on pinned parameters (DEC-2). The empirical fit quality of the pinned Knothe parameters is R² 0.82, not 0.986 (see [[gates/G00-data-pinning]]).
+- **Consequence Renderer:** [[work-packages/WP8-consequence-renderer|WP8 Consequence Renderer]] draws simulator terrain and ML forecasts at panel scale under explicit `SIMULATED` / `LIVE (MEASURED)` / `FORECAST (PREDICTED)` / `SCENARIO (HYPOTHETICAL)` labels. It is a pure consumer with no alarm path.
+- **Boundary interface:** [[docs/interface-ml-to-renderer]], covering forecast format, uncertainty, missing regions and the sign convention.
+- **Empirical Fit Quality:** The empirical fit quality of the pinned Knothe parameters on Adriyala Longwall Panel 1 is R² 0.82 (see [[gates/G00-data-pinning]]).
+

@@ -4,6 +4,8 @@
 
 > **What changed from v1.4 → v2.0.** The stress test that used to live in a separate file `02b` has been **folded into file 02 and retired**. Every fix it identified is now applied everywhere, not just described in one place. Three new faults were found while merging and are also fixed: the packet could not carry `epoch` (so store-and-forward was broken), the PINN could not learn `ĉ` (single time slice), and `nodes.csv` grew without bound. §7 lists every change with its reason.
 
+> 📊 **PPT PRESENTATION TEAM:** See [SIH26-PPT-MASTER-DOSSIER.md](SIH26-PPT-MASTER-DOSSIER.md) for the complete 12-slide presentation blueprint, full hardware BOM (₹97,200), Knothe physics equations, LoRa airtimes, and judge defense cheat-sheet.
+
 ---
 
 ## 1. The seven files and what each one owns

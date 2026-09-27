@@ -153,6 +153,7 @@ Every reading and emitted value in [[docs/interface-contracts|contracts]] and `n
 
 ## 8. Cross-Reference Index
 
+- **SIH 26 Master PPT Dossier:** [[docs/sih26-ppt-master-dossier]]
 - **Master Governance:** [[RULES]]
 - **Master Contracts:** [[docs/interface-contracts]]
 - **Master Plan:** [[docs/build-order]]
