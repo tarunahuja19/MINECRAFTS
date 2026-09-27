@@ -783,39 +783,56 @@ export const globalGeomechanics = new LiveGeomechanicsEngine();
 // preview kernel in the first place. Only the stale description of what that
 // preview kernel IS needed updating, which is this paragraph.
 //
-//   1. The peak tensile strain of a collapse of radius R lands at
-//      sqrt(3) * R from its centre. This is exact, not fitted: the second
-//      derivative of a Gaussian peaks at sqrt(3) sigma. Verified against the
-//      server kernel to 9 significant figures at R = 40/60/90/120/150 m.
+// M1 (DATA-365 plan) changed the server kernel itself: a localized event's
+// strain used to be B_HORIZ_M (the 69 m panel-scale coefficient) times its
+// curvature, with the Gaussian's own sigma equal to the event radius R. On a
+// small pit that combination produced strain in the hundreds of mm/m — the
+// panel-scale coefficient has no business on a sharp local curvature. The
+// server now uses its OWN local coefficient, b_event = B_EVENT_COEFF * R,
+// and halves the Gaussian sigma to EVENT_SIGMA_FRAC * R (0.5) so R stays the
+// pit's visible edge. Both relations below moved with it:
 //
-//   2. Peak strain is linear in magnitude and falls off as 1/R^2:
-//         eps_peak(mm/m) = magnitude_m * STRAIN_GEOMETRY_C / R^2
+//   1. The peak tensile strain of a collapse of radius R lands at
+//      sqrt(3)/2 * R from its centre (was sqrt(3) * R). This is exact, not
+//      fitted: the second derivative of a Gaussian peaks at sqrt(3) sigma,
+//      and sigma is now R/2. Verified against the server kernel to 9
+//      significant figures at R = 40/60/90/120/150 m.
+//
+//   2. Peak strain is linear in magnitude and now falls off as 1/R, not
+//      1/R^2 (the R from b_event cancels one power of the 1/R^2 the old
+//      Gaussian curvature gave):
+//         eps_peak(mm/m) = magnitude_m * STRAIN_GEOMETRY_C / R
 //      This constant is likewise exact rather than fitted. Substituting
-//      d = sqrt(3) R into eps = B * d2g/dx2 * 1000 gives
-//         eps_peak = magnitude * (B * 2 * e^(-3/2) * 1000) / R^2
-//      so the constant is DERIVED from B_HORIZ below and can never drift away
-//      from it. The previous hardcoded 86315.9 was 2.80x too large, which made
-//      solveStrainIntervention ask for ~2.8x less magnitude than the requested
-//      strain actually needs — the TENSILE WAVE control silently under-
-//      delivered, and its caption quoted a peak the ground never reached.
+//      d = sqrt(3) * R/2 into eps = b_event * d2g/dx2 * 1000 gives
+//         eps_peak = magnitude * (B_EVENT_COEFF * 8 * e^(-3/2) * 1000) / R
+//      so the constant is DERIVED from B_EVENT_COEFF below and can never
+//      drift away from it.
 //
 // Keeping these derived (rather than hardcoding a radius that "looks right")
 // is what makes the intervention honest: the numbers the sensors then report
 // are the real consequence of the geometry, not a value dialled in to match
 // a caption.
 
-/** Where a collapse of radius R puts its peak tensile strain: sqrt(3) * R. */
-export const TENSILE_PEAK_RADIUS_RATIO = Math.sqrt(3.0);
+/**
+ * The event's own local horizontal-displacement coefficient: b_event =
+ * B_EVENT_COEFF * radius_m, mirroring `sandbox/constants.py:B_EVENT_COEFF`.
+ * ASSUMED (M1, DATA-365 plan) — a local pit's own coefficient, not the
+ * panel-scale B_HORIZ_M.
+ */
+export const B_EVENT_COEFF = 0.4;
+
+/** Where a collapse of radius R puts its peak tensile strain: sqrt(3)/2 * R. */
+export const TENSILE_PEAK_RADIUS_RATIO = (Math.sqrt(3.0) / 2.0);
 
 /**
- * Constant in eps_peak = magnitude * C / R^2, in (mm/m)*m^2/m.
+ * Constant in eps_peak = magnitude * C / R, in (mm/m)*m.
  *
- * Derived, never hand-typed: C = B * 2 * e^(-3/2) * 1000. Equals
- * 30827.193178 for the Adriyala panel. `tests/test_strain_calibration.py`
+ * Derived, never hand-typed: C = B_EVENT_COEFF * 8 * e^(-3/2) * 1000. Equals
+ * ~714.02 for the Adriyala panel. `tests/test_strain_calibration.py`
  * re-measures this by sweeping the real server kernel and fails if the two
  * ever disagree.
  */
-export const STRAIN_GEOMETRY_C = B_HORIZ_M * 2.0 * Math.exp(-1.5) * 1000.0;
+export const STRAIN_GEOMETRY_C = B_EVENT_COEFF * 8.0 * Math.exp(-1.5) * 1000.0;
 
 export interface StrainSolution {
   /** Collapse radius that lands the tensile peak on the requested ring, m. */
@@ -856,14 +873,14 @@ export function solveStrainIntervention(
   const radiusM = Math.max(10.0, targetRadiusM / TENSILE_PEAK_RADIUS_RATIO);
 
   // Invert relation 2 for the magnitude that reaches the requested strain.
-  const wanted = (targetStrainMmPerM * radiusM * radiusM) / STRAIN_GEOMETRY_C;
+  const wanted = (targetStrainMmPerM * radiusM) / STRAIN_GEOMETRY_C;
   const magnitudeM = Math.min(wanted, S_MAX_FULL_M);
   const clamped = wanted > S_MAX_FULL_M;
 
   return {
     radiusM,
     magnitudeM,
-    peakStrainMmPerM: (magnitudeM * STRAIN_GEOMETRY_C) / (radiusM * radiusM),
+    peakStrainMmPerM: (magnitudeM * STRAIN_GEOMETRY_C) / radiusM,
     peakRadiusM: radiusM * TENSILE_PEAK_RADIUS_RATIO,
     clamped,
   };

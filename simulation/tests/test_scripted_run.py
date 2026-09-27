@@ -98,7 +98,11 @@ def test_tilt_alarms_come_from_the_tilt_not_a_ring(two_runs):
     start, end = (base + timedelta(days=d) for d in (12, 20))
     alarms = [r for r in _rows(root / "a" / "events.csv")
               if r["kind"] == "node_alarm" and start <= _t(r["t_iso"]) < end]
-    assert alarms and all(a["note"].endswith("WARNING") for a in alarms)
+    # M1 (DATA-365 plan) halved the event Gaussian's sigma to R/2, which
+    # roughly doubles peak tilt (a pit's tilt is the slope of a narrower
+    # bowl); the tilt event alone can now escalate a node to CRITICAL before
+    # the day-20 cave-in, not just WARNING.
+    assert alarms and all(a["note"].split()[-1] in ("WARNING", "CRITICAL") for a in alarms)
 
 
 def test_packets_follow_the_script_tick(tmp_path):

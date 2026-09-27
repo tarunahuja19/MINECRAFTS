@@ -63,6 +63,19 @@ W_OVER_H   = W_PANEL_M / H_DEPTH_M     # < ~1.2 means the panel is SUBCRITICAL
 # If someone later notices the mismatch against the parent doc, this is
 # why: leave it as 0.35, do not "fix" it to 0.32.
 
+# ---------------------------------------------------------------------------
+# Localized event (FORGE collapse/cave-in/tilt) geometry — distinct from the
+# panel-scale Knothe constants above. A collapse pit's own radius sets both
+# its Gaussian footprint and its local horizontal-displacement coefficient;
+# using the panel-scale B_HORIZ (69 m) on a small pit's sharp curvature
+# produced strain in the hundreds of mm/m (M1, DATA-365 plan).
+# ---------------------------------------------------------------------------
+EVENT_SIGMA_FRAC = 0.5  # ASSUMED. Gaussian sigma = EVENT_SIGMA_FRAC * radius_m,
+                         # so radius_m stays the event's visible edge (the ring
+                         # drawn in the UI) rather than the Gaussian's own sigma.
+B_EVENT_COEFF = 0.4     # ASSUMED. b_event = B_EVENT_COEFF * radius_m: a local
+                         # pit's own horizontal-displacement coefficient.
+
 # NOTE on subcriticality: W_OVER_H = 0.6667 (< ~1.2), so this panel is
 # SUBCRITICAL and the peak subsidence produced by the convolution in
 # surface.py must come out BELOW S_MAX_FULL = 2.25 m — the target is

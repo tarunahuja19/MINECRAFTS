@@ -4,14 +4,18 @@ Cross-language calibration guard for the TENSILE WAVE intervention.
 `frontend/src/utils/geomechanicsEngine.ts::solveStrainIntervention` inverts two
 relations to work out what collapse geometry produces a requested peak tensile
 strain. Those relations describe the SERVER's collapse kernel
-(`sandbox/collapse.py::_spatial_profile`), because the server is what computes
-the strain the sensors actually report — the browser's own `bowlProfile` is a
+(`sandbox/collapse.py::_spatial_profile` plus the event's own b_event and
+sigma, set in `collapse_deltas`), because the server is what computes the
+strain the sensors actually report — the browser's own `bowlProfile` is a
 different, erf-based shape used only to preview the drop between ticks.
 
-That split is the bug this file exists to prevent. The constant shipped as
-STRAIN_GEOMETRY_C = 86315.9, which is 2.80x the true value, so the solver asked
-for ~2.8x less magnitude than the requested strain needs: the control silently
-under-delivered and its caption quoted a peak the ground never reached.
+M1 (DATA-365 plan) replaced the panel-scale B_HORIZ strain coefficient with a
+local b_event = B_EVENT_COEFF * radius_m, and halved the event Gaussian's
+sigma to EVENT_SIGMA_FRAC * radius_m — both because using the panel-scale
+constants on a small pit's sharp curvature produced strain in the hundreds of
+mm/m. That changed both relations below: the tensile peak now lands at
+sqrt(3)/2 * R (not sqrt(3) * R), and peak strain now falls off as 1/R, not
+1/R^2.
 
 These tests re-derive both constants from the real Python kernel and assert the
 TypeScript source still agrees, so the two languages cannot drift apart again.
@@ -25,7 +29,7 @@ import numpy as np
 import pytest
 
 from sandbox.collapse import PillarFailure, _spatial_profile
-from sandbox.constants import B_HORIZ
+from sandbox.constants import B_EVENT_COEFF, EVENT_SIGMA_FRAC
 
 _ENGINE_TS = (
     Path(__file__).resolve().parent.parent
@@ -38,13 +42,17 @@ def _peak_strain_on_axis(radius_m: float, magnitude_m: float = 1.0):
 
     Sweeps along the +x axis through the collapse centre using
     `sandbox.collapse._spatial_profile` itself, so this measures the shipped
-    solver rather than a paper re-derivation of it.
+    solver rather than a paper re-derivation of it. Mirrors what
+    `collapse_deltas` does with the event's own sigma and b_event.
     """
     d = np.linspace(0.0, 6.0 * radius_m, 400_001)
     zeros = np.zeros_like(d)
-    _, _, _, d2g_dx2, _ = _spatial_profile(d, zeros, 0.0, 0.0, radius_m)
-    # eps_x = B * d2S/dx2, in m/m; x1000 for the mm/m the DGMS limits use.
-    eps = B_HORIZ * magnitude_m * d2g_dx2 * 1000.0
+    _, _, _, d2g_dx2, _ = _spatial_profile(
+        d, zeros, 0.0, 0.0, radius_m * EVENT_SIGMA_FRAC
+    )
+    b_event = B_EVENT_COEFF * radius_m
+    # eps_x = b_event * d2S/dx2, in m/m; x1000 for the mm/m the DGMS limits use.
+    eps = b_event * magnitude_m * d2g_dx2 * 1000.0
     i = int(np.argmax(eps))
     return float(eps[i]), float(d[i])
 
@@ -58,56 +66,56 @@ def _read_ts_number(expr_name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Relation 1: the tensile peak lands at sqrt(3) * R.
+# Relation 1: the tensile peak lands at sqrt(3)/2 * R (sigma = R/2, M1).
 # ---------------------------------------------------------------------------
-def test_tensile_peak_lands_at_sqrt3_radius():
-    """The peak of a Gaussian bowl's second derivative sits at sqrt(3)*sigma."""
+def test_tensile_peak_lands_at_sqrt3_over_2_radius():
+    """The peak of a Gaussian bowl's second derivative sits at sqrt(3)*sigma,
+    and sigma = EVENT_SIGMA_FRAC (0.5) * R."""
     for radius in (40.0, 60.0, 90.0, 120.0, 150.0):
         _, peak_d = _peak_strain_on_axis(radius)
-        assert peak_d / radius == pytest.approx(math.sqrt(3.0), rel=1e-4), (
-            f"R={radius}: peak at {peak_d / radius:.6f}*R, expected sqrt(3)"
+        ratio = math.sqrt(3.0) * EVENT_SIGMA_FRAC
+        assert peak_d / radius == pytest.approx(ratio, rel=1e-4), (
+            f"R={radius}: peak at {peak_d / radius:.6f}*R, expected {ratio:.6f}"
         )
 
 
-def test_ts_declares_sqrt3_peak_ratio():
+def test_ts_declares_sqrt3_over_2_peak_ratio():
     """The TypeScript solver must use that same ratio."""
-    assert _read_ts_number("TENSILE_PEAK_RADIUS_RATIO") == "Math.sqrt(3.0)"
+    assert _read_ts_number("TENSILE_PEAK_RADIUS_RATIO") == "(Math.sqrt(3.0) / 2.0)"
 
 
 # ---------------------------------------------------------------------------
-# Relation 2: eps_peak = magnitude * C / R^2, with C = B * 2 * e^(-3/2) * 1000.
+# Relation 2: eps_peak = magnitude * C / R, with
+# C = B_EVENT_COEFF * 8 * e^(-3/2) * 1000 (M1: b_event = B_EVENT_COEFF * R,
+# sigma = R/2, which cancels one power of R against the old 1/R^2 law).
 # ---------------------------------------------------------------------------
 def test_strain_geometry_constant_is_scale_invariant():
-    """C is genuinely constant in R — the 1/R^2 law is exact, not a local fit."""
+    """C is genuinely constant in R — the 1/R law is exact, not a local fit."""
     cs = []
     for radius in (40.0, 60.0, 90.0, 120.0, 150.0):
         eps, _ = _peak_strain_on_axis(radius)
-        cs.append(eps * radius * radius)
+        cs.append(eps * radius)
     assert max(cs) - min(cs) < 1e-3 * cs[0], f"C drifts with R: {cs}"
 
 
 def test_strain_geometry_constant_matches_closed_form():
-    """The measured constant equals the analytic B * 2 * e^(-3/2) * 1000."""
-    closed_form = B_HORIZ * 2.0 * math.exp(-1.5) * 1000.0
+    """The measured constant equals the analytic B_EVENT_COEFF * 8 * e^(-3/2) * 1000."""
+    closed_form = B_EVENT_COEFF * 8.0 * math.exp(-1.5) * 1000.0
     eps, _ = _peak_strain_on_axis(90.0)
-    assert eps * 90.0 * 90.0 == pytest.approx(closed_form, rel=1e-6)
-    # Guard the specific value, so a change to B_HORIZ is a deliberate act.
-    assert closed_form == pytest.approx(30827.193178, rel=1e-9)
+    assert eps * 90.0 == pytest.approx(closed_form, rel=1e-6)
+    # Guard the specific value, so a change to B_EVENT_COEFF is a deliberate act.
+    assert closed_form == pytest.approx(714.016512, rel=1e-6)
 
 
 def test_ts_derives_strain_constant_rather_than_hardcoding_it():
-    """The engine must DERIVE C from B_HORIZ_M, not hand-type a magic number.
-
-    A literal here is what allowed the 86315.9 (2.80x too large) to survive.
-    """
+    """The engine must DERIVE C from B_EVENT_COEFF, not hand-type a magic number."""
     rhs = _read_ts_number("STRAIN_GEOMETRY_C")
-    assert "B_HORIZ_M" in rhs, f"STRAIN_GEOMETRY_C must derive from B_HORIZ_M, got: {rhs}"
-    assert rhs == "B_HORIZ_M * 2.0 * Math.exp(-1.5) * 1000.0"
+    assert "B_EVENT_COEFF" in rhs, f"STRAIN_GEOMETRY_C must derive from B_EVENT_COEFF, got: {rhs}"
+    assert rhs == "B_EVENT_COEFF * 8.0 * Math.exp(-1.5) * 1000.0"
 
-    # And B_HORIZ_M itself must match the Python B_HORIZ it mirrors.
-    b_rhs = _read_ts_number("B_HORIZ_M")
-    assert b_rhs == "0.35 * R_INFL_M"
-    assert B_HORIZ == pytest.approx(0.35 * (375.0 / 1.9), rel=1e-12)
+    # And B_EVENT_COEFF itself must match the Python constant it mirrors.
+    b_rhs = _read_ts_number("B_EVENT_COEFF")
+    assert float(b_rhs) == pytest.approx(B_EVENT_COEFF)
 
 
 def test_solver_round_trip_reaches_the_requested_strain():
@@ -117,15 +125,16 @@ def test_solver_round_trip_reaches_the_requested_strain():
     strain, get a geometry, and the real kernel delivers that strain on the
     promised ring.
     """
-    c_const = B_HORIZ * 2.0 * math.exp(-1.5) * 1000.0
+    c_const = B_EVENT_COEFF * 8.0 * math.exp(-1.5) * 1000.0
+    ratio = math.sqrt(3.0) * EVENT_SIGMA_FRAC
     s_max_full = 0.75 * 3.0  # a * m, mirroring S_MAX_FULL_M
 
     target_ring_m = 75.0
     target_strain = 5.3 * 1.05  # DGMS tensile limit, just over
 
     # Same inversion as solveStrainIntervention.
-    radius = max(10.0, target_ring_m / math.sqrt(3.0))
-    wanted = (target_strain * radius * radius) / c_const
+    radius = max(10.0, target_ring_m / ratio)
+    wanted = (target_strain * radius) / c_const
     magnitude = min(wanted, s_max_full)
 
     eps, peak_d = _peak_strain_on_axis(radius, magnitude)

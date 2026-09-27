@@ -193,13 +193,22 @@ def test_subsidence_ceiling_is_derived_not_hardcoded(config):
 
 
 def _settled_payload(ticks: int = 6000):
-    """Run a session to a settled state with a central collapse applied."""
+    """Run a session to a settled state with a central collapse applied.
+
+    M1 (DATA-365 plan) moved the tensile peak in from sqrt(3)*R to
+    sqrt(3)/2*R and made it fall off as 1/R instead of 1/R^2, which moves the
+    peak well inside where the 1B strain gauges sit (~205 m) for R=90. Using
+    radius=219.4 (the geometry solved for a 190 m ring, same as
+    `_run_strain_intervention(190.0)`) puts the peak back near those gauges,
+    so a settled collapse still reaches a real node instead of the strain
+    field peaking in empty ground between monuments.
+    """
     from sandbox.session import SimulationSession
 
     s = SimulationSession()
     s.start()
     s.apply_collapse(
-        cx=0.0, cy=0.0, radius_m=90.0, magnitude_m=2.25,
+        cx=0.0, cy=0.0, radius_m=219.4, magnitude_m=constants.S_MAX_FULL,
         duration_hours=4.8, warning_hours=2.4,
     )
     payload = None
@@ -269,11 +278,17 @@ def test_node_strain_is_microstrain_and_reaches_dgms_limits():
 # derived on paper, so a change to collapse.py that invalidates them fails
 # here instead of silently making the control aim at the wrong ring.
 
-_TENSILE_PEAK_RADIUS_RATIO = math.sqrt(3.0)
-# Same derivation as geomechanicsEngine.ts STRAIN_GEOMETRY_C. The old
-# hardcoded 86315.9 was 2.8x this and only matched while collapse.py kept the
-# yield boost on after the step completed (fixed in FORGE v3 P1).
-_STRAIN_GEOMETRY_C = constants.B_HORIZ * 2.0 * math.exp(-1.5) * 1000.0
+_TENSILE_PEAK_RADIUS_RATIO = math.sqrt(3.0) / 2.0
+# Same derivation as geomechanicsEngine.ts STRAIN_GEOMETRY_C. M1 (DATA-365
+# plan) replaced the panel-scale B_HORIZ with a local b_event = B_EVENT_COEFF
+# * radius_m, and halved the Gaussian sigma to EVENT_SIGMA_FRAC * radius_m.
+# The sigma halving moves the extremum of the second derivative (at
+# sqrt(3)*sigma) from R to sqrt(3)/2 * R; substituting sigma = R/2 into
+# d2g/dx2's peak value (2/sigma^2 * exp(-1.5) = 8/R^2 * exp(-1.5)) and then
+# multiplying by b_event = B_EVENT_COEFF*R cancels one power of R, so the
+# peak strain now falls off as 1/R, not 1/R^2:
+#     eps_peak = magnitude * (B_EVENT_COEFF * 8 * e^-1.5 * 1000) / R
+_STRAIN_GEOMETRY_C = constants.B_EVENT_COEFF * 8.0 * math.exp(-1.5) * 1000.0
 
 
 def _peak_tensile(radius_m: float, magnitude_m: float):
@@ -289,12 +304,12 @@ def _peak_tensile(radius_m: float, magnitude_m: float):
     return float(eps[i]), abs(float(xs[i]))
 
 
-def test_tensile_peak_lands_at_sqrt3_times_radius():
-    """Relation 1: the tensile peak sits at sqrt(3) * R.
+def test_tensile_peak_lands_at_sqrt3_over_2_times_radius():
+    """Relation 1: the tensile peak sits at sqrt(3)/2 * R.
 
     This is what lets the control aim: invert it and a requested ring gives
     the collapse radius. sqrt(3) because the extremum of a Gaussian bowl's
-    second derivative is at sqrt(3) sigma.
+    second derivative is at sqrt(3) sigma, and sigma = R/2 (M1).
     """
     for radius in (40.0, 60.0, 90.0, 120.0, 160.0):
         _, peak_at = _peak_tensile(radius, constants.S_MAX_FULL)
@@ -306,8 +321,8 @@ def test_tensile_peak_lands_at_sqrt3_times_radius():
         )
 
 
-def test_peak_strain_scales_as_magnitude_over_radius_squared():
-    """Relation 2: eps_peak = magnitude * C / R^2, linear in magnitude."""
+def test_peak_strain_scales_as_magnitude_over_radius():
+    """Relation 2: eps_peak = magnitude * C / R, linear in magnitude."""
     # Linear in magnitude at fixed radius.
     base, _ = _peak_tensile(90.0, 1.0)
     for mag in (0.5, 2.0):
@@ -318,7 +333,7 @@ def test_peak_strain_scales_as_magnitude_over_radius_squared():
 
     # The calibration constant must reproduce the solver at other radii.
     for radius in (60.0, 120.0, 150.0):
-        predicted = _STRAIN_GEOMETRY_C / radius**2
+        predicted = _STRAIN_GEOMETRY_C / radius
         actual, _ = _peak_tensile(radius, 1.0)
         assert predicted == pytest.approx(actual, rel=0.001), (
             f"at R={radius} m the solver gives {actual:.3f} mm/m but the "
@@ -330,8 +345,8 @@ def test_peak_strain_scales_as_magnitude_over_radius_squared():
 def _run_strain_intervention(ui_radius: float):
     """Drive the solved STRAIN geometry for a ring through a live session.
 
-    Mirrors solveStrainIntervention: radius = ring / sqrt(3), magnitude asked
-    for = 1.08 x the DGMS tensile limit, clamped to S_MAX_FULL. Returns
+    Mirrors solveStrainIntervention: radius = ring / (sqrt(3)/2), magnitude
+    asked for = 1.08 x the DGMS tensile limit, clamped to S_MAX_FULL. Returns
     (asked_magnitude, delivered_magnitude, aimed ids, breached ids, live nodes).
     """
     from sandbox.session import SimulationSession
@@ -342,13 +357,17 @@ def _run_strain_intervention(ui_radius: float):
     #
     # Only strain-carrying tiers can report a tensile breach at all: 1B
     # carries the gauge and is sited in the tensile band (|x| ~ 177-233 m).
-    ring_tol_m = 45.0
+    # 70 m (M1, was 45 m): the only axis-aligned 1B pair sits at ~205 m, and
+    # M1's steeper 1/R falloff pushed the "capped, genuinely under the DGMS
+    # limit" ring out to ~270 m — 65 m from that pair — with no other
+    # strain-carrying monument anywhere closer to the axis to aim at instead.
+    ring_tol_m = 70.0
     # `strain_x` is the x-derivative of the bowl, so tensile strain peaks ON
     # the x-axis and falls away off it: a band around the axis, not ny == 0.
     axis_tol_m = 60.0
     radius = ui_radius / _TENSILE_PEAK_RADIUS_RATIO
     target = constants.EPS_TENSILE_LIMIT * 1.08
-    asked = (target * radius * radius) / _STRAIN_GEOMETRY_C
+    asked = (target * radius) / _STRAIN_GEOMETRY_C
     magnitude = min(asked, constants.S_MAX_FULL)
 
     s = SimulationSession()
@@ -391,8 +410,10 @@ def test_solved_strain_intervention_breaches_dgms_at_named_sensors():
     """End to end: where a breach is physically possible, the solved geometry
     makes the sensors ON the selected ring report a DGMS tensile breach.
 
-    The 1B gauges sit at ~205 m. Aiming at 190 m needs 2.23 m of the 2.25 m
-    available and puts them just outside the peak, still over the limit.
+    The 1B gauges sit at ~205 m. Aiming at 190 m needs only 1.76 m of the
+    2.25 m available (M1's 1/R falloff reaches breach with far less
+    magnitude than the old 1/R^2 law did) and still breaches at both N12
+    and N17, 15 m off the aimed ring.
     """
     ui_radius = 190.0
     asked, magnitude, aimed, breached, _ = _run_strain_intervention(ui_radius)
@@ -405,19 +426,24 @@ def test_solved_strain_intervention_breaches_dgms_at_named_sensors():
 
 
 def test_solved_strain_intervention_is_capped_where_no_breach_is_possible():
-    """The honest result at 205 m: the ask (2.60 m) exceeds S_MAX_FULL (2.25 m),
+    """The honest result at 270 m: the ask (2.60 m) exceeds S_MAX_FULL (2.25 m),
     so the control clamps, the peak it quotes stays under the DGMS limit, and
     the ground agrees: no monument reports a tensile breach.
 
-    The largest breachable ring is sqrt(3 * S_MAX_FULL * C / limit) = 198 m.
+    Clamping alone is not enough to prove no breach: the asked magnitude
+    exceeds S_MAX_FULL for any ui_radius beyond ~243 m, but at the clamped
+    magnitude the QUOTED peak (S_MAX_FULL * C / radius) only drops back
+    under the 5.3 mm/m limit beyond ~262 m. 270 m clears that with margin
+    (quoted 5.15 mm/m) while staying within the widened 70 m ring tolerance
+    of the 205 m 1B gauges — measured delivered strain there is 3.53 mm/m.
     """
-    ui_radius = 205.0
+    ui_radius = 270.0
     asked, magnitude, _, breached, live = _run_strain_intervention(ui_radius)
     assert asked > constants.S_MAX_FULL
     assert magnitude == constants.S_MAX_FULL
 
     radius = ui_radius / _TENSILE_PEAK_RADIUS_RATIO
-    quoted_peak = magnitude * _STRAIN_GEOMETRY_C / radius**2
+    quoted_peak = magnitude * _STRAIN_GEOMETRY_C / radius
     assert quoted_peak < constants.EPS_TENSILE_LIMIT
     delivered_peak, _ = _peak_tensile(radius, magnitude)
     assert delivered_peak == pytest.approx(quoted_peak, rel=0.001)

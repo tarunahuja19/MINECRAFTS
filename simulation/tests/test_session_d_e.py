@@ -124,11 +124,12 @@ def test_gate_t53_intervention_propagation():
     # Center (0, 0)
     assert delta_s[0] == pytest.approx(0.8, abs=1e-3)
 
-    # 60m away (at radius r) -> Gaussian bell at 1-sigma: 0.8 * exp(-0.5) = ~0.485m
-    assert 0.45 <= delta_s[1] <= 0.52
+    # sigma = EVENT_SIGMA_FRAC (0.5) * radius_m = 30 m (M1, DATA-365 plan).
+    # 60m away (at 2-sigma) -> Gaussian bell: 0.8 * exp(-2) = ~0.108m
+    assert 0.08 <= delta_s[1] <= 0.14
 
-    # 120m away (at 2-sigma) -> 0.8 * exp(-2) = ~0.108m
-    assert 0.08 <= delta_s[2] <= 0.14
+    # 120m away (at 4-sigma) -> 0.8 * exp(-8) = ~0.0003m, effectively flat
+    assert 0.0 <= delta_s[2] <= 0.001
 
 
 def test_gate_t54_blast_vibration_zero_surface_delta():

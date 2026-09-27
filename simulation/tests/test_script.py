@@ -43,9 +43,14 @@ def test_demo_shape(demo):
     assert demo.n_ticks == 365 * 24
 
 
-def test_demo_reaches_three_warnings_and_a_critical(demo):
+def test_demo_reaches_warnings_and_a_critical(demo):
+    # M1 (DATA-365 plan) confined the cave-in's strain footprint to its own
+    # radius instead of the panel-scale B_HORIZ, so fewer distant nodes cross
+    # WARNING; the honest count at the default demo's end is 2 WARNING, 3
+    # CRITICAL (was inflated to 3+/1+ by the panel-scale strain leaking far
+    # outside the drawn rings).
     got = _states_on(demo, demo.duration_days)
-    assert list(got.values()).count("WARNING") >= 3
+    assert list(got.values()).count("WARNING") >= 2
     assert list(got.values()).count("CRITICAL") >= 1
 
 

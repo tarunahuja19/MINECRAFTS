@@ -25,7 +25,7 @@ from typing import Sequence
 
 import numpy as np
 
-from sandbox.constants import B_HORIZ
+from sandbox.constants import B_EVENT_COEFF, B_HORIZ, EVENT_SIGMA_FRAC
 
 
 @dataclass(frozen=True)
@@ -164,6 +164,8 @@ def collapse_deltas(
     delta_tilt_y = np.zeros(shape, dtype=float)
     delta_curv_x = np.zeros(shape, dtype=float)
     delta_curv_y = np.zeros(shape, dtype=float)
+    delta_strain_x = np.zeros(shape, dtype=float)
+    delta_strain_y = np.zeros(shape, dtype=float)
 
     for ev in events:
         step_frac, yield_frac, collapsed_frac = _time_evolution(
@@ -172,9 +174,21 @@ def collapse_deltas(
         if step_frac == 0.0 and yield_frac == 0.0:
             continue
 
+        # sigma = R/2 so ev.radius_m stays the *visible* edge of the pit (where
+        # the ring/tilt legend draws it) rather than the Gaussian's own sigma.
+        # With sigma = R, the tail was still > 3 mm/m of tilt at 2.5R, flagging
+        # nodes far outside the drawn rings; halving it confines the footprint.
         g, dg_dx, dg_dy, d2g_dx2, d2g_dy2 = _spatial_profile(
-            X, Y, ev.cx, ev.cy, ev.radius_m
+            X, Y, ev.cx, ev.cy, ev.radius_m * EVENT_SIGMA_FRAC
         )
+
+        # B_event is this event's own local horizontal-displacement coefficient,
+        # not the panel-scale B_HORIZ (69 m, derived from the 375 m seam depth).
+        # A localized pit's horizontal displacement scales with the pit's own
+        # radius, not the regional panel's depth of influence -- using B_HORIZ
+        # on a small pit's sharp curvature is what produced strain in the
+        # hundreds of mm/m (clipping the int16 strain_ue channel).
+        b_event = B_EVENT_COEFF * ev.radius_m
 
         # Pre-collapse yield boosts curvature/strain at the perimeter even before full step drop.
         # The boost fades as the step completes, so a settled pit's tilt is the true slope of delta_s.
@@ -186,17 +200,19 @@ def collapse_deltas(
         delta_tilt_y += effective_amp * yield_boost * dg_dy
         delta_curv_x += effective_amp * yield_boost * d2g_dx2
         delta_curv_y += effective_amp * yield_boost * d2g_dy2
+        delta_strain_x += b_event * effective_amp * yield_boost * d2g_dx2
+        delta_strain_y += b_event * effective_amp * yield_boost * d2g_dy2
 
         # Additional pre-yield strain precursor around perimeter if before full step
         if step_frac < 0.2 and yield_frac > 0:
             precursor_amp = ev.magnitude_m * 0.25 * yield_frac
             delta_curv_x += precursor_amp * d2g_dx2
             delta_curv_y += precursor_amp * d2g_dy2
+            delta_strain_x += b_event * precursor_amp * d2g_dx2
+            delta_strain_y += b_event * precursor_amp * d2g_dy2
 
     delta_disp_x = B_HORIZ * delta_tilt_x
     delta_disp_y = B_HORIZ * delta_tilt_y
-    delta_strain_x = B_HORIZ * delta_curv_x
-    delta_strain_y = B_HORIZ * delta_curv_y
 
     return dict(
         delta_s=delta_s,
