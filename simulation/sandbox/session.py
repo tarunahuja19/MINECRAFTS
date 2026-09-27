@@ -179,6 +179,10 @@ class SessionConfig:
     # A zone going CRITICAL drops the run to COLLAPSE_SNAP_SPEED_MULTIPLIER
     # (§2.1). A scripted run turns this off: its speed is the operator's.
     auto_snap_speed: bool = True
+    enable_mqtt: bool = True
+    enable_db: bool = True
+    quiet: bool = False
+    write_nodes_csv: bool = True
 
 
 class SimulationSession:
@@ -255,7 +259,7 @@ class SimulationSession:
         self.mqtt_bridge = MqttBridge(
             broker_host=os.environ.get("R4_BROKER_HOST", "127.0.0.1"),
             broker_port=int(os.environ.get("R4_BROKER_PORT", "1883")),
-            enabled=os.environ.get("R4_MQTT_ENABLED", "1") != "0",
+            enabled=(os.environ.get("R4_MQTT_ENABLED", "1") != "0" and self.config.enable_mqtt),
         )
 
     def _resolve_ground(self) -> None:
@@ -325,7 +329,8 @@ class SimulationSession:
             delta_signal=delta_signal,
             n=n_samples,
         )
-        print(f"[BOOT] SNR detectability margin = {margin:.2f} (threshold = {gates.MARGIN_THRESHOLD})")
+        if not self.config.quiet:
+            print(f"[BOOT] SNR detectability margin = {margin:.2f} (threshold = {gates.MARGIN_THRESHOLD})")
 
         if margin < gates.MARGIN_THRESHOLD:
             raise RuntimeError(
@@ -373,7 +378,7 @@ class SimulationSession:
         self.is_running = True
         self.is_paused = False
 
-        if already_streaming:
+        if already_streaming or not self.config.write_nodes_csv:
             return
 
         self._nodes_file = open(self.nodes_csv_path, "w", encoding="utf-8")
@@ -522,39 +527,35 @@ class SimulationSession:
             self._nodes_file.flush()
 
         # Asynchronously persist readings batch to PostgreSQL without blocking
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(db_manager.save_readings(readings, iso_ts))
-        except RuntimeError:
-            pass
-
-        # Publish the same tick to MQTT. paho queues on its own thread, so this
-        # returns immediately and a broker outage cannot stall the tick loop.
-        self.mqtt_bridge.publish_tick(readings, iso_ts)
-
-        # A zone or node entering TENSION/CRITICAL/FAILED is an alarm. MQTT carries it
-        # to the live banner; the backend gives it a row in `alarms` so it also
-        # survives into the operator's history panel. Fire-and-forget for the
-        # same reason the readings batch is: the tick loop never waits on I/O.
-        sensor_nodes = getattr(self.sensor_array, "nodes", None)
-        zone_alarms = self.mqtt_bridge.publish_zone_alarms(
-            self.zone_manager.zones, iso_ts, sensor_nodes,
-            active_collapses=[pf for pf in active_colls if pf.ring],
-        )
-        node_alarms = self.mqtt_bridge.publish_node_alarms(
-            readings, iso_ts, sensor_nodes, active_collapses=active_colls
-        )
-        self._log_node_alarms(node_alarms, iso_ts)
-        for alarm in zone_alarms + node_alarms:
+        if self.config.enable_db:
             try:
-                asyncio.get_running_loop().create_task(
-                    db_manager.post_alarm_to_backend(alarm)
-                )
+                loop = asyncio.get_running_loop()
+                loop.create_task(db_manager.save_readings(readings, iso_ts))
             except RuntimeError:
                 pass
 
+        # Publish tick and alarms to MQTT / backend if enabled
+        if self.config.enable_mqtt:
+            self.mqtt_bridge.publish_tick(readings, iso_ts)
+            sensor_nodes = getattr(self.sensor_array, "nodes", None)
+            zone_alarms = self.mqtt_bridge.publish_zone_alarms(
+                self.zone_manager.zones, iso_ts, sensor_nodes,
+                active_collapses=[pf for pf in active_colls if pf.ring],
+            )
+            node_alarms = self.mqtt_bridge.publish_node_alarms(
+                readings, iso_ts, sensor_nodes, active_collapses=active_colls
+            )
+            self._log_node_alarms(node_alarms, iso_ts)
+            for alarm in zone_alarms + node_alarms:
+                try:
+                    asyncio.get_running_loop().create_task(
+                        db_manager.post_alarm_to_backend(alarm)
+                    )
+                except RuntimeError:
+                    pass
+
         # Terminal Live Logging (§3.1)
-        if self.tick_index % 10 == 0 or transitions or current_vib > 0:
+        if not self.config.quiet and (self.tick_index % 10 == 0 or transitions or current_vib > 0):
             s_peak = float(np.max(total_channels["s"]))
             eps_max = float(np.max(total_channels["strain_x"]))
             print(
@@ -628,10 +629,11 @@ class SimulationSession:
                 finalized_packet["end_sim_time"]
             )
             self.last_finalized_packet = finalized_packet
-            print(
-                f"[PACKET] finalized packet #{finalized_packet['packet_id']} "
-                f"(sim_time {finalized_packet['start_sim_time']}s - {finalized_packet['end_sim_time']}s)"
-            )
+            if not self.config.quiet:
+                print(
+                    f"[PACKET] finalized packet #{finalized_packet['packet_id']} "
+                    f"(sim_time {finalized_packet['start_sim_time']}s - {finalized_packet['end_sim_time']}s)"
+                )
             self.debug_writer.write_packet(finalized_packet)
             try:
                 loop = asyncio.get_running_loop()

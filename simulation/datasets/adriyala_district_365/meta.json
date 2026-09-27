@@ -1,0 +1,259 @@
+{
+  "base_iso_time": "2026-01-01T00:00:00Z",
+  "dataset": "adriyala_district_365",
+  "days": 365,
+  "files": {
+    "bowl_terms.npz": {
+      "bytes": 75640,
+      "sha256": "de3c411a2e777db7c38801de50c2ce0bc615d5f4fb094947430612086e54b99f"
+    },
+    "events.csv": {
+      "bytes": 98129,
+      "sha256": "a0b659ad6c1688ea202b303b1e2c5c5c0dfaf3ce6dfd6d734b2aae349b012a51"
+    },
+    "nodes_hourly.csv.gz": {
+      "bytes": 6236617,
+      "sha256": "645a194bd75bcd389734f06e03d797f2f0ed790d32db38d292172940c48701c1"
+    }
+  },
+  "ground": "district",
+  "n_critical": 7,
+  "n_sensing_nodes": 30,
+  "n_warning_or_above": 29,
+  "node_first_alarm_day": {
+    "1": {
+      "ADVISORY": 58,
+      "CRITICAL": null,
+      "WARNING": 103
+    },
+    "10": {
+      "ADVISORY": 61,
+      "CRITICAL": 176,
+      "WARNING": 75
+    },
+    "11": {
+      "ADVISORY": 34,
+      "CRITICAL": 167,
+      "WARNING": 48
+    },
+    "12": {
+      "ADVISORY": 11,
+      "CRITICAL": null,
+      "WARNING": 24
+    },
+    "13": {
+      "ADVISORY": 9,
+      "CRITICAL": null,
+      "WARNING": 23
+    },
+    "14": {
+      "ADVISORY": 25,
+      "CRITICAL": null,
+      "WARNING": 131
+    },
+    "15": {
+      "ADVISORY": 236,
+      "CRITICAL": 348,
+      "WARNING": 315
+    },
+    "16": {
+      "ADVISORY": 269,
+      "CRITICAL": null,
+      "WARNING": 285
+    },
+    "17": {
+      "ADVISORY": 229,
+      "CRITICAL": null,
+      "WARNING": 252
+    },
+    "18": {
+      "ADVISORY": 142,
+      "CRITICAL": 254,
+      "WARNING": 221
+    },
+    "19": {
+      "ADVISORY": 180,
+      "CRITICAL": 336,
+      "WARNING": 193
+    },
+    "2": {
+      "ADVISORY": 138,
+      "CRITICAL": null,
+      "WARNING": 150
+    },
+    "20": {
+      "ADVISORY": 12,
+      "CRITICAL": null,
+      "WARNING": 28
+    },
+    "21": {
+      "ADVISORY": 19,
+      "CRITICAL": null,
+      "WARNING": 67
+    },
+    "22": {
+      "ADVISORY": 105,
+      "CRITICAL": null,
+      "WARNING": 117
+    },
+    "23": {
+      "ADVISORY": 119,
+      "CRITICAL": null,
+      "WARNING": 130
+    },
+    "24": {
+      "ADVISORY": 153,
+      "CRITICAL": null,
+      "WARNING": 192
+    },
+    "25": {
+      "ADVISORY": 265,
+      "CRITICAL": null,
+      "WARNING": 276
+    },
+    "26": {
+      "ADVISORY": 185,
+      "CRITICAL": null,
+      "WARNING": 196
+    },
+    "27": {
+      "ADVISORY": 30,
+      "CRITICAL": null,
+      "WARNING": null
+    },
+    "28": {
+      "ADVISORY": 184,
+      "CRITICAL": null,
+      "WARNING": 196
+    },
+    "29": {
+      "ADVISORY": 153,
+      "CRITICAL": 215,
+      "WARNING": 174
+    },
+    "3": {
+      "ADVISORY": 167,
+      "CRITICAL": null,
+      "WARNING": 191
+    },
+    "30": {
+      "ADVISORY": 153,
+      "CRITICAL": 213,
+      "WARNING": 168
+    },
+    "31": {
+      "ADVISORY": null,
+      "CRITICAL": null,
+      "WARNING": null
+    },
+    "4": {
+      "ADVISORY": 27,
+      "CRITICAL": null,
+      "WARNING": 68
+    },
+    "5": {
+      "ADVISORY": 113,
+      "CRITICAL": null,
+      "WARNING": 126
+    },
+    "6": {
+      "ADVISORY": 135,
+      "CRITICAL": null,
+      "WARNING": 159
+    },
+    "7": {
+      "ADVISORY": 47,
+      "CRITICAL": null,
+      "WARNING": 148
+    },
+    "8": {
+      "ADVISORY": 88,
+      "CRITICAL": null,
+      "WARNING": 100
+    },
+    "9": {
+      "ADVISORY": 99,
+      "CRITICAL": null,
+      "WARNING": 117
+    }
+  },
+  "nodes_reaching_critical": [
+    10,
+    11,
+    15,
+    18,
+    19,
+    29,
+    30
+  ],
+  "nodes_reaching_warning_or_above": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    28,
+    29,
+    30
+  ],
+  "parameters": {
+    "district_panel_x_m": [
+      -290.0,
+      0.0,
+      290.0
+    ],
+    "district_provenance": [
+      "synthetic",
+      "pinned",
+      "synthetic"
+    ],
+    "district_start_day": [
+      -120.0,
+      0.0,
+      120.0
+    ],
+    "fit_a_subs": 0.45,
+    "fit_c_knothe": 0.02358,
+    "fit_face_advance_m_per_day": 4.0,
+    "fit_face_start_y_m": -446.0507867269045,
+    "fit_inflection_offset_m": 58.96,
+    "fit_m_seam_m": 3.6,
+    "fit_r_infl": 146.0507867269045,
+    "fit_tan_beta": 2.5676,
+    "h_depth_m": 375.0,
+    "l_panel_m": 2500.0,
+    "w_panel_m": 250.0
+  },
+  "rms_against_survey_mm": {
+    "epoch_210": 56.89,
+    "epoch_300": 52.05
+  },
+  "seed": 42,
+  "sources": {
+    "citation": "Ramalingeswarudu et al. (2022), JMMF, DOI 10.18311/jmmf/2022/32099",
+    "doi": "10.18311/jmmf/2022/32099",
+    "note": "LW1 is pinned to 283 digitised survey points; LW0 and LW2 are SYNTHETIC."
+  },
+  "tick_duration_sim_s": 3600.0
+}
