@@ -117,7 +117,7 @@ def to_failures(ev: dict[str, Any]) -> list[PillarFailure]:
         return [
             _unit(
                 ev["x"], ev["y"], ev["radius_m"],
-                ev.get("warning_hours", 8.0), ev["duration_h"] / 24.0,
+                ev.get("warning_hours", 8.0), ev.get("duration_h", 4.8) / 24.0,
                 ev["day"], ev["depth_m"],
             )
         ]

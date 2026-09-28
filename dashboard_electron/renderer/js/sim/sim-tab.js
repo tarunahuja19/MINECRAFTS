@@ -175,7 +175,10 @@ var simTab = (function () {
     }, 1500);
     renderForgeHealth();
     if (typeof bus !== 'undefined' && typeof bus.on === 'function') {
-      bus.on('nodes-loaded', function () {
+      bus.on('nodes-loaded', function (nodes) {
+        if (Array.isArray(nodes) && nodes.length > 0) {
+          liveLoadedNodes = nodes;
+        }
         renderForgeRight();
       });
     }
@@ -1202,18 +1205,75 @@ var simTab = (function () {
   var forgePreviewOn = false;
   var FORGE_ALARM_MAX = 200;
 
+  var liveLoadedNodes = null;
+  var DEFAULT_FORGE_NODES = [
+    { node_id: 'N01', id: 'N01', x: -135, y: 135, tier: '1A', node_type: 'scout' },
+    { node_id: 'N02', id: 'N02', x: -5, y: 100, tier: '1A', node_type: 'scout' },
+    { node_id: 'N03', id: 'N03', x: 135, y: 138, tier: '1A', node_type: 'scout' },
+    { node_id: 'N04', id: 'N04', x: -140, y: 5, tier: '1A', node_type: 'scout' },
+    { node_id: 'N05', id: 'N05', x: 0, y: 0, tier: '1A', node_type: 'scout' },
+    { node_id: 'N06', id: 'N06', x: 140, y: -5, tier: '1A', node_type: 'scout' },
+    { node_id: 'N07', id: 'N07', x: -135, y: -160, tier: '1A', node_type: 'scout' },
+    { node_id: 'N08', id: 'N08', x: 5, y: -100, tier: '1A', node_type: 'scout' },
+    { node_id: 'N09', id: 'N09', x: 135, y: -138, tier: '1A', node_type: 'scout' },
+    { node_id: 'N10', id: 'N10', x: -216, y: 250, tier: '1B', node_type: 'scout' },
+    { node_id: 'N11', id: 'N11', x: -192, y: 125, tier: '1B', node_type: 'scout' },
+    { node_id: 'N12', id: 'N12', x: -204, y: 20, tier: '1B', node_type: 'scout' },
+    { node_id: 'N13', id: 'N13', x: -216, y: -125, tier: '1B', node_type: 'scout' },
+    { node_id: 'N14', id: 'N14', x: -192, y: -250, tier: '1B', node_type: 'scout' },
+    { node_id: 'N15', id: 'N15', x: 192, y: 250, tier: '1B', node_type: 'scout' },
+    { node_id: 'N16', id: 'N16', x: 216, y: 125, tier: '1B', node_type: 'scout' },
+    { node_id: 'N17', id: 'N17', x: 204, y: -20, tier: '1B', node_type: 'scout' },
+    { node_id: 'N18', id: 'N18', x: 192, y: -125, tier: '1B', node_type: 'scout' },
+    { node_id: 'N19', id: 'N19', x: 216, y: -250, tier: '1B', node_type: 'scout' },
+    { node_id: 'N20', id: 'N20', x: -245, y: -147.3, tier: '1C', node_type: 'scout' },
+    { node_id: 'N21', id: 'N21', x: -150, y: -96.8, tier: '1C', node_type: 'scout' },
+    { node_id: 'N22', id: 'N22', x: -50, y: -43.6, tier: '1C', node_type: 'scout' },
+    { node_id: 'N23', id: 'N23', x: 50, y: 9.6, tier: '1C', node_type: 'scout' },
+    { node_id: 'N24', id: 'N24', x: 150, y: 62.8, tier: '1C', node_type: 'scout' },
+    { node_id: 'N25', id: 'N25', x: 245, y: 113.3, tier: '1C', node_type: 'scout' },
+    { node_id: 'N26', id: 'N26', x: 0, y: 275, tier: '2A', node_type: 'anchor' },
+    { node_id: 'N27', id: 'N27', x: -270, y: -210, tier: '2A', node_type: 'anchor' },
+    { node_id: 'N28', id: 'N28', x: 270, y: -210, tier: '2A', node_type: 'anchor' },
+    { node_id: 'N29', id: 'N29', x: 0, y: 180, tier: '2B', node_type: 'anchor' },
+    { node_id: 'N30', id: 'N30', x: 0, y: -180, tier: '2B', node_type: 'anchor' },
+    { node_id: 'N31', id: 'N31', x: 826.1, y: -711.4, tier: '3', node_type: 'gateway' }
+  ];
+
   function forgeLayoutNodes() {
-    var all = (typeof fixtureProvider !== 'undefined' && fixtureProvider.getNodes)
-      ? (fixtureProvider.getNodes() || []) : [];
-    return all.filter(function (n) { return n && Number.isFinite(n.x) && Number.isFinite(n.y); });
+    var all = [];
+    if (Array.isArray(liveLoadedNodes) && liveLoadedNodes.length > 0) {
+      all = liveLoadedNodes;
+    } else if (typeof nodeMarkers !== 'undefined' && typeof nodeMarkers.getAllNodes === 'function' && nodeMarkers.getAllNodes().length > 0) {
+      all = nodeMarkers.getAllNodes();
+    } else if (typeof fixtureProvider !== 'undefined' && typeof fixtureProvider.getNodes === 'function' && fixtureProvider.getNodes()) {
+      all = fixtureProvider.getNodes();
+    } else if (forgeLastFrame && Array.isArray(forgeLastFrame.nodes) && forgeLastFrame.nodes.length > 0) {
+      all = forgeLastFrame.nodes;
+    }
+    var filtered = (all || []).filter(function (n) { return n && Number.isFinite(n.x) && Number.isFinite(n.y); });
+    if (filtered.length > 0) return filtered;
+    return DEFAULT_FORGE_NODES;
   }
 
   function forgeNodeId(n) {
-    return n.node_id || n.id;
+    if (!n) return '';
+    var raw = n.node_id != null ? n.node_id : n.id;
+    if (typeof raw === 'number') {
+      return 'N' + String(raw).padStart(2, '0');
+    }
+    var str = String(raw).trim();
+    if (/^\d+$/.test(str)) {
+      return 'N' + str.padStart(2, '0');
+    }
+    return str.toUpperCase();
   }
 
   function forgeStateOf(nodeId) {
-    var st = forgeLastFrame && forgeLastFrame.node_states ? forgeLastFrame.node_states[nodeId] : null;
+    if (!nodeId) return 'ACTIVE';
+    var normId = typeof nodeId === 'number' ? ('N' + String(nodeId).padStart(2, '0')) : String(nodeId).toUpperCase();
+    if (/^\d+$/.test(normId)) normId = 'N' + normId.padStart(2, '0');
+    var st = forgeLastFrame && forgeLastFrame.node_states ? forgeLastFrame.node_states[normId] : null;
     return st || 'ACTIVE';
   }
 
@@ -1297,6 +1357,9 @@ var simTab = (function () {
           if (near) why = ' (' + forgeEventTag(near.ev, near.index) + ', ' + Math.round(near.dist) + ' m)';
         }
         forgeAlarms.unshift({ day: day, node: nid, state: st, text: 'Day ' + day.toFixed(1) + ' · ' + nid + ' → ' + st + why });
+        if (typeof bus !== 'undefined' && typeof bus.emit === 'function') {
+          bus.emit('node-status-change', { node_id: nid, state: st.toLowerCase() });
+        }
       });
       if (forgeAlarms.length > FORGE_ALARM_MAX) forgeAlarms.length = FORGE_ALARM_MAX;
     }
@@ -2081,7 +2144,7 @@ var simTab = (function () {
   function runScenario() {
     var type = selectedScenarioType || 'crack';
     setViewportLit(true);
-    if (type === 'sudden_sinking') {
+    if (type === 'sudden_sinking' || type === 'cave_in') {
       fireForgeCaveIn();
     } else if (type === 'tilt') {
       fireForgeTilt();

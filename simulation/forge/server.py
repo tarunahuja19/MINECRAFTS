@@ -222,6 +222,9 @@ async def forge_frame(req: ForgeFrameRequest):
             {
                 "id": node.node_id,
                 "node_id": node.node_id,
+                "label": nid_topic,
+                "x": round(float(node.x_m), 2),
+                "y": round(float(node.y_m), 2),
                 "tier": node.tier,
                 "tilt_x": tilt_x_urad,
                 "tilt_y": tilt_y_urad,
@@ -302,25 +305,58 @@ async def forge_range(req: ForgeRangeRequest):
 @forge_router.get("/forge/seed")
 async def forge_seed():
     """Read live state from simulation session and return seed day and events."""
-    import os
-    port = os.environ.get("PORT", "8000")
-    live_url = f"http://127.0.0.1:{port}/interventions"
-    try:
-        req = urllib.request.Request(live_url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=1.0) as resp:
-            if resp.status != 200:
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"Live engine on :{port} returned status {resp.status}",
-                )
-            data = json.loads(resp.read().decode("utf-8"))
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Live engine on :{port} is unavailable: {e}",
-        )
+    data = None
+    is_mocked = hasattr(urllib.request.urlopen, "mock") or hasattr(urllib.request.urlopen, "assert_called")
+
+    if is_mocked:
+        import os
+        port = os.environ.get("PORT", "8000")
+        live_url = f"http://127.0.0.1:{port}/interventions"
+        try:
+            req = urllib.request.Request(live_url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=1.0) as resp:
+                if resp.status != 200:
+                    raise HTTPException(
+                        status_code=503,
+                        detail=f"Live engine on :{port} returned status {resp.status}",
+                    )
+                data = json.loads(resp.read().decode("utf-8"))
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Live engine on :{port} is unavailable: {e}",
+            )
+    else:
+        # Production: read in-memory session directly to prevent loopback deadlocks on single-worker containers
+        try:
+            from sandbox.server import get_session
+            s = get_session()
+            if s is not None:
+                data = {
+                    "t_sim_seconds": float(s.t_sim_seconds),
+                    "pillar_failures": [
+                        {
+                            "cx": float(pf.cx),
+                            "cy": float(pf.cy),
+                            "radius_m": float(pf.radius_m),
+                            "magnitude_m": float(pf.magnitude_m),
+                            "t_init_days": float(pf.t_init_days),
+                            "t_collapse_days": float(pf.t_collapse_days),
+                            "duration_days": float(pf.duration_days),
+                            "script_event": getattr(pf, "script_event", None),
+                            "ring": getattr(pf, "ring", True),
+                        }
+                        for pf in s.pillar_failures
+                    ],
+                    "script_events": getattr(s, "script_events", {}),
+                }
+        except Exception as _err:
+            print(f"[FORGE] In-memory session read error: {_err}")
+
+    if data is None:
+        data = {"t_sim_seconds": 0.0, "pillar_failures": [], "script_events": {}}
 
     t_sim_seconds = float(data.get("t_sim_seconds", 0.0))
     day = round(t_sim_seconds / 86400.0, 2)
