@@ -18,6 +18,9 @@ document.getElementById('tab-bar').addEventListener('click', function (e) {
   if (target) target.style.display = 'flex';
   if (tab === 'map' && mapView.getMap()) {
     mapView.getMap().invalidateSize();
+    if (typeof nodeMarkers !== 'undefined' && nodeMarkers.syncWithForge) {
+      nodeMarkers.syncWithForge();
+    }
   }
   if ((tab === 'sim' || tab === 'forge') && typeof simTab !== 'undefined' && simTab.onTabShown) {
     simTab.onTabShown(tab);

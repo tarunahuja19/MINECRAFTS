@@ -255,6 +255,55 @@ var nodeMarkers = (function () {
   // A record's own lat/lng is used only as a fallback for legacy rows that
   // carry no x/y - the static fixtures still hold pre-alignment Jharia
   // coordinates, and trusting those would scatter markers 1000 km off the site.
+  var forgeNodeStates = {};
+  var busListenersWired = false;
+
+  function normalizeNodeId(id) {
+    if (id == null) return '';
+    var s = String(id).trim().toUpperCase();
+    if (/^N\d+$/.test(s)) {
+      var num = parseInt(s.substring(1), 10);
+      return 'N' + String(num).padStart(2, '0');
+    }
+    if (/^\d+$/.test(s)) {
+      var num2 = parseInt(s, 10);
+      return 'N' + String(num2).padStart(2, '0');
+    }
+    return s;
+  }
+
+  function resolveMarker(nodeId) {
+    if (!nodeId) return null;
+    var norm = normalizeNodeId(nodeId);
+    if (markers[norm]) return markers[norm];
+    if (markers[nodeId]) return markers[nodeId];
+    var digits = String(nodeId).replace(/\D/g, '');
+    if (digits) {
+      var num = parseInt(digits, 10);
+      if (markers[num]) return markers[num];
+      if (markers[String(num)]) return markers[String(num)];
+      var pad = 'N' + String(num).padStart(2, '0');
+      if (markers[pad]) return markers[pad];
+    }
+    return null;
+  }
+
+  function resolveNodeData(nodeId) {
+    if (!nodeId) return null;
+    var norm = normalizeNodeId(nodeId);
+    if (nodeData[norm]) return nodeData[norm];
+    if (nodeData[nodeId]) return nodeData[nodeId];
+    var digits = String(nodeId).replace(/\D/g, '');
+    if (digits) {
+      var num = parseInt(digits, 10);
+      if (nodeData[num]) return nodeData[num];
+      if (nodeData[String(num)]) return nodeData[String(num)];
+      var pad = 'N' + String(num).padStart(2, '0');
+      if (nodeData[pad]) return nodeData[pad];
+    }
+    return null;
+  }
+
   function latLngFor(n) {
     if (typeof n.x === 'number' && typeof n.y === 'number' &&
         typeof mapView !== 'undefined' && mapView.xyToLatLon) {
@@ -267,6 +316,15 @@ var nodeMarkers = (function () {
   }
 
   function init(map, nodes) {
+    // Clean up any existing markers from the Leaflet layer
+    Object.keys(markers).forEach(function (k) {
+      if (markers[k] && map && map.hasLayer && map.hasLayer(markers[k])) {
+        map.removeLayer(markers[k]);
+      }
+    });
+    markers = {};
+    nodeData = {};
+
     var drawn = [];
     for (var i = 0; i < nodes.length; i++) {
       var n = nodes[i];
@@ -276,12 +334,11 @@ var nodeMarkers = (function () {
         console.warn('[node-markers] Skipping ' + n.node_id + ': no usable position');
         continue;
       }
-      // Keep the drawn position on the record so popups and any later
-      // consumer report the same place the marker sits.
       n.lat = pos[0];
       n.lng = pos[1];
-      n.state = (simState === 'RUNNING' && window.__SIM_PLAYING__) ? (n.state || 'active') : 'dead';
-      nodeData[n.node_id] = n;
+      var normId = normalizeNodeId(n.node_id);
+      var currentSt = forgeNodeStates[normId] || (simState === 'RUNNING' && window.__SIM_PLAYING__ ? (n.state || 'active') : 'dead');
+      n.state = currentSt;
 
       var marker = L.marker(pos, {
         icon: createIcon(n.state, roleOf(n), tierLetterOf(n)),
@@ -289,9 +346,10 @@ var nodeMarkers = (function () {
       });
 
       marker._nodeId = n.node_id;
+      marker._normId = normId;
       marker.on('click', function () {
-        var nodeId = this._nodeId;
-        var nd = nodeData[nodeId];
+        var nodeId = this._normId || this._nodeId;
+        var nd = resolveNodeData(nodeId);
         var isAlarming = nd && (nd.state === 'critical' || nd.state === 'warning' || nd.state === 'lastgasp');
 
         if (isAlarming) {
@@ -319,7 +377,20 @@ var nodeMarkers = (function () {
       });
 
       marker.addTo(map);
+
+      // Index under all variants so any caller finds it immediately
       markers[n.node_id] = marker;
+      markers[normId] = marker;
+      nodeData[n.node_id] = n;
+      nodeData[normId] = n;
+      var num = parseInt(normId.replace(/\D/g, ''), 10);
+      if (!isNaN(num)) {
+        markers[num] = marker;
+        markers[String(num)] = marker;
+        nodeData[num] = n;
+        nodeData[String(num)] = n;
+      }
+
       drawn.push(pos);
     }
 
@@ -328,18 +399,28 @@ var nodeMarkers = (function () {
       mapView.fitToNodes(L.latLngBounds(drawn));
     }
 
+    if (!busListenersWired) {
+      busListenersWired = true;
+      setupBusListeners();
+    }
+
+    updateNodeCount();
+  }
+
+  function setupBusListeners() {
     bus.on('node-status-change', function (data) {
       if (!data || !data.node_id) return;
-      var rawId = data.node_id;
-      var nid = typeof rawId === 'number' ? ('N' + String(rawId).padStart(2, '0')) : String(rawId).toUpperCase();
-      updateState(nid, (data.state || 'active').toLowerCase());
+      var nid = normalizeNodeId(data.node_id);
+      var st = (data.state || 'active').toLowerCase();
+      updateState(nid, st);
     });
 
     bus.on('forge-node-states', function (states) {
       if (!states) return;
       Object.keys(states).forEach(function (rawId) {
-        var nid = typeof rawId === 'number' ? ('N' + String(rawId).padStart(2, '0')) : String(rawId).toUpperCase();
+        var nid = normalizeNodeId(rawId);
         var st = (states[rawId] || 'ACTIVE').toLowerCase();
+        forgeNodeStates[nid] = st;
         updateState(nid, st);
       });
     });
@@ -353,19 +434,38 @@ var nodeMarkers = (function () {
       var rRed = r * 1.5;
       var all = getAllNodes();
       var critNodes = [];
+      var warnNodes = [];
       all.forEach(function (n) {
         if (!n) return;
-        var nx = Number.isFinite(n.x) ? n.x : (typeof mapView !== 'undefined' ? mapView.latLonToXY(n.lat, n.lng)[0] : 0);
-        var ny = Number.isFinite(n.y) ? n.y : (typeof mapView !== 'undefined' ? mapView.latLonToXY(n.lat, n.lng)[1] : 0);
+        var nx = Number(n.x);
+        var ny = Number(n.y);
+        if (!Number.isFinite(nx) || !Number.isFinite(ny)) {
+          if (typeof mapView !== 'undefined' && mapView.latLonToXY && n.lat != null && n.lng != null) {
+            var xy = mapView.latLonToXY(n.lat, n.lng);
+            nx = xy[0];
+            ny = xy[1];
+          } else {
+            nx = 0;
+            ny = 0;
+          }
+        }
         var dist = Math.hypot(nx - cx, ny - cy);
-        var nid = n.node_id;
+        var nid = normalizeNodeId(n.node_id);
         if (dist <= rWhite) {
+          forgeNodeStates[nid] = 'critical';
           updateState(nid, 'critical');
           critNodes.push(nid);
         } else if (dist <= rRed) {
-          updateState(nid, 'warning');
+          if (forgeNodeStates[nid] !== 'critical') {
+            forgeNodeStates[nid] = 'warning';
+            updateState(nid, 'warning');
+            warnNodes.push(nid);
+          }
         }
       });
+      console.log('[node-markers] forge-collapse at (' + cx + ',' + cy + '): ' +
+        critNodes.length + ' critical nodes: [' + critNodes.join(',') + '], ' +
+        warnNodes.length + ' warning nodes: [' + warnNodes.join(',') + ']');
       if (critNodes.length > 0 && typeof bus !== 'undefined' && bus.emit) {
         bus.emit('alarm', {
           alarm_id: 'ALM-CAVEIN-' + Math.round(cx) + '_' + Math.round(cy),
@@ -379,22 +479,20 @@ var nodeMarkers = (function () {
     });
 
     bus.on('forge-reset', function () {
-      var ids = Object.keys(nodeData);
-      for (var k = 0; k < ids.length; k++) {
-        updateState(ids[k], 'active');
+      forgeNodeStates = {};
+      var all = getAllNodes();
+      for (var k = 0; k < all.length; k++) {
+        updateState(all[k].node_id, 'active');
       }
     });
 
     bus.on('simulation-play', function () {
       simState = 'RUNNING';
-      var ids = Object.keys(nodeData);
-      for (var k = 0; k < ids.length; k++) {
-        var rid = ids[k];
-        nodeData[rid].state = 'active';
-        if (markers[rid]) {
-          markers[rid].setIcon(createIcon('active', roleOf(nodeData[rid]), tierLetterOf(nodeData[rid])));
-          markers[rid].setTooltipContent(buildTooltip(nodeData[rid]));
-        }
+      var all = getAllNodes();
+      for (var k = 0; k < all.length; k++) {
+        var nid = normalizeNodeId(all[k].node_id);
+        var st = forgeNodeStates[nid] || 'active';
+        updateState(nid, st);
       }
       updateNodeCount();
     });
@@ -413,27 +511,28 @@ var nodeMarkers = (function () {
       simState = newState;
       console.log('[node-markers] Simulation state transitioned to: ' + simState);
 
-      var ids = Object.keys(nodeData);
+      var all = getAllNodes();
       if (simState === 'STOPPED') {
         // When simulation is stopped, all nodes become dead and offline
-        for (var k = 0; k < ids.length; k++) {
-          var sid = ids[k];
-          nodeData[sid].state = 'dead';
-          nodeData[sid].lastTelemetry = null;
-          if (markers[sid]) {
-            markers[sid].setIcon(createIcon('dead', roleOf(nodeData[sid]), tierLetterOf(nodeData[sid])));
-            markers[sid].setTooltipContent(buildTooltip(nodeData[sid]));
+        for (var k = 0; k < all.length; k++) {
+          var sid = normalizeNodeId(all[k].node_id);
+          var nd = resolveNodeData(sid);
+          if (nd) {
+            nd.state = 'dead';
+            nd.lastTelemetry = null;
+          }
+          var m = resolveMarker(sid);
+          if (m && nd) {
+            m.setIcon(createIcon('dead', roleOf(nd), tierLetterOf(nd)));
+            m.setTooltipContent(buildTooltip(nd));
           }
         }
       } else if (simState === 'RUNNING') {
-        // When simulation is started, nodes revive to active baseline
-        for (var k = 0; k < ids.length; k++) {
-          var rid = ids[k];
-          nodeData[rid].state = 'active';
-          if (markers[rid]) {
-            markers[rid].setIcon(createIcon('active', roleOf(nodeData[rid]), tierLetterOf(nodeData[rid])));
-            markers[rid].setTooltipContent(buildTooltip(nodeData[rid]));
-          }
+        // When simulation is started, nodes revive to active baseline or FORGE state
+        for (var j = 0; j < all.length; j++) {
+          var rid = normalizeNodeId(all[j].node_id);
+          var st = forgeNodeStates[rid] || 'active';
+          updateState(rid, st);
         }
       }
       updateNodeCount();
@@ -441,23 +540,30 @@ var nodeMarkers = (function () {
 
     bus.on('replay-started', function () {
       simState = 'RUNNING';
-      var ids = Object.keys(nodeData);
-      for (var k = 0; k < ids.length; k++) {
-        nodeData[ids[k]].lastTelemetry = null;
-        updateState(ids[k], 'active');
+      var all = getAllNodes();
+      for (var k = 0; k < all.length; k++) {
+        var nd = resolveNodeData(all[k].node_id);
+        if (nd) nd.lastTelemetry = null;
+        updateState(all[k].node_id, 'active');
       }
       updateNodeCount();
     });
 
     bus.on('system-reset', function () {
       simState = 'STOPPED';
-      var ids = Object.keys(nodeData);
-      for (var k = 0; k < ids.length; k++) {
-        nodeData[ids[k]].lastTelemetry = null;
-        nodeData[ids[k]].state = 'dead';
-        if (markers[ids[k]]) {
-          markers[ids[k]].setIcon(createIcon('dead', roleOf(nodeData[ids[k]]), tierLetterOf(nodeData[ids[k]])));
-          markers[ids[k]].setTooltipContent(buildTooltip(nodeData[ids[k]]));
+      forgeNodeStates = {};
+      var all = getAllNodes();
+      for (var k = 0; k < all.length; k++) {
+        var sid = normalizeNodeId(all[k].node_id);
+        var nd = resolveNodeData(sid);
+        if (nd) {
+          nd.lastTelemetry = null;
+          nd.state = 'dead';
+        }
+        var m = resolveMarker(sid);
+        if (m && nd) {
+          m.setIcon(createIcon('dead', roleOf(nd), tierLetterOf(nd)));
+          m.setTooltipContent(buildTooltip(nd));
         }
       }
       updateNodeCount();
@@ -465,45 +571,55 @@ var nodeMarkers = (function () {
 
     bus.on('telemetry', function (t) {
       if (!window.__SIM_PLAYING__) return;
-      var nodeId = t._node_id || t.node_id;
-      if (!nodeId) return;
+      var rawId = t._node_id || t.node_id;
+      if (!rawId) return;
+      var normId = normalizeNodeId(rawId);
+      var nd = resolveNodeData(normId);
 
-      if (nodeData[nodeId]) {
-        nodeData[nodeId].lastTelemetry = t;
+      if (nd) {
+        nd.lastTelemetry = t;
 
         // The server assigns node state (session.py:_assign_node_states) and
-        // ships it on the telemetry row as `t.state`. The UI obeys it and never
-        // re-derives state from strain/tilt. A genuine last-gasp packet is a
-        // real device event (PACKET_FLAG_LAST_GASP = 1).
+        // ships it on the telemetry row as `t.state`. A genuine last-gasp packet
+        // is a real device event (PACKET_FLAG_LAST_GASP = 1).
         if (t.flags & 1) {
-          updateState(nodeId, 'critical');
-        } else {
-          var s = t.state || 'active';
+          updateState(normId, 'critical');
+        } else if (t.state) {
+          var s = String(t.state).toLowerCase();
           if (s === 'lastgasp') s = 'critical';
-          updateState(nodeId, s);
+          // If this node is currently under a FORGE collapse / hazard event,
+          // do NOT let routine ambient telemetry downgrade it to active.
+          if (s === 'active' && forgeNodeStates[normId] && forgeNodeStates[normId] !== 'active') {
+            s = forgeNodeStates[normId];
+          }
+          updateState(normId, s);
+        } else if (forgeNodeStates[normId]) {
+          // No explicit state property in packet: retain FORGE state
+          updateState(normId, forgeNodeStates[normId]);
         }
 
-        if (markers[nodeId]) {
-          markers[nodeId].setTooltipContent(buildTooltip(nodeData[nodeId]));
-          if (markers[nodeId].setPopupContent) {
-            markers[nodeId].setPopupContent(buildPopup(nodeData[nodeId]));
+        var m = resolveMarker(normId);
+        if (m) {
+          m.setTooltipContent(buildTooltip(nd));
+          if (m.setPopupContent) {
+            m.setPopupContent(buildPopup(nd));
           }
         }
       }
 
-      resetHeartbeatTimer(nodeId);
+      resetHeartbeatTimer(normId);
     });
 
     bus.on('alarm', function (alarm) {
       if (alarm.affected_nodes) {
         var targetState = (alarm.level === 3) ? 'critical' : (alarm.level === 2 ? 'warning' : 'warning');
         for (var j = 0; j < alarm.affected_nodes.length; j++) {
-          updateState(alarm.affected_nodes[j], targetState);
+          var nid = normalizeNodeId(alarm.affected_nodes[j]);
+          forgeNodeStates[nid] = targetState;
+          updateState(nid, targetState);
         }
       }
     });
-
-    updateNodeCount();
   }
 
   function resetHeartbeatTimer(nodeId) {
@@ -516,67 +632,94 @@ var nodeMarkers = (function () {
     }
 
     heartbeatTimers[nodeId] = setTimeout(function () {
-      if (nodeData[nodeId] && nodeData[nodeId].state !== 'dead') {
+      var nd = resolveNodeData(nodeId);
+      if (nd && nd.state !== 'dead') {
         updateState(nodeId, 'dead');
       }
     }, HEARTBEAT_TIMEOUT_MS);
   }
 
   function updateState(nodeId, state) {
-    if (!markers[nodeId]) return;
+    var targetMarker = resolveMarker(nodeId);
+    if (!targetMarker) return;
+    var normId = normalizeNodeId(nodeId);
+    var targetData = resolveNodeData(nodeId);
+
     if (state === 'lastgasp') state = 'critical';
-    // No-op when the state has not actually changed. The live provider
-    // re-asserts every node's status on every 60-s packet; without this guard
-    // each packet redraws all 31 marker icons and re-runs the alarm hooks,
-    // which is what made settled nodes appear to "go red again and again".
-    if (nodeData[nodeId] && nodeData[nodeId].state === state) return;
-    if (nodeData[nodeId]) nodeData[nodeId].state = state;
-    // Role is a property of the node, not of its health, so it survives every
-    // state change - a gateway must never redraw as a scout circle.
-    var role = nodeData[nodeId] ? roleOf(nodeData[nodeId]) : 'scout';
-    var letter = nodeData[nodeId] ? tierLetterOf(nodeData[nodeId]) : 'A';
-    markers[nodeId].setIcon(createIcon(state, role, letter));
-    if (markers[nodeId].setPopupContent) {
-      markers[nodeId].setPopupContent(buildPopup(nodeData[nodeId]));
+    state = (state || 'active').toLowerCase();
+
+    // No-op when the state has not actually changed.
+    if (targetData && targetData.state === state) return;
+    if (targetData) targetData.state = state;
+
+    var role = targetData ? roleOf(targetData) : 'scout';
+    var letter = targetData ? tierLetterOf(targetData) : 'A';
+    targetMarker.setIcon(createIcon(state, role, letter));
+    if (targetMarker.setPopupContent && targetData) {
+      targetMarker.setPopupContent(buildPopup(targetData));
     }
-    if (markers[nodeId].setTooltipContent) {
-      markers[nodeId].setTooltipContent(buildTooltip(nodeData[nodeId]));
+    if (targetMarker.setTooltipContent && targetData) {
+      targetMarker.setTooltipContent(buildTooltip(targetData));
     }
     updateNodeCount();
 
     if (state === 'critical' || state === 'lastgasp' || state === 'warning') {
       if (typeof lastgaspMarker !== 'undefined' && lastgaspMarker.showPulse) {
-        lastgaspMarker.showPulse(nodeId, state);
+        lastgaspMarker.showPulse(normId, state);
       }
     } else {
       if (typeof lastgaspMarker !== 'undefined' && lastgaspMarker.removePulse) {
-        lastgaspMarker.removePulse(nodeId);
+        lastgaspMarker.removePulse(normId);
       }
     }
-    // The renderer never synthesizes alarms or POSTs to /api/alarms. The
-    // simulation publishes real alarms on the MQTT alarm topic and the backend
-    // persists them; the map only paints node state.
   }
 
   function updateNodeCount() {
-    var ids = Object.keys(nodeData);
+    var all = getAllNodes();
     var el = document.getElementById('node-count');
     if (!el) return;
     if (simState === 'STOPPED') {
-      el.textContent = '0/' + ids.length + ' ACTIVE (SIM STOPPED)';
+      el.textContent = '0/' + all.length + ' ACTIVE (SIM STOPPED)';
     } else {
       var active = 0;
-      for (var i = 0; i < ids.length; i++) {
-        if (nodeData[ids[i]].state !== 'dead') active++;
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].state !== 'dead') active++;
       }
-      el.textContent = active + '/' + ids.length + ' ACTIVE';
+      el.textContent = active + '/' + all.length + ' ACTIVE';
     }
   }
 
-  function getMarker(nodeId) { return markers[nodeId]; }
-  function getNodeData(nodeId) { return nodeData[nodeId]; }
+  function syncWithForge() {
+    if (typeof simTab !== 'undefined' && simTab.getForgeFrame) {
+      var frame = simTab.getForgeFrame();
+      if (frame && frame.node_states) {
+        Object.keys(frame.node_states).forEach(function (rawId) {
+          var nid = normalizeNodeId(rawId);
+          var st = (frame.node_states[rawId] || 'ACTIVE').toLowerCase();
+          forgeNodeStates[nid] = st;
+          updateState(nid, st);
+        });
+        return;
+      }
+    }
+    Object.keys(forgeNodeStates).forEach(function (nid) {
+      updateState(nid, forgeNodeStates[nid]);
+    });
+  }
+
+  function getMarker(nodeId) { return resolveMarker(nodeId); }
+  function getNodeData(nodeId) { return resolveNodeData(nodeId); }
   function getAllNodes() {
-    return Object.keys(nodeData).map(function (k) { return nodeData[k]; });
+    var seen = {};
+    var list = [];
+    Object.keys(nodeData).forEach(function (k) {
+      var n = nodeData[k];
+      if (n && n.node_id && !seen[n.node_id]) {
+        seen[n.node_id] = true;
+        list.push(n);
+      }
+    });
+    return list;
   }
 
   return {
@@ -587,6 +730,8 @@ var nodeMarkers = (function () {
     getAllNodes: getAllNodes,
     roleOf: roleOf,
     tierLetterOf: tierLetterOf,
-    createIcon: createIcon
+    createIcon: createIcon,
+    normalizeNodeId: normalizeNodeId,
+    syncWithForge: syncWithForge
   };
 })();
