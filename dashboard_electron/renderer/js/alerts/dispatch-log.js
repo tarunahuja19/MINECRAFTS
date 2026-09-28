@@ -1,33 +1,34 @@
 'use strict';
 
 var dispatchLog = (function () {
-  var MAX_EVENTS = 10;
+  var MAX_EVENTS = 30;
   var events = [];
   var containerId = null;
-
-  var fixtureEvents = [
-    { t: Date.now() - 120000, tier: 1, outcome: 'SENT' },
-    { t: Date.now() - 118000, tier: 2, outcome: 'SENT' },
-    { t: Date.now() - 115000, tier: 3, outcome: 'SENT' },
-    { t: Date.now() - 60000,  tier: 1, outcome: 'SENT' },
-    { t: Date.now() - 58000,  tier: 2, outcome: 'FAILED' },
-    { t: Date.now() - 30000,  tier: 1, outcome: 'SUPPRESSED' }
-  ];
 
   function init(targetId) {
     containerId = targetId;
 
+    // Local bus events from manual sends and fixture replay
     bus.on('dispatch-event', function (evt) {
-      events.unshift(evt);
-      if (events.length > MAX_EVENTS) events.length = MAX_EVENTS;
-      render();
+      pushEvent(evt);
+    });
+
+    // Real-time WS events from the backend for both automatic and manual sends
+    bus.on('sms-dispatch', function (evt) {
+      pushEvent(evt);
     });
 
     bus.on('fixture-started', function () {
-      events = fixtureEvents.slice();
+      events = [];
       render();
     });
 
+    render();
+  }
+
+  function pushEvent(evt) {
+    events.unshift(evt);
+    if (events.length > MAX_EVENTS) events.length = MAX_EVENTS;
     render();
   }
 
@@ -44,7 +45,8 @@ var dispatchLog = (function () {
       '<table class="data-table">' +
         '<thead><tr>' +
           '<th>TIME</th>' +
-          '<th>TIER</th>' +
+          '<th>CONTACT</th>' +
+          '<th>SOURCE</th>' +
           '<th>OUTCOME</th>' +
         '</tr></thead>' +
         '<tbody>';
@@ -52,16 +54,21 @@ var dispatchLog = (function () {
     for (var i = 0; i < events.length; i++) {
       var e = events[i];
       var timeStr = formatTime(e.t);
+      var contact = e.contact || e.phone || '—';
+      var source = (e.source || 'auto').toUpperCase();
+      var outcome = e.outcome || '—';
+
       var outcomeClass = '';
-      if (e.outcome === 'SENT') outcomeClass = 'fired';
-      else if (e.outcome === 'FAILED') outcomeClass = 'failed';
-      else if (e.outcome === 'SUPPRESSED') outcomeClass = 'pending';
+      if (outcome === 'SENT') outcomeClass = 'fired';
+      else if (outcome === 'FAILED') outcomeClass = 'failed';
+      else if (outcome === 'SUPPRESSED') outcomeClass = 'pending';
 
       html +=
         '<tr>' +
           '<td>' + timeStr + '</td>' +
-          '<td>TIER ' + e.tier + '</td>' +
-          '<td><span class="tier-status ' + outcomeClass + '">' + e.outcome + '</span></td>' +
+          '<td>' + escHtml(contact) + '</td>' +
+          '<td class="mono" style="font-size:10px;">' + source + '</td>' +
+          '<td><span class="tier-status ' + outcomeClass + '">' + outcome + '</span></td>' +
         '</tr>';
     }
 
@@ -70,10 +77,17 @@ var dispatchLog = (function () {
   }
 
   function formatTime(ms) {
+    if (!ms) return '—';
     var d = new Date(ms);
     return String(d.getHours()).padStart(2, '0') + ':' +
            String(d.getMinutes()).padStart(2, '0') + ':' +
            String(d.getSeconds()).padStart(2, '0');
+  }
+
+  function escHtml(s) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(s));
+    return div.innerHTML;
   }
 
   return { init: init };

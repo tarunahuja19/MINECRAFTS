@@ -169,6 +169,9 @@ var liveProvider = (function () {
         alarmBanner.hide();
         if (alarmBanner.updateBadge) alarmBanner.updateBadge(0);
       }
+    } else if (msg.type === 'sms_dispatch') {
+      // Real SMS dispatch event from backend (automatic or manual send)
+      bus.emit('sms-dispatch', msg);
     }
   }
 
@@ -385,6 +388,8 @@ var liveProvider = (function () {
     stop: stop,
     getKnownNodes: getKnownNodes,
     fetchSimulationPacket: fetchSimulationPacket,
-    applySimulationPacket: applySimulationPacket
+    applySimulationPacket: applySimulationPacket,
+    getPort: getPort,
+    getApiBase: function () { return API_BASE; }
   };
 })();

@@ -42,7 +42,9 @@ var blastTest = (function () {
       bus.emit('dispatch-event', {
         t: Date.now(),
         tier: 1,
-        outcome: 'SUPPRESSED'
+        outcome: 'SUPPRESSED',
+        contact: 'BLAST TEST',
+        source: 'test'
       });
 
       setTimeout(function () {

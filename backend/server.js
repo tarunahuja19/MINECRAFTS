@@ -12,6 +12,8 @@ const nodesRouter = require('./routes/nodes');
 const readingsRouter = require('./routes/readings');
 const { router: alarmsRouter, setBroadcaster: setAlarmBroadcaster } = require('./routes/alarms');
 const { router: simulationRouter, setBroadcaster } = require('./routes/simulation');
+const { router: smsContactsRouter, setBroadcaster: setSmsContactsBroadcaster } = require('./routes/sms-contacts');
+const sms = require('./notifications/sms');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8080', 10);
@@ -36,6 +38,8 @@ function broadcast(data) {
 
 setBroadcaster(broadcast);
 setAlarmBroadcaster(broadcast);
+setSmsContactsBroadcaster(broadcast);
+sms.setBroadcaster(broadcast);
 
 wss.on('connection', (ws, req) => {
   clients.add(ws);
@@ -121,6 +125,7 @@ app.use('/api/nodes', nodesRouter);
 app.use('/api/readings', readingsRouter);
 app.use('/api/telemetry', readingsRouter); // Backward compatibility alias
 app.use('/api/alarms', alarmsRouter);
+app.use('/api/sms-contacts', smsContactsRouter);
 
 // Simulation Packet Routes (both /simulation and /api/simulation supported)
 app.use('/simulation', simulationRouter);

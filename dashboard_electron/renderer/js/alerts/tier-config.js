@@ -3,6 +3,24 @@
 var tierConfig = (function () {
   var containerId = null;
 
+  // Derive API base the same way live-provider.js does
+  function getApiBase() {
+    if (typeof liveProvider !== 'undefined' && typeof liveProvider.getApiBase === 'function') {
+      return liveProvider.getApiBase();
+    }
+    var port = '8080';
+    if (typeof window !== 'undefined') {
+      if (window.__TEST_BACKEND_PORT__) port = window.__TEST_BACKEND_PORT__;
+      else if (window.__BACKEND_PORT__) port = window.__BACKEND_PORT__;
+      else if (window.location && window.location.search) {
+        var match = window.location.search.match(/[?&]backend_port=(\d+)/);
+        if (match) port = match[1];
+      }
+    }
+    var host = (typeof window !== 'undefined' && window.location && window.location.hostname) || 'localhost';
+    return 'http://' + host + ':' + port;
+  }
+
   var tiers = [
     {
       tier: 1,
@@ -14,7 +32,7 @@ var tierConfig = (function () {
       tier: 2,
       label: 'GSM SMS',
       enabled: true,
-      detail: 'SIM800L — 2 contacts configured'
+      detail: 'Loading contact count…'
     },
     {
       tier: 3,
@@ -27,6 +45,24 @@ var tierConfig = (function () {
   function init(targetId) {
     containerId = targetId;
     render();
+    fetchContactCount();
+  }
+
+  function fetchContactCount() {
+    fetch(getApiBase() + '/api/sms-contacts/count')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var count = (data && typeof data.count === 'number') ? data.count : 0;
+        tiers[1].detail = 'Twilio — ' + count + ' auto-alert contact' + (count !== 1 ? 's' : '') + ' configured';
+        render();
+      })
+      .catch(function () {
+        tiers[1].detail = 'Twilio — contact count unavailable';
+        render();
+      });
   }
 
   function render() {
@@ -49,5 +85,5 @@ var tierConfig = (function () {
     container.innerHTML = html;
   }
 
-  return { init: init };
+  return { init: init, refresh: fetchContactCount };
 })();

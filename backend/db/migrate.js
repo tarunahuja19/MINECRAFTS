@@ -52,7 +52,7 @@ async function migrate() {
     const isReset = process.argv.includes('--reset');
     if (isReset) {
       console.log(`[migrate] Reset flag detected. Dropping existing tables...`);
-      await dbClient.query(`DROP TABLE IF EXISTS readings, simulation_packets, alarms, nodes CASCADE;`);
+      await dbClient.query(`DROP TABLE IF EXISTS readings, simulation_packets, alarms, sms_contacts, nodes CASCADE;`);
     } else {
       await dbClient.query(`ALTER TABLE IF EXISTS nodes DROP CONSTRAINT IF EXISTS nodes_status_check;`);
     }
@@ -61,6 +61,25 @@ async function migrate() {
     const sql = fs.readFileSync(schemaPath, 'utf8');
     await dbClient.query(sql);
     console.log(`[migrate] Schema successfully applied.`);
+
+    // Seed sms_contacts from ALERT_SMS_TO if the table is empty and the env var is set.
+    // This ensures existing working numbers aren't silently dropped when this feature ships.
+    const contactCount = await dbClient.query(`SELECT count(*) FROM sms_contacts;`);
+    if (parseInt(contactCount.rows[0].count, 10) === 0) {
+      const legacyTo = process.env.ALERT_SMS_TO;
+      if (legacyTo && legacyTo.trim()) {
+        const phones = legacyTo.split(',').map(p => p.trim()).filter(Boolean);
+        for (let i = 0; i < phones.length; i++) {
+          const name = `LEGACY-${i + 1}`;
+          const phone = phones[i];
+          await dbClient.query(
+            `INSERT INTO sms_contacts (name, phone, auto_alert) VALUES ($1, $2, true) ON CONFLICT (phone) DO NOTHING;`,
+            [name, phone]
+          );
+          console.log(`[migrate] Seeded legacy SMS contact: ${name} → ${phone}`);
+        }
+      }
+    }
 
     // Verify tables
     const tableRes = await dbClient.query(`

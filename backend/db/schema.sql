@@ -122,3 +122,14 @@ CREATE TABLE IF NOT EXISTS alarms (
 
 CREATE INDEX IF NOT EXISTS idx_alarms_t_utc ON alarms (t_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_alarms_panel ON alarms (panel_id, t_utc DESC);
+
+-- 5. sms_contacts — dashboard-managed SMS recipient list
+-- Replaces the static ALERT_SMS_TO env var with a database-backed contact list
+-- that operators can edit from the UI without restarting the server.
+CREATE TABLE IF NOT EXISTS sms_contacts (
+    contact_id   SERIAL PRIMARY KEY,
+    name         VARCHAR(128) NOT NULL,
+    phone        VARCHAR(32) NOT NULL UNIQUE,   -- E.164, e.g. +919812345678
+    auto_alert   BOOLEAN NOT NULL DEFAULT true,  -- gets Tier-2+ alarms automatically
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
