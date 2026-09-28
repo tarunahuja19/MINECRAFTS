@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="css/hmi.css">
   <link rel="stylesheet" href="css/terrain-3d.css">
   <link rel="stylesheet" href="css/sim-tab.css">
+  <link rel="stylesheet" href="css/tutorial.css">
   <style>
     .sim-canvas-wrap,
     #sim-maplibre-map {
@@ -195,6 +196,7 @@
       <button class="tab-btn" data-tab="system">SYSTEM</button>
       <button class="tab-btn" data-tab="info">INFO</button>
       <div style="margin-left:auto; display:flex; align-items:center; gap:8px; padding-right:10px;">
+        <button id="btn-tutorial-help" class="tutorial-help-btn" title="Replay the tutorial" aria-label="Replay tutorial">?</button>
         <div id="sim-status-hud" class="sim-hud-badge status-stopped" title="Simulation execution status (controls node activity and telemetry stream)">
           <span class="sim-hud-dot"></span>
           <span id="sim-hud-text">SIMULATION: STOPPED</span>
@@ -1927,6 +1929,10 @@
   <script src="js/sim/sim-live.js"></script>
   <script src="js/sim/sim-embed.js"></script>
   <script src="js/sim/sim-tab.js"></script>
+
+  <!-- Tutorial onboarding -->
+  <script src="js/tutorial/tutorial-steps.js"></script>
+  <script src="js/tutorial/tutorial.js"></script>
 
   <!-- App init -->
   <script src="js/app.js"></script>

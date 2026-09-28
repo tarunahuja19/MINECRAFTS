@@ -1,0 +1,208 @@
+/* ============================================================
+   R4 HMI Tutorial & Onboarding System
+   Game-style walkthrough overlay and cards
+   ============================================================ */
+
+/* Fullscreen overlay container */
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
+  overflow: hidden;
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* Centred / dim state for steps without a specific target */
+.tutorial-overlay.tutorial-dimmed {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* Spotlight cutout box */
+.tutorial-spotlight {
+  position: fixed;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+  border: 1px solid var(--border-bevel-light);
+  border-radius: 3px;
+  pointer-events: auto;
+  box-sizing: border-box;
+  transition: top 0.2s ease-out, left 0.2s ease-out, width 0.2s ease-out, height 0.2s ease-out;
+  z-index: 2001;
+}
+
+/* Tutorial card popup */
+.tutorial-card {
+  position: fixed;
+  width: 320px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-bevel-light);
+  border-left: 1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right: 1px solid var(--border-bevel-dark);
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-rule);
+  color: var(--text-primary);
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+  z-index: 2002;
+  outline: none;
+  box-sizing: border-box;
+  transition: top 0.2s ease-out, left 0.2s ease-out;
+}
+
+/* Card header */
+.tutorial-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border-rule);
+}
+
+.tutorial-step-counter {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--status-active);
+}
+
+.tutorial-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.tutorial-close-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Card content */
+.tutorial-card-body {
+  padding: 12px 14px;
+}
+
+.tutorial-card-title {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+}
+
+.tutorial-card-text {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* Card footer */
+.tutorial-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-inset);
+  border-top: 1px solid var(--border-rule);
+}
+
+.tutorial-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Tutorial buttons */
+.tutorial-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  background: var(--btn-bg);
+  border-top: 1px solid var(--border-bevel-light);
+  border-left: 1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right: 1px solid var(--border-bevel-dark);
+  border-radius: 2px;
+  color: var(--text-primary);
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.tutorial-btn:active {
+  background: var(--btn-bg-press);
+  box-shadow: inset 1px 1px 2px #0a1015;
+}
+
+.tutorial-btn-primary {
+  border-color: var(--status-active);
+  color: #FFFFFF;
+}
+
+.tutorial-btn-skip {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tutorial-btn-skip:hover {
+  color: var(--text-primary);
+}
+
+/* Replay Help "?" button in Tab Bar */
+.tutorial-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--btn-bg);
+  border-top: 1px solid var(--border-bevel-light);
+  border-left: 1px solid var(--border-bevel-light);
+  border-bottom: 1px solid var(--border-bevel-dark);
+  border-right: 1px solid var(--border-bevel-dark);
+  border-radius: 50%;
+  color: var(--text-primary);
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  padding: 0;
+  line-height: 1;
+  position: relative;
+  z-index: 2005;
+}
+
+.tutorial-help-btn:hover {
+  background: var(--bg-panel-header);
+  border-color: var(--status-active);
+  color: #FFFFFF;
+}
+
+.tutorial-help-btn:active {
+  background: var(--btn-bg-press);
+  box-shadow: inset 1px 1px 2px #0a1015;
+}

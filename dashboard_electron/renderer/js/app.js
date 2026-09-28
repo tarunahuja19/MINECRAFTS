@@ -89,6 +89,11 @@ document.getElementById('tab-map').style.display = 'flex';
     infoTab.init();
   }
 
+  // Phase 6B — First-time tutorial cards
+  if (typeof tutorial !== 'undefined' && tutorial.init) {
+    tutorial.init();
+  }
+
   // Phase 7 — Simulation Tab & Live Status
   if (typeof simLive !== 'undefined' && simLive.init) {
     simLive.init();
