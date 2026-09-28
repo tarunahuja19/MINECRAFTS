@@ -558,6 +558,9 @@ var simTab = (function () {
     clearCrackDraw();
     clearForgePreview();
     renderForgeRight();
+    if (typeof bus !== 'undefined' && typeof bus.emit === 'function') {
+      bus.emit('forge-reset');
+    }
     updateForgeRange(function () {
       if (forgeState.day > forgeState.endDay) forgeState.day = forgeState.endDay;
       updateForgeUI();
@@ -1372,6 +1375,15 @@ var simTab = (function () {
     forgePrevStates = states;
     forgePrevDay = day;
     renderForgeRight();
+    if (typeof bus !== 'undefined' && typeof bus.emit === 'function') {
+      bus.emit('forge-node-states', states);
+      if (Array.isArray(frame.zones)) {
+        bus.emit('forge-zones', frame.zones);
+      }
+      if (Array.isArray(frame.cracks)) {
+        bus.emit('forge-cracks', frame.cracks);
+      }
+    }
   }
 
   function renderForgeRight() {

@@ -40,6 +40,9 @@ document.getElementById('tab-map').style.display = 'flex';
 
   mapLayers.loadPanelOutline(map, '../fixtures/panel_outline.geojson');
   mapLayers.loadRiskZones(map, '../fixtures/risk_zones.geojson');
+  if (typeof mapLayers.initEventHazardLayer === 'function') {
+    mapLayers.initEventHazardLayer(map);
+  }
   panelGrid.init(map);
   terrain3DWindow.init();
   mapTabs.init();

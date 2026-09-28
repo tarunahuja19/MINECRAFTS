@@ -329,8 +329,60 @@ var nodeMarkers = (function () {
     }
 
     bus.on('node-status-change', function (data) {
-      if (!window.__SIM_PLAYING__) return;
-      updateState(data.node_id, data.state);
+      if (!data || !data.node_id) return;
+      var rawId = data.node_id;
+      var nid = typeof rawId === 'number' ? ('N' + String(rawId).padStart(2, '0')) : String(rawId).toUpperCase();
+      updateState(nid, (data.state || 'active').toLowerCase());
+    });
+
+    bus.on('forge-node-states', function (states) {
+      if (!states) return;
+      Object.keys(states).forEach(function (rawId) {
+        var nid = typeof rawId === 'number' ? ('N' + String(rawId).padStart(2, '0')) : String(rawId).toUpperCase();
+        var st = (states[rawId] || 'ACTIVE').toLowerCase();
+        updateState(nid, st);
+      });
+    });
+
+    bus.on('forge-collapse', function (data) {
+      if (!data) return;
+      var cx = Number(data.cx) || 0;
+      var cy = Number(data.cy) || 0;
+      var r = Number(data.radiusM) || 75;
+      var rWhite = r * 1.2;
+      var rRed = r * 1.5;
+      var all = getAllNodes();
+      var critNodes = [];
+      all.forEach(function (n) {
+        if (!n) return;
+        var nx = Number.isFinite(n.x) ? n.x : (typeof mapView !== 'undefined' ? mapView.latLonToXY(n.lat, n.lng)[0] : 0);
+        var ny = Number.isFinite(n.y) ? n.y : (typeof mapView !== 'undefined' ? mapView.latLonToXY(n.lat, n.lng)[1] : 0);
+        var dist = Math.hypot(nx - cx, ny - cy);
+        var nid = n.node_id;
+        if (dist <= rWhite) {
+          updateState(nid, 'critical');
+          critNodes.push(nid);
+        } else if (dist <= rRed) {
+          updateState(nid, 'warning');
+        }
+      });
+      if (critNodes.length > 0 && typeof bus !== 'undefined' && bus.emit) {
+        bus.emit('alarm', {
+          alarm_id: 'ALM-CAVEIN-' + Math.round(cx) + '_' + Math.round(cy),
+          level: 3,
+          affected_nodes: critNodes,
+          t_utc: new Date().toISOString(),
+          trough_fit_r2: 0.98,
+          description: 'Pillar failure & ground subsidence detected at (' + Math.round(cx) + 'm, ' + Math.round(cy) + 'm)'
+        });
+      }
+    });
+
+    bus.on('forge-reset', function () {
+      var ids = Object.keys(nodeData);
+      for (var k = 0; k < ids.length; k++) {
+        updateState(ids[k], 'active');
+      }
     });
 
     bus.on('simulation-play', function () {
