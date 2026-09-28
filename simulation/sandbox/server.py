@@ -36,7 +36,7 @@ from pydantic import BaseModel
 
 from sandbox import constants, dem, geo, ground, hypsometry, layout, mesh, segments, surface
 from sandbox.constants import DEFAULT_SPEED_MULTIPLIER
-from sandbox.db import db_manager
+from sandbox.db import db_manager, BACKEND_HTTP_URL
 from sandbox.script import ScriptError, load_script
 from sandbox.session import SessionConfig, SimulationSession
 
@@ -80,7 +80,7 @@ async def broadcast_simulation_status(session: SimulationSession) -> dict[str, A
         try:
             import urllib.request
             req = urllib.request.Request(
-                "http://127.0.0.1:8080/api/simulation/status",
+                f"{BACKEND_HTTP_URL}/api/simulation/status",
                 data=json.dumps({
                     "is_running": session.is_running,
                     "is_paused": session.is_paused,

@@ -27,6 +27,9 @@ var simLive = (function () {
       var match = window.location.search.match(/[?&]backend_port=(\d+)/);
       if (match) return 'http://' + getHost() + ':' + match[1];
     }
+    if (typeof window !== 'undefined' && window.API_BASE) {
+      return window.API_BASE;
+    }
     return 'http://' + getHost() + ':8080';
   }
 
@@ -35,12 +38,13 @@ var simLive = (function () {
     if (ws && (ws.readyState === 1 || ws.readyState === 0)) {
       return;
     }
-    var port = '8080';
+    var wsUrl = (typeof window !== 'undefined' && window.WS_URL)
+      ? window.WS_URL
+      : ('ws://' + getHost() + ':8080/ws');
     if (typeof window !== 'undefined' && window.location && window.location.search) {
       var match = window.location.search.match(/[?&]backend_port=(\d+)/);
-      if (match) port = match[1];
+      if (match) wsUrl = 'ws://' + getHost() + ':' + match[1] + '/ws';
     }
-    var wsUrl = 'ws://' + getHost() + ':' + port + '/ws';
     try {
       ws = new WebSocket(wsUrl);
     } catch (e) {

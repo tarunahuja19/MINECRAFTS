@@ -13,9 +13,17 @@ var strainChart = (function () {
 
     destroy();
 
+    var nidNum = parseInt(String(nodeId || '').replace(/\D/g, ''), 10);
+    var isTier1B = (optTelemetry && optTelemetry.tier === '1B') || (nidNum >= 10 && nidNum <= 19);
+
+    if (!isTier1B) {
+      container.innerHTML = '<div class="live-chart-empty-msg" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:70px;font-family:Consolas,monospace;font-size:10px;color:#5A6E7C;letter-spacing:0.05em;text-align:center;padding:0 8px;">STRAIN SENSORS ACTIVE ON TIER 1B TENSION SCOUTS (N10–N19)</div>';
+      return;
+    }
+
     var history = getSeedHistory(nodeId);
     if (history.labels.length === 0 && !optTelemetry) {
-      container.innerHTML = '<div class="live-chart-empty-msg" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:70px;font-family:Consolas,monospace;font-size:10px;color:#5A6E7C;letter-spacing:0.05em;">NO TELEMETRY RECORDED — NODE OFFLINE</div>';
+      container.innerHTML = '<div class="live-chart-empty-msg" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:70px;font-family:Consolas,monospace;font-size:10px;color:#5A6E7C;letter-spacing:0.05em;">AWAITING TIER 1B STRAIN TELEMETRY</div>';
       return;
     }
 

@@ -26,6 +26,9 @@ var simControls = (function () {
       var match = window.location.search.match(/[?&]backend_port=(\d+)/);
       if (match) return 'http://' + getHost() + ':' + match[1];
     }
+    if (typeof window !== 'undefined' && window.API_BASE) {
+      return window.API_BASE;
+    }
     return typeof API_BASE !== 'undefined'
       ? API_BASE
       : 'http://' + getHost() + ':8080';

@@ -142,7 +142,8 @@ app.post(['/api/system/reset', '/api/database/reset'], async (req, res) => {
 
     // Stop and reset the running simulation engine
     try {
-      const simControlUrl = (process.env.SIMULATION_URL || 'http://127.0.0.1:8000') + '/control';
+      const simControlBase = (process.env.SIMULATION_URL || (process.env.NODE_ENV === 'production' ? 'https://minecrafts-simulation.onrender.com' : 'http://127.0.0.1:8000')).replace(/\/+$/, '');
+      const simControlUrl = simControlBase + '/control';
       await fetch(simControlUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -27,7 +27,9 @@
  * clamped to the 600 m simulation window.
  */
 var simEmbed = (function () {
-  var DEV_BASE = 'http://127.0.0.1:5173/';
+  var DEV_BASE = (typeof window !== 'undefined' && window.SANDBOX_UI_URL)
+    ? (window.SANDBOX_UI_URL.replace(/\/+$/, '') + '/')
+    : 'http://127.0.0.1:5173/';
   var READY_TIMEOUT_MS = 7000;
   var MAX_QUEUED = 30;
 
@@ -68,6 +70,9 @@ var simEmbed = (function () {
   var isInitialized = false;
 
   function getBuildBase() {
+    if (typeof window !== 'undefined' && window.SANDBOX_UI_URL) {
+      return window.SANDBOX_UI_URL.replace(/\/+$/, '') + '/';
+    }
     return 'http://' + (window.location.hostname || 'localhost') + ':8085/sim/';
   }
 

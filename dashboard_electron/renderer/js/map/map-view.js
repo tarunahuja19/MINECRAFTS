@@ -70,8 +70,14 @@ var mapView = (function () {
 
     try {
       // 1. Satellite Basemap (ESRI World Imagery + Reference Overlay)
+      var tileSources = (typeof window !== 'undefined' && window.TILE_SOURCES) || {
+        satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        labels: 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        topo: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+      };
+
       var satTiles = L.tileLayer(
-        'http://127.0.0.1:8085/tiles/satellite/{z}/{x}/{y}.png',
+        tileSources.satellite,
         {
           minZoom: 12,
           maxZoom: 19,
@@ -80,7 +86,7 @@ var mapView = (function () {
         }
       );
       var satLabels = L.tileLayer(
-        'http://127.0.0.1:8085/tiles/labels/{z}/{x}/{y}.png',
+        tileSources.labels,
         {
           minZoom: 12,
           maxZoom: 19,
@@ -89,14 +95,8 @@ var mapView = (function () {
       );
       baseLayers.satellite = L.layerGroup([satTiles, satLabels]);
 
-      // 2. Topographic basemap. This replaces the old TACTICAL option, which
-      // pointed at '../tiles/{z}/{x}/{y}.png' - a directory that does not exist
-      // in this repo, so every tile 404'd and the button produced a blank map.
-      // Topo is served (Esri World Topo) and is the genuinely useful second
-      // view here: contours show the surface relief the subsidence model acts
-      // on, which the aerial imagery flattens out.
       var topoTiles = L.tileLayer(
-        'http://127.0.0.1:8085/tiles/topo/{z}/{x}/{y}.png',
+        tileSources.topo,
         {
           minZoom: 12,
           maxZoom: 19,

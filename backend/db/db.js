@@ -18,6 +18,15 @@ const config = {
 // Also support DATABASE_URL if provided
 if (process.env.DATABASE_URL) {
   config.connectionString = process.env.DATABASE_URL;
+  // Cloud providers like Supabase require SSL
+  if (
+    process.env.DATABASE_URL.includes('supabase.co') ||
+    process.env.DATABASE_URL.includes('pooler.supabase.com') ||
+    process.env.DATABASE_URL.includes('sslmode=require') ||
+    process.env.PGSSL === 'true'
+  ) {
+    config.ssl = { rejectUnauthorized: false };
+  }
 }
 
 const pool = new Pool(config);

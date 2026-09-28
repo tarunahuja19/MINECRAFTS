@@ -196,8 +196,9 @@ document.getElementById('tab-map').style.display = 'flex';
         });
       } catch (e) {}
 
+      var apiBase = (typeof window !== 'undefined' && window.API_BASE) || ('http://' + host + ':8080');
       try {
-        await fetch('http://' + host + ':8080/api/simulation/control', {
+        await fetch(apiBase + '/api/simulation/control', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'stop' })
@@ -206,7 +207,7 @@ document.getElementById('tab-map').style.display = 'flex';
 
       // 2. Wipe database
       try {
-        var res = await fetch('http://' + host + ':8080/api/system/reset', { method: 'POST' });
+        var res = await fetch(apiBase + '/api/system/reset', { method: 'POST' });
         var data = await res.json();
         bus.emit('system-reset', data);
       } catch (e) {}

@@ -202,7 +202,8 @@ var nodeDetail = (function () {
   }
 
   function fetchDbNodeProfile(nodeId) {
-    fetch('http://localhost:8080/api/nodes/' + encodeURIComponent(nodeId))
+    var apiBase = (typeof window !== 'undefined' && window.API_BASE) || 'http://localhost:8080';
+    fetch(apiBase + '/api/nodes/' + encodeURIComponent(nodeId))
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();

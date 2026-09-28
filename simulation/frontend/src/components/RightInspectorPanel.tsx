@@ -9,6 +9,7 @@ import { SPEED_MULTIPLIERS, type SpeedMultiplier } from "../interventions";
 import { InfoModal, InfoBadge, type InfoItem } from "./InfoModal";
 import { Field, Segmented } from "./Menu";
 import { INTERVENTION_INFO, PACE_INFO } from "../interventions";
+import { SIM_BASE_URL } from "../utils/config";
 
 interface RightInspectorPanelProps {
   /** False until the operator presses START; disables every trigger. */
@@ -104,8 +105,7 @@ export const RightInspectorPanel: React.FC<RightInspectorPanelProps> = ({
     let isMounted = true;
     const fetchTelemetry = async () => {
       try {
-        const host = window.location.hostname || "localhost";
-        const res = await fetch(`http://${host}:8000/nodes/${selectedNodeId}`);
+        const res = await fetch(`${SIM_BASE_URL}/nodes/${selectedNodeId}`);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) setRemoteDetails(data.telemetry);

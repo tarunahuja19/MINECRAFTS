@@ -38,7 +38,7 @@ var replayController = (function () {
   // what we actually paused.
   var liveSuspended = false;
 
-  var API_BASE = 'http://' + (window.location.hostname || 'localhost') + ':8080';
+  var API_BASE = (typeof window !== 'undefined' && window.API_BASE) || ('http://' + (window.location.hostname || 'localhost') + ':8080');
 
   function init(target) {
     if (Array.isArray(target)) {

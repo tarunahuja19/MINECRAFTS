@@ -135,7 +135,8 @@ var pastAlarms = (function () {
           scheduleRender();
         });
       } else {
-        fetch('http://localhost:8080/api/alarms')
+        var apiBase = (typeof window !== 'undefined' && window.API_BASE) || 'http://localhost:8080';
+        fetch(apiBase + '/api/alarms')
           .then(function (r) { return r.json(); })
           .then(function (data) {
             alarms = dedupeAlarms(Array.isArray(data) ? data : []);
