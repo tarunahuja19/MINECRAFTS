@@ -178,6 +178,7 @@ var alarmHistory = (function () {
         return new Date(b.t_utc).getTime() - new Date(a.t_utc).getTime();
       });
       allAlarms = dedupeAlarms(sorted);
+      syncActiveNodes();
       page = 0;
       selectedAlarmId = null;
       updateBadges();
@@ -222,6 +223,115 @@ var alarmHistory = (function () {
         updateSelectedHighlight();
       }
     });
+
+    bus.on('node-status-change', function (data) {
+      if (!data || !data.node_id) return;
+      var rawState = (data.state || '').toUpperCase();
+      if (rawState === 'WARNING' || rawState === 'CRITICAL' || rawState === 'LASTGASP') {
+        var lvl = (rawState === 'WARNING') ? 2 : 3;
+        var st = (rawState === 'WARNING') ? 'WARNING' : 'CRITICAL';
+        var nid = String(data.node_id).toUpperCase();
+        var nd = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(nid) : null;
+        var cent = (nd && nd.lat != null && nd.lng != null) ? { lat: nd.lat, lng: nd.lng } : null;
+        var lastTs = (nd && nd.lastTelemetry && nd.lastTelemetry.t_epoch_s)
+          ? new Date(nd.lastTelemetry.t_epoch_s * 1000).toISOString()
+          : new Date().toISOString();
+
+        processOrInsertAlarm({
+          alarm_id: 'ALM-' + (lvl === 3 ? 'CRIT-' : 'WARN-') + nid,
+          level: lvl,
+          state: st,
+          affected_nodes: [nid],
+          t_utc: lastTs,
+          centroid: cent,
+          trough_fit_r2: (lvl === 3) ? 0.95 : 0.85,
+          description: (lvl === 3 ? 'Critical ground failure' : 'Ground tension & tilt warning')
+        }, allAlarms);
+        updateBadges();
+        render();
+      }
+    });
+
+    bus.on('forge-node-states', function (states) {
+      if (!states) return;
+      var warnNodes = [];
+      var critNodes = [];
+      Object.keys(states).forEach(function (rawId) {
+        var st = String(states[rawId] || '').toUpperCase();
+        var nid = rawId.trim().toUpperCase();
+        if (st === 'WARNING') warnNodes.push(nid);
+        else if (st === 'CRITICAL' || st === 'LASTGASP') critNodes.push(nid);
+      });
+      var nowIso = new Date().toISOString();
+      if (warnNodes.length > 0) {
+        var wFirst = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(warnNodes[0]) : null;
+        processOrInsertAlarm({
+          alarm_id: 'ALM-WARN-' + warnNodes[0],
+          level: 2,
+          state: 'WARNING',
+          affected_nodes: warnNodes,
+          t_utc: nowIso,
+          centroid: (wFirst && wFirst.lat != null) ? { lat: wFirst.lat, lng: wFirst.lng } : null,
+          trough_fit_r2: 0.87,
+          description: 'Geomechanical tension & displacement threshold exceeded'
+        }, allAlarms);
+      }
+      if (critNodes.length > 0) {
+        var cFirst = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(critNodes[0]) : null;
+        processOrInsertAlarm({
+          alarm_id: 'ALM-CRIT-' + critNodes[0],
+          level: 3,
+          state: 'CRITICAL',
+          affected_nodes: critNodes,
+          t_utc: nowIso,
+          centroid: (cFirst && cFirst.lat != null) ? { lat: cFirst.lat, lng: cFirst.lng } : null,
+          trough_fit_r2: 0.97,
+          description: 'Critical pillar failure & ground subsidence detected'
+        }, allAlarms);
+      }
+      updateBadges();
+      render();
+    });
+
+    setTimeout(syncActiveNodes, 400);
+  }
+
+  function syncActiveNodes() {
+    if (typeof nodeMarkers === 'undefined' || !nodeMarkers.getAllNodes) return;
+    var all = nodeMarkers.getAllNodes();
+    if (!all || !all.length) return;
+
+    var changed = false;
+    for (var i = 0; i < all.length; i++) {
+      var n = all[i];
+      if (!n) continue;
+      var rawSt = (n.state || '').toUpperCase();
+      if (rawSt === 'WARNING' || rawSt === 'CRITICAL' || rawSt === 'LASTGASP') {
+        var lvl = (rawSt === 'WARNING') ? 2 : 3;
+        var st = (rawSt === 'WARNING') ? 'WARNING' : 'CRITICAL';
+        var nid = String(n.node_id).toUpperCase();
+        var lastTs = (n.lastTelemetry && n.lastTelemetry.t_epoch_s)
+          ? new Date(n.lastTelemetry.t_epoch_s * 1000).toISOString()
+          : new Date().toISOString();
+        var cent = (n.lat != null && n.lng != null) ? { lat: n.lat, lng: n.lng } : null;
+
+        processOrInsertAlarm({
+          alarm_id: 'ALM-' + (lvl === 3 ? 'CRIT-' : 'WARN-') + nid,
+          level: lvl,
+          state: st,
+          affected_nodes: [nid],
+          t_utc: lastTs,
+          centroid: cent,
+          trough_fit_r2: (lvl === 3) ? 0.95 : 0.85,
+          description: (lvl === 3 ? 'Critical ground failure & pillar collapse' : 'Ground tension & displacement warning')
+        }, allAlarms);
+        changed = true;
+      }
+    }
+    if (changed) {
+      updateBadges();
+      render();
+    }
   }
 
   function updateSelectedHighlight() {
@@ -348,6 +458,7 @@ var alarmHistory = (function () {
 
   return {
     init: init,
-    getAlarms: getAlarms
+    getAlarms: getAlarms,
+    syncActiveNodes: syncActiveNodes
   };
 })();

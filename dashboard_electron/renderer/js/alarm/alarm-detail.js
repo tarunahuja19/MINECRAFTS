@@ -104,7 +104,7 @@ var alarmDetail = (function () {
 
         '<div class="explanation-box">' +
           '<span class="box-label">EXPLANATION</span>' +
-          alarm.explanation +
+          (alarm.explanation || alarm.description || 'Pillar displacement & tensile strain threshold exceeded') +
         '</div>' +
         '<div class="section-sep"></div>' +
 

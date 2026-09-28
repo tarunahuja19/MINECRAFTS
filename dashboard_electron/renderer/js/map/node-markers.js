@@ -545,10 +545,23 @@ var nodeMarkers = (function () {
         bus.emit('alarm', {
           alarm_id: 'ALM-CAVEIN-' + Math.round(cx) + '_' + Math.round(cy),
           level: 3,
+          state: 'CRITICAL',
           affected_nodes: critNodes,
           t_utc: new Date().toISOString(),
           trough_fit_r2: 0.98,
           description: 'Pillar failure & ground subsidence detected at (' + Math.round(cx) + 'm, ' + Math.round(cy) + 'm)'
+        });
+      }
+
+      if (warnNodes.length > 0 && typeof bus !== 'undefined' && bus.emit) {
+        bus.emit('alarm', {
+          alarm_id: 'ALM-TENSION-' + Math.round(cx) + '_' + Math.round(cy),
+          level: 2,
+          state: 'WARNING',
+          affected_nodes: warnNodes,
+          t_utc: new Date().toISOString(),
+          trough_fit_r2: 0.88,
+          description: 'Ground tension & displacement warning at (' + Math.round(cx) + 'm, ' + Math.round(cy) + 'm)'
         });
       }
     });

@@ -1348,10 +1348,11 @@ var simTab = (function () {
         if (f.WARNING > day) delete f.WARNING;
         if (f.CRITICAL > day) delete f.CRITICAL;
       });
-    } else if (forgePrevStates) {
+    } else {
+      var prevStates = forgePrevStates;
       Object.keys(states).sort().forEach(function (nid) {
         var st = states[nid];
-        var prev = forgePrevStates[nid] || 'ACTIVE';
+        var prev = prevStates ? (prevStates[nid] || 'ACTIVE') : 'ACTIVE';
         if (st === prev) return;
         var why = '';
         var pos = layout[nid];
@@ -1362,6 +1363,18 @@ var simTab = (function () {
         forgeAlarms.unshift({ day: day, node: nid, state: st, text: 'Day ' + day.toFixed(1) + ' · ' + nid + ' → ' + st + why });
         if (typeof bus !== 'undefined' && typeof bus.emit === 'function') {
           bus.emit('node-status-change', { node_id: nid, state: st.toLowerCase() });
+          if (st === 'WARNING' || st === 'CRITICAL') {
+            var lvl = (st === 'CRITICAL') ? 3 : 2;
+            bus.emit('alarm', {
+              alarm_id: 'ALM-' + (lvl === 3 ? 'CRIT-' : 'WARN-') + nid,
+              level: lvl,
+              state: st,
+              affected_nodes: [nid],
+              t_utc: new Date().toISOString(),
+              trough_fit_r2: (lvl === 3) ? 0.96 : 0.86,
+              description: (lvl === 3 ? 'Critical pillar failure & subsidence' : 'Tensile strain & tilt warning') + why
+            });
+          }
         }
       });
       if (forgeAlarms.length > FORGE_ALARM_MAX) forgeAlarms.length = FORGE_ALARM_MAX;

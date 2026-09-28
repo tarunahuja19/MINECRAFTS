@@ -28,7 +28,19 @@ var zoomToAlarm = (function () {
   }
 
   function zoomTo(alarm, forceSwitchTab) {
-    if (!alarm || !alarm.centroid) return;
+    if (!alarm) return;
+
+    var centroid = alarm.centroid;
+    if (!centroid && alarm.affected_nodes && alarm.affected_nodes.length > 0) {
+      for (var k = 0; k < alarm.affected_nodes.length; k++) {
+        var nd = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(alarm.affected_nodes[k]) : null;
+        if (nd && typeof nd.lat === 'number' && typeof nd.lng === 'number') {
+          centroid = { lat: nd.lat, lng: nd.lng };
+          break;
+        }
+      }
+    }
+    if (!centroid) return;
 
     if (forceSwitchTab) {
       var tabBtn = document.querySelector('.tab-btn[data-tab="map"]');
@@ -43,13 +55,15 @@ var zoomToAlarm = (function () {
     if (alarm.affected_nodes && alarm.affected_nodes.length > 1) {
       var bounds = [];
       for (var i = 0; i < alarm.affected_nodes.length; i++) {
-        var nd = nodeMarkers.getNodeData(alarm.affected_nodes[i]);
-        if (nd) bounds.push([nd.lat, nd.lng]);
+        var nd2 = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(alarm.affected_nodes[i]) : null;
+        if (nd2 && typeof nd2.lat === 'number' && typeof nd2.lng === 'number') {
+          bounds.push([nd2.lat, nd2.lng]);
+        }
       }
-      bounds.push([alarm.centroid.lat, alarm.centroid.lng]);
+      bounds.push([centroid.lat, centroid.lng]);
       map.fitBounds(L.latLngBounds(bounds).pad(0.6), { maxZoom: 17, animate: true, duration: 1.2 });
     } else {
-      map.setView([alarm.centroid.lat, alarm.centroid.lng], 17, { animate: true, duration: 1.2 });
+      map.setView([centroid.lat, centroid.lng], 17, { animate: true, duration: 1.2 });
     }
   }
 
