@@ -869,6 +869,10 @@ var simTab = (function () {
         var b = params.get('forge_api');
         if (b) return b;
       } catch (_) {}
+      if (window.__FORGE_API_BASE__) return window.__FORGE_API_BASE__;
+      if (window.SIM_BASE && !window.SIM_BASE.includes('localhost') && !window.SIM_BASE.includes('127.0.0.1')) {
+        return window.SIM_BASE;
+      }
     }
     return 'http://127.0.0.1:8020';
   })();

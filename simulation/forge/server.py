@@ -11,7 +11,7 @@ from typing import Annotated, Any, Literal, Optional, Union
 import urllib.error
 import urllib.request
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from pydantic import BaseModel, Field
@@ -23,6 +23,7 @@ from sandbox.mqtt_bridge import _node_topic_id
 from sandbox.sensors import SensorArray, SensorNoiseConfig
 
 app = FastAPI(title="FORGE Math Server", version="1.0.0")
+forge_router = APIRouter()
 
 app.add_middleware(
     CORSMiddleware,
@@ -129,13 +130,13 @@ def _event_dicts(events: list) -> list[dict]:
     return [event_maths.normalise(ev.model_dump()) for ev in events]
 
 
-@app.get("/health")
+@forge_router.get("/health")
 async def health():
     """Liveness probe."""
     return {"status": "ok"}
 
 
-@app.post("/forge/frame")
+@forge_router.post("/forge/frame")
 async def forge_frame(req: ForgeFrameRequest):
     """Compute ground truth deformation, perturbations, and node states for a given day and events."""
     evs = _event_dicts(req.events)
@@ -282,7 +283,7 @@ async def forge_frame(req: ForgeFrameRequest):
     return res
 
 
-@app.post("/forge/range")
+@forge_router.post("/forge/range")
 async def forge_range(req: ForgeRangeRequest):
     """Compute maximum simulation end-day based on latest event end time."""
     if not req.events:
@@ -298,17 +299,19 @@ async def forge_range(req: ForgeRangeRequest):
     return {"end_day": end_day}
 
 
-@app.get("/forge/seed")
+@forge_router.get("/forge/seed")
 async def forge_seed():
-    """Read live state from :8000/interventions and return seed day and events."""
-    live_url = "http://127.0.0.1:8000/interventions"
+    """Read live state from simulation session and return seed day and events."""
+    import os
+    port = os.environ.get("PORT", "8000")
+    live_url = f"http://127.0.0.1:{port}/interventions"
     try:
         req = urllib.request.Request(live_url, headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=1.0) as resp:
             if resp.status != 200:
                 raise HTTPException(
                     status_code=503,
-                    detail=f"Live engine on :8000 returned status {resp.status}",
+                    detail=f"Live engine on :{port} returned status {resp.status}",
                 )
             data = json.loads(resp.read().decode("utf-8"))
     except HTTPException:
@@ -316,7 +319,7 @@ async def forge_seed():
     except Exception as e:
         raise HTTPException(
             status_code=503,
-            detail=f"Live engine on :8000 is unavailable: {e}",
+            detail=f"Live engine on :{port} is unavailable: {e}",
         )
 
     t_sim_seconds = float(data.get("t_sim_seconds", 0.0))
@@ -376,3 +379,6 @@ async def forge_seed():
                 }
             )
     return {"day": day, "events": events}
+
+
+app.include_router(forge_router)

@@ -737,6 +737,15 @@ async def websocket_endpoint(websocket: WebSocket):
         _connected_clients.discard(websocket)
 
 
+# Mount FORGE math routes so single-container cloud deployments (e.g. Render) serve FORGE
+try:
+    from forge.server import forge_router
+    app.include_router(forge_router)
+    print("[*] Mounted FORGE math engine routes on sandbox server")
+except Exception as _forge_err:
+    print(f"[WARN] Could not mount FORGE math engine routes: {_forge_err}")
+
+
 # Mount compiled frontend if available
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles

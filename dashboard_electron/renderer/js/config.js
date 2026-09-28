@@ -9,6 +9,7 @@
   var DEFAULT_BACKEND = isCloud ? 'https://minecrafts-backend.onrender.com' : 'http://localhost:8080';
   var DEFAULT_SIM = isCloud ? 'https://minecrafts-simulation.onrender.com' : 'http://localhost:8000';
   var DEFAULT_SANDBOX = isCloud ? 'https://mine-3d-sandbox.onrender.com' : 'http://localhost:5173';
+  var DEFAULT_FORGE = isCloud ? 'https://minecrafts-simulation.onrender.com' : 'http://localhost:8020';
 
   function getQueryParam(name) {
     if (typeof window === 'undefined' || !window.location || !window.location.search) return null;
@@ -22,12 +23,16 @@
   var simUrl = getQueryParam('sim') || window.__SIM_URL__ || DEFAULT_SIM;
   simUrl = simUrl.replace(/\/+$/, '');
 
+  var forgeUrl = getQueryParam('forge_api') || window.__FORGE_API_BASE__ || DEFAULT_FORGE;
+  forgeUrl = forgeUrl.replace(/\/+$/, '');
+
   var wsUrl = backendUrl.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:') + '/ws';
 
   window.API_BASE = backendUrl;
   window.WS_URL = wsUrl;
   window.SIM_BASE = simUrl;
   window.SANDBOX_UI_URL = DEFAULT_SANDBOX;
+  window.__FORGE_API_BASE__ = forgeUrl;
 
   // Direct public CDN tiles for web/cloud, fallback to proxy for local Electron
   window.TILE_SOURCES = {
