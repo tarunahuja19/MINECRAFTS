@@ -412,6 +412,9 @@ var nodeMarkers = (function () {
       if (!data || !data.node_id) return;
       var nid = normalizeNodeId(data.node_id);
       var st = (data.state || 'active').toLowerCase();
+      if (st === 'active' && forgeNodeStates[nid] && forgeNodeStates[nid] !== 'active') {
+        return;
+      }
       updateState(nid, st);
     });
 
@@ -739,6 +742,11 @@ var nodeMarkers = (function () {
     if (state === 'lastgasp') state = 'critical';
     state = (state || 'active').toLowerCase();
 
+    // Guard: never let ambient or routine active state downgrade an active hazard node
+    if (state === 'active' && forgeNodeStates[normId] && forgeNodeStates[normId] !== 'active') {
+      state = forgeNodeStates[normId];
+    }
+
     // No-op when the state has not actually changed.
     if (targetData && targetData.state === state) return;
     if (targetData) targetData.state = state;
@@ -792,6 +800,9 @@ var nodeMarkers = (function () {
           Object.keys(frame.node_states).forEach(function (rawId) {
             var nid = normalizeNodeId(rawId);
             var st = (frame.node_states[rawId] || 'ACTIVE').toLowerCase();
+            if (st === 'active' && forgeNodeStates[nid] && forgeNodeStates[nid] !== 'active') {
+              st = forgeNodeStates[nid];
+            }
             forgeNodeStates[nid] = st;
             updateState(nid, st);
           });
