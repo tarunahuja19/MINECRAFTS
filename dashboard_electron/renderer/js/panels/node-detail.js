@@ -51,6 +51,20 @@ var nodeDetail = (function () {
     return '1A';
   }
 
+  function normalizeNodeId(id) {
+    if (id == null) return '';
+    var s = String(id).trim().toUpperCase();
+    if (/^N\d+$/.test(s)) {
+      var num = parseInt(s.substring(1), 10);
+      return 'N' + String(num).padStart(2, '0');
+    }
+    if (/^\d+$/.test(s)) {
+      var num2 = parseInt(s, 10);
+      return 'N' + String(num2).padStart(2, '0');
+    }
+    return s;
+  }
+
   function init() {
     container = document.getElementById('panel-node-detail');
     emptyState = document.getElementById('panel-empty');
@@ -60,15 +74,49 @@ var nodeDetail = (function () {
     });
 
     bus.on('telemetry', function (t) {
-      var id = t._node_id || t.node_id;
-      if (id === currentNodeId) {
+      if (!t || !currentNodeId) return;
+      var id = normalizeNodeId(t._node_id || t.node_id);
+      if (id === normalizeNodeId(currentNodeId)) {
         updateTelemetry(t);
       }
     });
 
     bus.on('node-status-change', function (data) {
-      if (data.node_id === currentNodeId) {
+      if (!data || !currentNodeId) return;
+      if (normalizeNodeId(data.node_id) === normalizeNodeId(currentNodeId)) {
         updateStateBadge(data.state);
+      }
+    });
+
+    bus.on('forge-node-states', function (states) {
+      if (!states || !currentNodeId) return;
+      var curNorm = normalizeNodeId(currentNodeId);
+      Object.keys(states).forEach(function (rawId) {
+        if (normalizeNodeId(rawId) === curNorm) {
+          updateStateBadge(states[rawId]);
+        }
+      });
+    });
+
+    bus.on('forge-collapse', function () {
+      if (!currentNodeId) return;
+      var nd = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(currentNodeId) : null;
+      if (nd && nd.state) {
+        updateStateBadge(nd.state);
+        if (nd.lastTelemetry) {
+          updateTelemetry(nd.lastTelemetry);
+        }
+      }
+    });
+
+    bus.on('alarm', function (alarm) {
+      if (!alarm || !alarm.affected_nodes || !currentNodeId) return;
+      var curNorm = normalizeNodeId(currentNodeId);
+      for (var i = 0; i < alarm.affected_nodes.length; i++) {
+        if (normalizeNodeId(alarm.affected_nodes[i]) === curNorm) {
+          updateStateBadge(alarm.level === 3 ? 'critical' : 'warning');
+          break;
+        }
       }
     });
 
@@ -117,6 +165,7 @@ var nodeDetail = (function () {
   }
 
   function show(nodeId) {
+    nodeId = normalizeNodeId(nodeId);
     var nd = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(nodeId) : null;
     if (!nd) nd = { node_id: nodeId, state: 'active' };
 
@@ -220,12 +269,15 @@ var nodeDetail = (function () {
   function applyDbProfile(dbNode) {
     if (dbNode.latest_reading) {
       var nd = (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) ? nodeMarkers.getNodeData(currentNodeId) : null;
-      if (nd) {
-        nd.lastTelemetry = dbNode.latest_reading;
-        updateLastSeen(nd);
-      }
-      if (typeof nodeSensors !== 'undefined' && nodeSensors.update) {
-        nodeSensors.update('sensor-readouts', dbNode.latest_reading);
+      var isAlarming = nd && (nd.state === 'critical' || nd.state === 'warning' || nd.state === 'lastgasp');
+      if (!isAlarming) {
+        if (nd) {
+          nd.lastTelemetry = dbNode.latest_reading;
+          updateLastSeen(nd);
+        }
+        if (typeof nodeSensors !== 'undefined' && nodeSensors.update) {
+          nodeSensors.update('sensor-readouts', dbNode.latest_reading);
+        }
       }
     }
   }
@@ -246,6 +298,9 @@ var nodeDetail = (function () {
     if (nd) {
       nd.lastTelemetry = t;
     }
+    if (t.state) {
+      updateStateBadge(t.state);
+    }
     updateLastSeen(nd);
     if (typeof nodeSensors !== 'undefined' && nodeSensors.update) {
       nodeSensors.update('sensor-readouts', t);
@@ -253,11 +308,21 @@ var nodeDetail = (function () {
   }
 
   function updateStateBadge(state) {
+    if (!container) return;
+    state = (state || 'active').toLowerCase();
     if (state === 'lastgasp') state = 'critical';
     var badge = container.querySelector('.state-badge');
     if (badge) {
       badge.className = 'state-badge ' + state;
       badge.textContent = state.toUpperCase();
+    }
+    var glyph = container.querySelector('.node-glyph-icon');
+    if (glyph) {
+      var color = '#00CC44';
+      if (state === 'warning') color = '#FFA500';
+      else if (state === 'critical') color = '#FF2222';
+      else if (state === 'dead') color = '#5A6A72';
+      glyph.style.background = color;
     }
   }
 

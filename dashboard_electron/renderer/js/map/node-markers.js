@@ -466,6 +466,78 @@ var nodeMarkers = (function () {
       console.log('[node-markers] forge-collapse at (' + cx + ',' + cy + '): ' +
         critNodes.length + ' critical nodes: [' + critNodes.join(',') + '], ' +
         warnNodes.length + ' warning nodes: [' + warnNodes.join(',') + ']');
+
+      // Emit simulated physical telemetry for all nodes inside the collapse zone
+      var affectedList = critNodes.map(function (id) { return { id: id, isCrit: true }; })
+        .concat(warnNodes.map(function (id) { return { id: id, isCrit: false }; }));
+
+      affectedList.forEach(function (item) {
+        var n = resolveNodeData(item.id);
+        if (!n) return;
+        var nx = Number(n.x) || 0;
+        var ny = Number(n.y) || 0;
+        var dist = Math.hypot(nx - cx, ny - cy);
+        var frac = item.isCrit
+          ? Math.max(0.35, 1 - (dist / Math.max(1, rWhite)))
+          : Math.max(0.2, 1 - ((dist - rWhite) / Math.max(1, rRed - rWhite)));
+        var angle = (dist > 0.01) ? Math.atan2(ny - cy, nx - cx) : 0.78;
+
+        var strainVal = item.isCrit
+          ? Math.round(5200 + frac * 2400)
+          : Math.round(1900 + frac * 1300);
+
+        var tiltMag = item.isCrit
+          ? Math.round(1450 + frac * 1100)
+          : Math.round(550 + frac * 450);
+        var tx = Math.round(tiltMag * Math.cos(angle));
+        var ty = Math.round(tiltMag * Math.sin(angle));
+
+        var vibVal = item.isCrit
+          ? parseFloat((1.6 + frac * 1.5).toFixed(2))
+          : parseFloat((0.36 + frac * 0.20).toFixed(2));
+
+        var extDelta = item.isCrit
+          ? parseFloat((8.5 + frac * 8.0).toFixed(2))
+          : parseFloat((3.0 + frac * 2.5).toFixed(2));
+
+        var subMm = Math.round((Number(data.magnitudeM) || 1.2) * (item.isCrit ? 1000 : 250) * frac);
+
+        var tel = {
+          node_id: item.id,
+          _node_id: item.id,
+          strain_ustrain: strainVal,
+          strain_ue: strainVal,
+          strain: strainVal,
+          tilt_x_mdeg: tx,
+          tilt_y_mdeg: ty,
+          tilt_z_mdeg: 0,
+          tilt_x: tx,
+          tilt_y: ty,
+          vib_rms: vibVal,
+          ext_delta_mm: extDelta,
+          subsidence_mm: subMm,
+          gps_dx_mm: Math.round(tx * 0.05),
+          gps_dy_mm: Math.round(ty * 0.05),
+          gps_dz_mm: -subMm,
+          temp_c: 27.5,
+          vbat_mv: (n.lastTelemetry && n.lastTelemetry.vbat_mv) ? n.lastTelemetry.vbat_mv : 3608,
+          flags: item.isCrit ? 1 : 0,
+          state: item.isCrit ? 'critical' : 'warning',
+          t_epoch_s: Math.floor(Date.now() / 1000)
+        };
+
+        n.lastTelemetry = tel;
+        var tm = resolveMarker(item.id);
+        if (tm) {
+          if (tm.setPopupContent) tm.setPopupContent(buildPopup(n));
+          if (tm.setTooltipContent) tm.setTooltipContent(buildTooltip(n));
+        }
+        if (typeof bus !== 'undefined' && bus.emit) {
+          bus.emit('telemetry', tel);
+          bus.emit('node-status-change', { node_id: item.id, state: tel.state });
+        }
+      });
+
       if (critNodes.length > 0 && typeof bus !== 'undefined' && bus.emit) {
         bus.emit('alarm', {
           alarm_id: 'ALM-CAVEIN-' + Math.round(cx) + '_' + Math.round(cy),
@@ -577,25 +649,44 @@ var nodeMarkers = (function () {
       var nd = resolveNodeData(normId);
 
       if (nd) {
-        nd.lastTelemetry = t;
-
-        // The server assigns node state (session.py:_assign_node_states) and
-        // ships it on the telemetry row as `t.state`. A genuine last-gasp packet
-        // is a real device event (PACKET_FLAG_LAST_GASP = 1).
-        if (t.flags & 1) {
-          updateState(normId, 'critical');
-        } else if (t.state) {
-          var s = String(t.state).toLowerCase();
-          if (s === 'lastgasp') s = 'critical';
-          // If this node is currently under a FORGE collapse / hazard event,
-          // do NOT let routine ambient telemetry downgrade it to active.
-          if (s === 'active' && forgeNodeStates[normId] && forgeNodeStates[normId] !== 'active') {
-            s = forgeNodeStates[normId];
+        var isForgeHazard = forgeNodeStates[normId] && (forgeNodeStates[normId] === 'critical' || forgeNodeStates[normId] === 'warning');
+        if (isForgeHazard) {
+          // If node is under an active FORGE hazard, keep alarming state and preserve alarming telemetry
+          var targetState = forgeNodeStates[normId];
+          if (!nd.lastTelemetry || (nd.lastTelemetry.strain_ustrain || 0) < 500) {
+            nd.lastTelemetry = {
+              node_id: normId,
+              _node_id: normId,
+              strain_ustrain: (targetState === 'critical' ? 6500 : 3800),
+              strain_ue: (targetState === 'critical' ? 6500 : 3800),
+              strain: (targetState === 'critical' ? 6500 : 3800),
+              tilt_x_mdeg: (targetState === 'critical' ? 1450 : 650),
+              tilt_y_mdeg: (targetState === 'critical' ? 1680 : 720),
+              tilt_z_mdeg: 0,
+              tilt_x: (targetState === 'critical' ? 1450 : 650),
+              tilt_y: (targetState === 'critical' ? 1680 : 720),
+              vib_rms: (targetState === 'critical' ? 2.45 : 0.48),
+              ext_delta_mm: (targetState === 'critical' ? 12.5 : 3.8),
+              subsidence_mm: (targetState === 'critical' ? 820 : 180),
+              temp_c: 27.5,
+              vbat_mv: (t && t.vbat_mv) || 3608,
+              flags: (targetState === 'critical' ? 1 : 0),
+              state: targetState,
+              t_epoch_s: Math.floor(Date.now() / 1000)
+            };
+          } else {
+            nd.lastTelemetry.t_epoch_s = Math.floor(Date.now() / 1000);
           }
-          updateState(normId, s);
-        } else if (forgeNodeStates[normId]) {
-          // No explicit state property in packet: retain FORGE state
-          updateState(normId, forgeNodeStates[normId]);
+          updateState(normId, targetState);
+        } else {
+          nd.lastTelemetry = t;
+          if (t.flags & 1) {
+            updateState(normId, 'critical');
+          } else if (t.state) {
+            var s = String(t.state).toLowerCase();
+            if (s === 'lastgasp') s = 'critical';
+            updateState(normId, s);
+          }
         }
 
         var m = resolveMarker(normId);
@@ -672,6 +763,10 @@ var nodeMarkers = (function () {
         lastgaspMarker.removePulse(normId);
       }
     }
+
+    if (typeof bus !== 'undefined' && bus.emit) {
+      bus.emit('node-status-change', { node_id: normId, state: state });
+    }
   }
 
   function updateNodeCount() {
@@ -692,13 +787,61 @@ var nodeMarkers = (function () {
   function syncWithForge() {
     if (typeof simTab !== 'undefined' && simTab.getForgeFrame) {
       var frame = simTab.getForgeFrame();
-      if (frame && frame.node_states) {
-        Object.keys(frame.node_states).forEach(function (rawId) {
-          var nid = normalizeNodeId(rawId);
-          var st = (frame.node_states[rawId] || 'ACTIVE').toLowerCase();
-          forgeNodeStates[nid] = st;
-          updateState(nid, st);
-        });
+      if (frame) {
+        if (frame.node_states) {
+          Object.keys(frame.node_states).forEach(function (rawId) {
+            var nid = normalizeNodeId(rawId);
+            var st = (frame.node_states[rawId] || 'ACTIVE').toLowerCase();
+            forgeNodeStates[nid] = st;
+            updateState(nid, st);
+          });
+        }
+        if (Array.isArray(frame.nodes)) {
+          frame.nodes.forEach(function (fn) {
+            if (!fn) return;
+            var nid = normalizeNodeId(fn.label || fn.node_id || fn.id);
+            var st = (fn.node_state || forgeNodeStates[nid] || 'active').toLowerCase();
+            if (st === 'critical' || st === 'warning') {
+              var isCrit = (st === 'critical');
+              var tel = {
+                node_id: nid,
+                _node_id: nid,
+                strain_ustrain: (fn.strain != null) ? fn.strain : (isCrit ? 6500 : 4200),
+                strain_ue: (fn.strain != null) ? fn.strain : (isCrit ? 6500 : 4200),
+                strain: (fn.strain != null) ? fn.strain : (isCrit ? 6500 : 4200),
+                tilt_x_mdeg: (fn.tilt_x != null) ? Math.round(fn.tilt_x) : (isCrit ? 1450 : 650),
+                tilt_y_mdeg: (fn.tilt_y != null) ? Math.round(fn.tilt_y) : (isCrit ? 1680 : 720),
+                tilt_z_mdeg: 0,
+                tilt_x: (fn.tilt_x != null) ? Math.round(fn.tilt_x) : (isCrit ? 1450 : 650),
+                tilt_y: (fn.tilt_y != null) ? Math.round(fn.tilt_y) : (isCrit ? 1680 : 720),
+                vib_rms: (fn.vib_rms != null && fn.vib_rms > 0) ? fn.vib_rms : (isCrit ? 2.35 : 0.45),
+                ext_delta_mm: fn.displacement || (isCrit ? 12.4 : 3.8),
+                subsidence_mm: fn.subsidence_mm || (isCrit ? 750 : 180),
+                gps_dx_mm: fn.displacement ? Math.round(fn.displacement * 0.7) : 0,
+                gps_dy_mm: fn.displacement ? Math.round(fn.displacement * 0.7) : 0,
+                gps_dz_mm: -(fn.subsidence_mm || 0),
+                temp_c: 27.5,
+                vbat_mv: 3608,
+                flags: isCrit ? 1 : 0,
+                state: st,
+                t_epoch_s: Math.floor(Date.now() / 1000)
+              };
+              var nd = resolveNodeData(nid);
+              if (nd) {
+                nd.lastTelemetry = tel;
+                nd.state = st;
+              }
+              var tm = resolveMarker(nid);
+              if (tm) {
+                if (tm.setPopupContent && nd) tm.setPopupContent(buildPopup(nd));
+                if (tm.setTooltipContent && nd) tm.setTooltipContent(buildTooltip(nd));
+              }
+              if (typeof bus !== 'undefined' && bus.emit) {
+                bus.emit('telemetry', tel);
+              }
+            }
+          });
+        }
         return;
       }
     }

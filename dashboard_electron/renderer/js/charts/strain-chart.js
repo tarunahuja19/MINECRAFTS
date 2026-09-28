@@ -15,8 +15,9 @@ var strainChart = (function () {
 
     var nidNum = parseInt(String(nodeId || '').replace(/\D/g, ''), 10);
     var isTier1B = (optTelemetry && optTelemetry.tier === '1B') || (nidNum >= 10 && nidNum <= 19);
+    var hasStrain = optTelemetry && (optTelemetry.strain_ustrain != null || optTelemetry.strain_ue != null || optTelemetry.strain != null);
 
-    if (!isTier1B) {
+    if (!isTier1B && !hasStrain) {
       container.innerHTML = '<div class="live-chart-empty-msg" style="display:flex;align-items:center;justify-content:center;height:100%;min-height:70px;font-family:Consolas,monospace;font-size:10px;color:#5A6E7C;letter-spacing:0.05em;text-align:center;padding:0 8px;">STRAIN SENSORS ACTIVE ON TIER 1B TENSION SCOUTS (N10–N19)</div>';
       return;
     }

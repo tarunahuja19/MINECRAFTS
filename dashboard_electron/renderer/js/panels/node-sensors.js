@@ -29,8 +29,14 @@ var nodeSensors = (function () {
 
     if (incoming) {
       if (!cached) cached = {};
+      var isHazard = nd && (nd.state === 'critical' || nd.state === 'warning');
       for (var prop in incoming) {
         if (incoming[prop] !== null && incoming[prop] !== undefined) {
+          if (isHazard && (prop === 'strain_ustrain' || prop === 'strain_ue' || prop === 'strain' || prop === 'tilt_x_mdeg' || prop === 'tilt_y_mdeg' || prop === 'vib_rms')) {
+            if (cached[prop] != null && incoming[prop] < cached[prop] && incoming[prop] <= 150) {
+              continue;
+            }
+          }
           cached[prop] = incoming[prop];
         }
       }

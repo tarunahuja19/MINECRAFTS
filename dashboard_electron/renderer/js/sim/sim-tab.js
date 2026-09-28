@@ -1383,6 +1383,52 @@ var simTab = (function () {
       if (Array.isArray(frame.cracks)) {
         bus.emit('forge-cracks', frame.cracks);
       }
+      if (Array.isArray(frame.nodes)) {
+        frame.nodes.forEach(function (fn) {
+          if (!fn) return;
+          var nid = fn.label || ('N' + String(fn.node_id || fn.id).padStart(2, '0'));
+          var rawSt = fn.node_state || states[nid] || 'ACTIVE';
+          var st = String(rawSt).toLowerCase();
+          if (st === 'lastgasp') st = 'critical';
+          var isCrit = (st === 'critical');
+          var isWarn = (st === 'warning');
+
+          var tel = {
+            node_id: nid,
+            _node_id: nid,
+            strain_ustrain: (fn.strain != null) ? fn.strain : (isCrit ? 6500 : (isWarn ? 4200 : 120)),
+            strain_ue: (fn.strain != null) ? fn.strain : (isCrit ? 6500 : (isWarn ? 4200 : 120)),
+            strain: (fn.strain != null) ? fn.strain : (isCrit ? 6500 : (isWarn ? 4200 : 120)),
+            tilt_x_mdeg: (fn.tilt_x != null) ? Math.round(fn.tilt_x) : (isCrit ? 1450 : (isWarn ? 650 : 3)),
+            tilt_y_mdeg: (fn.tilt_y != null) ? Math.round(fn.tilt_y) : (isCrit ? 1680 : (isWarn ? 720 : 21)),
+            tilt_z_mdeg: 0,
+            tilt_x: (fn.tilt_x != null) ? Math.round(fn.tilt_x) : (isCrit ? 1450 : (isWarn ? 650 : 3)),
+            tilt_y: (fn.tilt_y != null) ? Math.round(fn.tilt_y) : (isCrit ? 1680 : (isWarn ? 720 : 21)),
+            vib_rms: (fn.vib_rms != null && fn.vib_rms > 0) ? fn.vib_rms : (isCrit ? 2.35 : (isWarn ? 0.45 : 0.11)),
+            ext_delta_mm: fn.displacement || (isCrit ? 12.4 : (isWarn ? 3.8 : 0)),
+            subsidence_mm: fn.subsidence_mm || (isCrit ? 750 : (isWarn ? 180 : 0)),
+            gps_dx_mm: fn.displacement ? Math.round(fn.displacement * 0.7) : 0,
+            gps_dy_mm: fn.displacement ? Math.round(fn.displacement * 0.7) : 0,
+            gps_dz_mm: -(fn.subsidence_mm || 0),
+            temp_c: 27.5,
+            vbat_mv: 3608,
+            flags: isCrit ? 1 : 0,
+            state: st,
+            t_epoch_s: Math.floor(Date.now() / 1000)
+          };
+
+          if (typeof nodeMarkers !== 'undefined' && nodeMarkers.getNodeData) {
+            var nd = nodeMarkers.getNodeData(nid);
+            if (nd) {
+              nd.lastTelemetry = tel;
+              nd.state = st;
+            }
+          }
+          if (isCrit || isWarn || forgeState.playing) {
+            bus.emit('telemetry', tel);
+          }
+        });
+      }
     }
   }
 
